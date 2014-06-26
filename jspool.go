@@ -2,9 +2,17 @@ package main
 
 import (
 	"fmt"
+	"github.com/linlexing/dbgo/grade"
 	"github.com/linlexing/dbgo/oftenfun"
 	"github.com/robertkrimen/otto"
 	_ "github.com/robertkrimen/otto/underscore"
+)
+
+const (
+	TABLE_ADD = iota
+	TABLE_EDIT
+	TABLE_DELETE
+	TABLE_BROWSE
 )
 
 type JSPool struct {
@@ -14,13 +22,13 @@ type JSPool struct {
 
 func package_lx() map[string]interface{} {
 	return map[string]interface{}{
-		"GRADE_ROOT":  GRADE_ROOT,
-		"GRADE_TAG":   GRADE_TAG,
-		"GradeCanUse": jsGradeCanUse,
-		"BILL_ADD":    BILL_ADD,
-		"BILL_EDIT":   BILL_EDIT,
-		"BILL_DELETE": BILL_DELETE,
-		"BILL_BROWSE": BILL_DELETE,
+		"GRADE_ROOT":   grade.GRADE_ROOT,
+		"GRADE_TAG":    grade.GRADE_TAG,
+		"GradeCanUse":  grade.JSGradeCanUse,
+		"TABLE_ADD":    TABLE_ADD,
+		"TABLE_EDIT":   TABLE_EDIT,
+		"TABLE_DELETE": TABLE_DELETE,
+		"TABLE_BROWSE": TABLE_DELETE,
 	}
 }
 func package_fmt() map[string]interface{} {

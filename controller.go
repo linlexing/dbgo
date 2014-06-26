@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/linlexing/dbgo/grade"
 	"github.com/linlexing/dbgo/jsmvcerror"
 	"github.com/linlexing/dbgo/oftenfun"
 	"github.com/robertkrimen/otto"
@@ -25,18 +26,18 @@ type Controller struct {
 	Grade   string
 }
 
-func (c *Controller) GetScript(srcIntercept, grade string) string {
+func (c *Controller) GetScript(srcIntercept, gradestr string) string {
 	interceptScript := ""
 	if srcIntercept != "" {
 		interceptScript = srcIntercept + "(c);"
 	}
 	src := c.Script
-	if !GradeCanUse(grade, c.Grade) {
+	if !grade.GradeCanUse(gradestr, c.Grade) {
 		return ""
 	}
 	result := []string{}
 	for _, v := range c.Actions {
-		if GradeCanUse(grade, v.Grade) {
+		if grade.GradeCanUse(gradestr, v.Grade) {
 			result = append(result, v.Script)
 		}
 	}

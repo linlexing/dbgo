@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/linlexing/dbgo/grade"
 	"github.com/linlexing/dbgo/jsmvcerror"
 	"github.com/linlexing/dbgo/pghelp"
 )
@@ -19,10 +20,10 @@ type metaProject struct {
 
 func t_project() *pghelp.DataTable {
 	table := pghelp.NewDataTable("lx_project")
-	table.Desc.Grade = GRADE_ROOT
-	table.AddColumn(pghelp.NewColumn("name", pghelp.TypeString, true, 50)).Desc.Grade = GRADE_ROOT
-	table.AddColumn(pghelp.NewColumn("dburl", pghelp.TypeString, true)).Desc.Grade = GRADE_ROOT
-	table.AddColumn(pghelp.NewColumn("owner", pghelp.TypeString, true)).Desc.Grade = GRADE_ROOT
+	table.Desc.Grade = grade.GRADE_ROOT
+	table.AddColumn(pghelp.NewColumn("name", pghelp.TypeString, true, 50)).Desc.Grade = grade.GRADE_ROOT
+	table.AddColumn(pghelp.NewColumn("dburl", pghelp.TypeString, true)).Desc.Grade = grade.GRADE_ROOT
+	table.AddColumn(pghelp.NewColumn("owner", pghelp.TypeString, true)).Desc.Grade = grade.GRADE_ROOT
 	table.SetPK("name")
 	return table
 }
@@ -33,24 +34,31 @@ func NewMetaProject(dburl string) (result MetaProject) {
 		panic(err)
 	}
 
-	if err = p.DBHelp().UpdateStruct(t_project(), GRADE_ROOT); err != nil {
+	if err = p.DBHelp().UpdateStruct(t_project(), grade.GRADE_ROOT); err != nil {
 		panic(err)
 	}
-	var pBill *Bill
-	if pBill, err = p.Bill("lx_project", GRADE_ROOT); err != nil {
+	var pBill *pghelp.DBTable
+	if pBill, err = p.DBHelp().Table("lx_project"); err != nil {
 		panic(err)
 	}
+
 	if err = pBill.FillByID("meta"); err != nil {
 		panic(err)
 	}
-	if err = pBill.UpdateMainRow(map[string]interface{}{
+	row := map[string]interface{}{
 		"name":  "meta",
 		"dburl": dburl,
 		"owner": "(system)",
-	}); err != nil {
+	}
+	if pBill.RowCount() == 0 {
+		err = pBill.AddRow(row)
+	} else {
+		err = pBill.UpdateRow(0, row)
+	}
+	if err != nil {
 		panic(err)
 	}
-	if err = pBill.Save(); err != nil {
+	if _, err = pBill.Save(); err != nil {
 		panic(err)
 	}
 	result = &metaProject{project: p.(*project)}

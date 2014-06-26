@@ -3,6 +3,7 @@ package main
 import (
 	"code.google.com/p/go-uuid/uuid"
 	"encoding/base64"
+	"github.com/linlexing/dbgo/grade"
 	"github.com/linlexing/dbgo/jsmvcerror"
 	"github.com/linlexing/dbgo/log"
 	"net/http"
@@ -86,7 +87,7 @@ func SessionFilter(c *ControllerAgent, f []Filter) {
 	//对于未登录用户，赋予特殊GRADE_TAG
 	c.CurrentGrade = c.Session.Get("Grade")
 	if c.CurrentGrade == "" {
-		c.CurrentGrade = GRADE_TAG
+		c.CurrentGrade = grade.GRADE_TAG
 		if err := c.Session.Set("Grade", c.CurrentGrade); err != nil {
 			c.RenderError(err)
 		}

@@ -23,24 +23,6 @@ type Check struct {
 	Script       string
 	Grade        string
 }
-type MainChildRelation struct {
-	Grade        string
-	MainColumns  []string
-	ChildColumns []string
-}
-
-func (m *MainChildRelation) Clone() *MainChildRelation {
-	maincol := make([]string, len(m.MainColumns))
-	copy(maincol, m.MainColumns)
-	childcol := make([]string, len(m.ChildColumns))
-	copy(childcol, m.ChildColumns)
-	return &MainChildRelation{
-		Grade:        m.Grade,
-		MainColumns:  maincol,
-		ChildColumns: childcol,
-	}
-}
-
 type IndexDesc struct {
 	Grade string `json:",omitempty"`
 }
@@ -62,10 +44,7 @@ func (i *Index) Clone() *Index {
 }
 
 type TableDesc struct {
-	ViewTemplate string                        `json:",omitempty"`
-	MainTable    string                        `json:",omitempty"`
-	Relations    map[string]*MainChildRelation `json:",omitempty"`
-	Grade        string                        `json:",omitempty"`
+	Grade string `json:",omitempty"`
 }
 type DataTable struct {
 	*datatable.DataTable
@@ -291,6 +270,7 @@ func (d *DataTable) Object() map[string]interface{} {
 		"NewRow":           d.jsNewRow,
 		"PrimaryKeys":      d.jsPrimaryKeys,
 		"RowCount":         d.jsRowCount,
+		"Rows":             d.jsRows,
 		"Search":           d.jsSearch,
 		"SetPK":            d.jsSetPK,
 		"SetValues":        d.jsSetValues,
@@ -300,6 +280,9 @@ func (d *DataTable) Object() map[string]interface{} {
 		"TableName":        d.TableName,
 		"Indexes":          d.Indexes,
 	}
+}
+func (d *DataTable) jsRows(call otto.FunctionCall) otto.Value {
+	return oftenfun.JSToValue(call.Otto, d.Rows())
 }
 func (d *DataTable) jsRowCount(call otto.FunctionCall) otto.Value {
 	return oftenfun.JSToValue(call.Otto, d.RowCount())

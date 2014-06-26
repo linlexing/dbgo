@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	_ "github.com/lib/pq"
+	"github.com/linlexing/dbgo/grade"
 	"github.com/linlexing/dbgo/log"
 	"github.com/linlexing/dbgo/oftenfun"
 	"github.com/robertkrimen/otto"
@@ -101,21 +102,13 @@ func (p *PGHelp) Schema() (*PGSchema, error) {
 	}
 
 }
-func (p *PGHelp) UpdateTable(table *DataTable) (rcount int64, result_err error) {
-	if p.tx == nil {
-		rcount, result_err = internalUpdateTable(p.connectionString, table)
-	} else {
-		rcount, result_err = internalUpdateTableTx(p.tx, table)
+func (p *PGHelp) jsTable(call otto.FunctionCall) otto.Value {
+	tablename := oftenfun.AssertString(call.Argument(0))
+	tab, err := p.Table(tablename)
+	if err != nil {
+		panic(err)
 	}
-	return
-}
-func (p *PGHelp) TableByID(tname string, ids ...interface{}) (result *DataTable, err error) {
-	var tab *DataTable
-	if tab, err = p.Table(tname); err != nil {
-		return
-	}
-	err = p.FillTableByID(tab, ids...)
-	return
+	return oftenfun.JSToValue(call.Otto, tab.Object())
 }
 func (p *PGHelp) jsGetDataTable(call otto.FunctionCall) otto.Value {
 
@@ -137,25 +130,10 @@ func (p *PGHelp) jsGetDataTable(call otto.FunctionCall) otto.Value {
 func (p *PGHelp) Object() map[string]interface{} {
 	return map[string]interface{}{
 		"GetDataTable": p.jsGetDataTable,
+		"Table":        p.jsTable,
 	}
 }
 
-func (p *PGHelp) FillTableByID(tab *DataTable, ids ...interface{}) (err error) {
-	strSql := buildSelectSql(tab)
-	err = p.FillTable(tab, strSql, ids...)
-	return
-}
-func (p *PGHelp) FillTableWhere(tab *DataTable, strWhere string, params ...interface{}) (err error) {
-	return p.FillTable(tab, fmt.Sprintf("SELECT %s from %s WHERE %s",
-		strings.Join(tab.ColumnNames(), ","), tab.TableName, strWhere), params...)
-}
-func (p *PGHelp) FillTable(tab *DataTable, strSql string, params ...interface{}) (result_err error) {
-	result_err = p.Query(func(rows *sql.Rows) (err error) {
-		err = internalRowsFillTable(rows, tab)
-		return
-	}, strSql, params...)
-	return
-}
 func (p *PGHelp) DbUrl() string {
 	return p.connectionString
 }
@@ -266,10 +244,10 @@ func (p *PGHelp) TableExists(tablename string) bool {
 	return b
 }
 
-func (p *PGHelp) Table(tablename string) (*DataTable, error) {
+func (p *PGHelp) Table(tablename string) (*DBTable, error) {
 	result := NewDataTable(tablename)
 	if !p.TableExists(tablename) {
-		return result, ERROR_NotFoundTable{tablename}
+		return nil, ERROR_NotFoundTable{tablename}
 	}
 	//获取描述
 	json.Unmarshal([]byte(p.getTableDesc(tablename)), result.Desc)
@@ -314,7 +292,7 @@ func (p *PGHelp) Table(tablename string) (*DataTable, error) {
 
 	}
 
-	return result, nil
+	return &DBTable{result, p}, nil
 }
 
 func (p *PGHelp) ExecuteSql(strSql string, params ...interface{}) (result_err error) {
@@ -425,20 +403,22 @@ func (p *PGHelp) dropColumnDefault(tname, cname string) error {
 func (p *PGHelp) setColumnDefault(tname, cname, def string) error {
 	return p.ExecuteSql(fmt.Sprintf(SQL_SetColumnDefault, tname, cname, def))
 }
-func (p *PGHelp) UpdateStruct(newStruct *DataTable, grade string) error {
+func (p *PGHelp) UpdateStruct(newStruct *DataTable, currentGrade string) error {
 	log.SQLTRACE.Printf("start update %v's struct...\n", newStruct.TableName)
 	if len(newStruct.TableName) == 0 {
 		return ERROR_TableNameIsEmpty
 	}
 	tablename := newStruct.TableName
-	oldStruct, err := p.Table(tablename)
-	//如果表不存在，则创建空表
-	if err != nil {
+	var oldStruct *DataTable
+	if tab, err := p.Table(tablename); err != nil {
+		//如果表不存在，则创建空表
 		if _, ok := err.(ERROR_NotFoundTable); !ok {
 			return err
 		} else {
 			p.createTable(newStruct.TableName)
 		}
+	} else {
+		oldStruct = tab.DataTable
 	}
 	//首先判断主关键字是否有变化
 	bKeyChange := false
@@ -467,7 +447,7 @@ func (p *PGHelp) UpdateStruct(newStruct *DataTable, grade string) error {
 	newColumns := []*DataColumn{}
 	//仅读取上级或者本级的字段
 	for _, v := range newStruct.Columns() {
-		if strings.HasPrefix(grade, v.Desc.Grade) {
+		if grade.GradeCanUse(currentGrade, v.Desc.Grade) {
 			newColumns = append(newColumns, v)
 		}
 	}
@@ -499,7 +479,7 @@ func (p *PGHelp) UpdateStruct(newStruct *DataTable, grade string) error {
 			}
 		}
 		//找不到的，且是本级或上级的字段，才需要删除
-		if !bFound && strings.HasPrefix(grade, oldColumn.Desc.Grade) {
+		if !bFound && grade.GradeCanUse(currentGrade, oldColumn.Desc.Grade) {
 			if err := p.dropColumns(tablename, oldColumn.Name); err != nil {
 				return err
 			}
@@ -583,7 +563,7 @@ func (p *PGHelp) UpdateStruct(newStruct *DataTable, grade string) error {
 	//删除不存在的,并修改存在的
 	for idxName, oldIdx := range oldStruct.Indexes {
 		//本级或上级的索引才纳入考察范围
-		if newIdx, ok := newStruct.Indexes[idxName]; ok && strings.HasPrefix(grade, newIdx.Desc.Grade) {
+		if newIdx, ok := newStruct.Indexes[idxName]; ok && grade.GradeCanUse(currentGrade, newIdx.Desc.Grade) {
 			if oldIdx.Define != newIdx.Define {
 				if err := p.dropIndex(idxName); err != nil {
 					return err
@@ -597,7 +577,7 @@ func (p *PGHelp) UpdateStruct(newStruct *DataTable, grade string) error {
 					return err
 				}
 			}
-		} else if strings.HasPrefix(grade, oldIdx.Desc.Grade) { //仅本级或上级不存在的索引才删除
+		} else if grade.GradeCanUse(currentGrade, oldIdx.Desc.Grade) { //仅本级或上级不存在的索引才删除
 			if err := p.dropIndex(idxName); err != nil {
 				return err
 			}
@@ -606,7 +586,7 @@ func (p *PGHelp) UpdateStruct(newStruct *DataTable, grade string) error {
 	//新增索引
 	for idxName, newIdx := range newStruct.Indexes {
 		//仅取本级及上级的索引
-		if strings.HasPrefix(grade, newIdx.Desc.Grade) {
+		if grade.GradeCanUse(currentGrade, newIdx.Desc.Grade) {
 			if _, ok := oldStruct.Indexes[idxName]; !ok {
 				if err := p.ExecuteSql(newIdx.Define, newStruct.TableName, idxName); err != nil {
 					return err

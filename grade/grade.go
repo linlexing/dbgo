@@ -1,4 +1,4 @@
-package main
+package grade
 
 import (
 	"github.com/robertkrimen/otto"
@@ -14,7 +14,7 @@ const (
 func GradeCanUse(currentGrade, canUseGrade string) bool {
 	return currentGrade == GRADE_TAG || strings.HasPrefix(currentGrade, canUseGrade)
 }
-func jsGradeCanUse(call otto.FunctionCall) otto.Value {
+func JSGradeCanUse(call otto.FunctionCall) otto.Value {
 	v, _ := otto.ToValue(GradeCanUse(call.Argument(0).String(), call.Argument(1).String()))
 	return v
 }

@@ -9,14 +9,34 @@ import (
 	"strconv"
 )
 
-func SafeToStrings(s ...interface{}) []string {
+func SafeToStrings(s []interface{}) []string {
 	r := make([]string, len(s), len(s))
 	for i, v := range s {
 		r[i] = SafeToString(v)
 	}
 	return r
 }
-
+func SafeToInt64s(s []interface{}) []int64 {
+	r := make([]int64, len(s), len(s))
+	for i, v := range s {
+		r[i] = SafeToInt64(v)
+	}
+	return r
+}
+func SafeToFloat64s(s []interface{}) []float64 {
+	r := make([]float64, len(s), len(s))
+	for i, v := range s {
+		r[i] = SafeToFloat64(v)
+	}
+	return r
+}
+func SafeToBools(s []interface{}) []bool {
+	r := make([]bool, len(s), len(s))
+	for i, v := range s {
+		r[i] = SafeToBool(v)
+	}
+	return r
+}
 func SafeToString(s interface{}) string {
 
 	if s == nil {
@@ -53,6 +73,33 @@ func SafeToInt64(s interface{}) int64 {
 		}
 	default:
 		return 0
+	}
+}
+func SafeToFloat64(s interface{}) float64 {
+	if s == nil {
+		return float64(0)
+	}
+	switch r := s.(type) {
+	case int64:
+		return float64(r)
+	case int:
+		return float64(r)
+	case int8:
+		return float64(r)
+	case int16:
+		return float64(r)
+	case float32:
+		return float64(r)
+	case float64:
+		return r
+	case string:
+		if i, err := strconv.ParseFloat(r, 64); err != nil {
+			return float64(0)
+		} else {
+			return i
+		}
+	default:
+		return float64(0)
 	}
 }
 func SafeToBool(s interface{}) bool {

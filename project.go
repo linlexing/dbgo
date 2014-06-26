@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"database/sql"
 	"fmt"
+	"github.com/linlexing/dbgo/grade"
 	"github.com/linlexing/dbgo/jsmvcerror"
 	"github.com/linlexing/dbgo/log"
 	"github.com/linlexing/dbgo/oftenfun"
@@ -43,10 +44,10 @@ type Project interface {
 
 	Version(grade string) (int64, bool, error)
 	InterceptScript(grade string, when int64) (string, error)
-	Controller(ctrlname, grade string) (*Controller, error)
+	Controller(ctrlname, gradestr string) (*Controller, error)
+	Table(tablename, gradestr string) *pghelp.DBTable
+	Checks(tablename, gradestr string) ([]*Check, error)
 	TemplateSet(f template.FuncMap) (*template.Template, error)
-	Bill(bname, grade string) (*Bill, error)
-
 	Object() map[string]interface{}
 }
 
@@ -89,61 +90,53 @@ type View struct {
 
 func lx_version() *pghelp.DataTable {
 	table := pghelp.NewDataTable("lx_version")
-	table.Desc.Grade = GRADE_ROOT
-	table.AddColumn(pghelp.NewColumn("grade", pghelp.TypeString, true)).Desc.Grade = GRADE_ROOT
-	table.AddColumn(pghelp.NewColumn("verno", pghelp.TypeInt64, true)).Desc.Grade = GRADE_ROOT
-	table.AddColumn(pghelp.NewColumn("verlabel", pghelp.TypeString, true)).Desc.Grade = GRADE_ROOT
-	table.AddColumn(pghelp.NewColumn("changelog", pghelp.TypeString, true)).Desc.Grade = GRADE_ROOT
-	table.AddColumn(pghelp.NewColumn("releasetime", pghelp.TypeTime, true)).Desc.Grade = GRADE_ROOT
+	table.Desc.Grade = grade.GRADE_ROOT
+	table.AddColumn(pghelp.NewColumn("grade", pghelp.TypeString, true)).Desc.Grade = grade.GRADE_ROOT
+	table.AddColumn(pghelp.NewColumn("verno", pghelp.TypeInt64, true)).Desc.Grade = grade.GRADE_ROOT
+	table.AddColumn(pghelp.NewColumn("verlabel", pghelp.TypeString, true)).Desc.Grade = grade.GRADE_ROOT
+	table.AddColumn(pghelp.NewColumn("changelog", pghelp.TypeString, true)).Desc.Grade = grade.GRADE_ROOT
+	table.AddColumn(pghelp.NewColumn("releasetime", pghelp.TypeTime, true)).Desc.Grade = grade.GRADE_ROOT
 	table.SetPK("grade", "verno")
 	return table
 }
 func lx_intercept() *pghelp.DataTable {
 	table := pghelp.NewDataTable("lx_intercept")
-	table.Desc.Grade = GRADE_ROOT
-	table.AddColumn(pghelp.NewColumn("id", pghelp.TypeString, true)).Desc.Grade = GRADE_ROOT
-	table.AddColumn(pghelp.NewColumn("script", pghelp.TypeString, true)).Desc.Grade = GRADE_ROOT
-	table.AddColumn(pghelp.NewColumn("whenint", pghelp.TypeInt64, true)).Desc.Grade = GRADE_ROOT
-	table.AddColumn(pghelp.NewColumn("grade", pghelp.TypeString, true)).Desc.Grade = GRADE_ROOT
+	table.Desc.Grade = grade.GRADE_ROOT
+	table.AddColumn(pghelp.NewColumn("id", pghelp.TypeString, true)).Desc.Grade = grade.GRADE_ROOT
+	table.AddColumn(pghelp.NewColumn("script", pghelp.TypeString, true)).Desc.Grade = grade.GRADE_ROOT
+	table.AddColumn(pghelp.NewColumn("whenint", pghelp.TypeInt64, true)).Desc.Grade = grade.GRADE_ROOT
+	table.AddColumn(pghelp.NewColumn("grade", pghelp.TypeString, true)).Desc.Grade = grade.GRADE_ROOT
 	table.SetPK("id")
 	return table
 }
 func lx_controller() *pghelp.DataTable {
 
 	table := pghelp.NewDataTable("lx_controller")
-	table.Desc.Grade = GRADE_ROOT
-	table.Desc.Relations = map[string]*pghelp.MainChildRelation{
-		"lx_action": &pghelp.MainChildRelation{
-			Grade:        GRADE_ROOT,
-			MainColumns:  []string{"name"},
-			ChildColumns: []string{"ctrlname"},
-		},
-	}
-	table.AddColumn(pghelp.NewColumnT("name", pghelp.NewPGType(pghelp.TypeString, 0, true), "")).Desc.Grade = GRADE_ROOT
-	table.AddColumn(pghelp.NewColumnT("script", pghelp.NewPGType(pghelp.TypeString, 0, false), "")).Desc.Grade = GRADE_ROOT
-	table.AddColumn(pghelp.NewColumnT("public", pghelp.NewPGType(pghelp.TypeBool, 0, true), "")).Desc.Grade = GRADE_ROOT
-	table.AddColumn(pghelp.NewColumnT("grade", pghelp.NewPGType(pghelp.TypeString, 0, true), "")).Desc.Grade = GRADE_ROOT
+	table.Desc.Grade = grade.GRADE_ROOT
+	table.AddColumn(pghelp.NewColumnT("name", pghelp.NewPGType(pghelp.TypeString, 0, true), "")).Desc.Grade = grade.GRADE_ROOT
+	table.AddColumn(pghelp.NewColumnT("script", pghelp.NewPGType(pghelp.TypeString, 0, false), "")).Desc.Grade = grade.GRADE_ROOT
+	table.AddColumn(pghelp.NewColumnT("public", pghelp.NewPGType(pghelp.TypeBool, 0, true), "")).Desc.Grade = grade.GRADE_ROOT
+	table.AddColumn(pghelp.NewColumnT("grade", pghelp.NewPGType(pghelp.TypeString, 0, true), "")).Desc.Grade = grade.GRADE_ROOT
 	table.SetPK("name")
 
 	return table
 }
 func lx_action() *pghelp.DataTable {
 	table := pghelp.NewDataTable("lx_action")
-	table.Desc.Grade = GRADE_ROOT
-	table.Desc.MainTable = "lx_controller"
-	table.AddColumn(pghelp.NewColumnT("ctrlname", pghelp.NewPGType(pghelp.TypeString, 0, true), "")).Desc.Grade = GRADE_ROOT
-	table.AddColumn(pghelp.NewColumnT("id", pghelp.NewPGType(pghelp.TypeString, 0, true), "")).Desc.Grade = GRADE_ROOT
-	table.AddColumn(pghelp.NewColumnT("script", pghelp.NewPGType(pghelp.TypeString, 0, false), "")).Desc.Grade = GRADE_ROOT
-	table.AddColumn(pghelp.NewColumnT("grade", pghelp.NewPGType(pghelp.TypeString, 0, true), "")).Desc.Grade = GRADE_ROOT
+	table.Desc.Grade = grade.GRADE_ROOT
+	table.AddColumn(pghelp.NewColumnT("ctrlname", pghelp.NewPGType(pghelp.TypeString, 0, true), "")).Desc.Grade = grade.GRADE_ROOT
+	table.AddColumn(pghelp.NewColumnT("id", pghelp.NewPGType(pghelp.TypeString, 0, true), "")).Desc.Grade = grade.GRADE_ROOT
+	table.AddColumn(pghelp.NewColumnT("script", pghelp.NewPGType(pghelp.TypeString, 0, false), "")).Desc.Grade = grade.GRADE_ROOT
+	table.AddColumn(pghelp.NewColumnT("grade", pghelp.NewPGType(pghelp.TypeString, 0, true), "")).Desc.Grade = grade.GRADE_ROOT
 	table.SetPK("ctrlname", "id")
 	return table
 }
 func lx_view() *pghelp.DataTable {
 	table := pghelp.NewDataTable("lx_view")
-	table.Desc.Grade = GRADE_ROOT
-	table.AddColumn(pghelp.NewColumnT("name", pghelp.NewPGType(pghelp.TypeString, 0, true), "")).Desc.Grade = GRADE_ROOT
-	table.AddColumn(pghelp.NewColumnT("grade", pghelp.NewPGType(pghelp.TypeString, 0, true), "")).Desc.Grade = GRADE_ROOT
-	table.AddColumn(pghelp.NewColumnT("content", pghelp.NewPGType(pghelp.TypeString, 0, false), "")).Desc.Grade = GRADE_ROOT
+	table.Desc.Grade = grade.GRADE_ROOT
+	table.AddColumn(pghelp.NewColumnT("name", pghelp.NewPGType(pghelp.TypeString, 0, true), "")).Desc.Grade = grade.GRADE_ROOT
+	table.AddColumn(pghelp.NewColumnT("grade", pghelp.NewPGType(pghelp.TypeString, 0, true), "")).Desc.Grade = grade.GRADE_ROOT
+	table.AddColumn(pghelp.NewColumnT("content", pghelp.NewPGType(pghelp.TypeString, 0, false), "")).Desc.Grade = grade.GRADE_ROOT
 	table.SetPK("name")
 	return table
 }
@@ -151,50 +144,36 @@ func lx_view() *pghelp.DataTable {
 func lx_checkaddition() *pghelp.DataTable {
 
 	table := pghelp.NewDataTable("lx_checkaddition")
-	table.Desc.Grade = GRADE_ROOT
-	table.AddColumn(pghelp.NewColumnT("tablename", pghelp.NewPGType(pghelp.TypeString, 64, true), "")).Desc.Grade = GRADE_ROOT
-	table.AddColumn(pghelp.NewColumnT("addition", pghelp.NewPGType(pghelp.TypeString, 64, true), "")).Desc.Grade = GRADE_ROOT
-	table.AddColumn(pghelp.NewColumnT("fields", pghelp.NewPGType(pghelp.TypeStringSlice, 0, false), "")).Desc.Grade = GRADE_ROOT
-	table.AddColumn(pghelp.NewColumnT("runatserver", pghelp.NewPGType(pghelp.TypeBool, 0, false), "")).Desc.Grade = GRADE_ROOT
-	table.AddColumn(pghelp.NewColumnT("script", pghelp.NewPGType(pghelp.TypeString, 0, false), "")).Desc.Grade = GRADE_ROOT
-	table.AddColumn(pghelp.NewColumnT("sqlwhere", pghelp.NewPGType(pghelp.TypeString, 0, false), "")).Desc.Grade = GRADE_ROOT
+	table.Desc.Grade = grade.GRADE_ROOT
+	table.AddColumn(pghelp.NewColumnT("tablename", pghelp.NewPGType(pghelp.TypeString, 64, true), "")).Desc.Grade = grade.GRADE_ROOT
+	table.AddColumn(pghelp.NewColumnT("addition", pghelp.NewPGType(pghelp.TypeString, 64, true), "")).Desc.Grade = grade.GRADE_ROOT
+	table.AddColumn(pghelp.NewColumnT("fields", pghelp.NewPGType(pghelp.TypeStringSlice, 0, false), "")).Desc.Grade = grade.GRADE_ROOT
+	table.AddColumn(pghelp.NewColumnT("runatserver", pghelp.NewPGType(pghelp.TypeBool, 0, false), "")).Desc.Grade = grade.GRADE_ROOT
+	table.AddColumn(pghelp.NewColumnT("script", pghelp.NewPGType(pghelp.TypeString, 0, false), "")).Desc.Grade = grade.GRADE_ROOT
+	table.AddColumn(pghelp.NewColumnT("sqlwhere", pghelp.NewPGType(pghelp.TypeString, 0, false), "")).Desc.Grade = grade.GRADE_ROOT
 	table.SetPK("tablename", "addition")
 	return table
 }
 func lx_check() *pghelp.DataTable {
 
 	table := pghelp.NewDataTable("lx_check")
-	table.Desc.Grade = GRADE_ROOT
-	table.AddColumn(pghelp.NewColumnT("tablename", pghelp.NewPGType(pghelp.TypeString, 64, true), "")).Desc.Grade = GRADE_ROOT
-	table.AddColumn(pghelp.NewColumnT("id", pghelp.NewPGType(pghelp.TypeInt64, 0, true), "")).Desc.Grade = GRADE_ROOT
-	table.AddColumn(pghelp.NewColumnT("displaylabel", pghelp.NewPGType(pghelp.TypeString, 0, true), "")).Desc.Grade = GRADE_ROOT
-	table.AddColumn(pghelp.NewColumnT("level", pghelp.NewPGType(pghelp.TypeInt64, 0, true), "")).Desc.Grade = GRADE_ROOT
-	table.AddColumn(pghelp.NewColumnT("fields", pghelp.NewPGType(pghelp.TypeStringSlice, 0, false), "")).Desc.Grade = GRADE_ROOT
-	table.AddColumn(pghelp.NewColumnT("runatserver", pghelp.NewPGType(pghelp.TypeBool, 0, false), "")).Desc.Grade = GRADE_ROOT
-	table.AddColumn(pghelp.NewColumnT("addition", pghelp.NewPGType(pghelp.TypeString, 64, false), "")).Desc.Grade = GRADE_ROOT
-	table.AddColumn(pghelp.NewColumnT("script", pghelp.NewPGType(pghelp.TypeString, 0, false), "")).Desc.Grade = GRADE_ROOT
-	table.AddColumn(pghelp.NewColumnT("sqlwhere", pghelp.NewPGType(pghelp.TypeString, 0, false), "")).Desc.Grade = GRADE_ROOT
-	table.AddColumn(pghelp.NewColumnT("grade", pghelp.NewPGType(pghelp.TypeString, 0, true), "")).Desc.Grade = GRADE_ROOT
+	table.Desc.Grade = grade.GRADE_ROOT
+	table.AddColumn(pghelp.NewColumnT("tablename", pghelp.NewPGType(pghelp.TypeString, 64, true), "")).Desc.Grade = grade.GRADE_ROOT
+	table.AddColumn(pghelp.NewColumnT("id", pghelp.NewPGType(pghelp.TypeInt64, 0, true), "")).Desc.Grade = grade.GRADE_ROOT
+	table.AddColumn(pghelp.NewColumnT("displaylabel", pghelp.NewPGType(pghelp.TypeString, 0, true), "")).Desc.Grade = grade.GRADE_ROOT
+	table.AddColumn(pghelp.NewColumnT("level", pghelp.NewPGType(pghelp.TypeInt64, 0, true), "")).Desc.Grade = grade.GRADE_ROOT
+	table.AddColumn(pghelp.NewColumnT("fields", pghelp.NewPGType(pghelp.TypeStringSlice, 0, false), "")).Desc.Grade = grade.GRADE_ROOT
+	table.AddColumn(pghelp.NewColumnT("runatserver", pghelp.NewPGType(pghelp.TypeBool, 0, false), "")).Desc.Grade = grade.GRADE_ROOT
+	table.AddColumn(pghelp.NewColumnT("addition", pghelp.NewPGType(pghelp.TypeString, 64, false), "")).Desc.Grade = grade.GRADE_ROOT
+	table.AddColumn(pghelp.NewColumnT("script", pghelp.NewPGType(pghelp.TypeString, 0, false), "")).Desc.Grade = grade.GRADE_ROOT
+	table.AddColumn(pghelp.NewColumnT("sqlwhere", pghelp.NewPGType(pghelp.TypeString, 0, false), "")).Desc.Grade = grade.GRADE_ROOT
+	table.AddColumn(pghelp.NewColumnT("grade", pghelp.NewPGType(pghelp.TypeString, 0, true), "")).Desc.Grade = grade.GRADE_ROOT
 	table.SetPK("tablename", "id")
-	return table
-}
-func lx_checkresult() *pghelp.DataTable {
-
-	table := pghelp.NewDataTable("lx_checkresult")
-	table.Desc.Grade = GRADE_ROOT
-	table.AddColumn(pghelp.NewColumnT("tablename", pghelp.NewPGType(pghelp.TypeString, 64, true), "")).Desc.Grade = GRADE_ROOT
-	table.AddColumn(pghelp.NewColumnT("pks", pghelp.NewPGType(pghelp.TypeStringSlice, 0, true), "")).Desc.Grade = GRADE_ROOT
-	table.AddColumn(pghelp.NewColumnT("checkid", pghelp.NewPGType(pghelp.TypeInt64, 0, true), "")).Desc.Grade = GRADE_ROOT
-	table.AddColumn(pghelp.NewColumnT("grade", pghelp.NewPGType(pghelp.TypeString, 0, true), "")).Desc.Grade = GRADE_ROOT
-	table.AddColumn(pghelp.NewColumnT("refreshtime", pghelp.NewPGType(pghelp.TypeTime, 0, true), "")).Desc.Grade = GRADE_ROOT
-	table.AddColumn(pghelp.NewColumnT("refreshby", pghelp.NewPGType(pghelp.TypeInt64, 0, true), "")).Desc.Grade = GRADE_ROOT
-	table.Columns()[4].Desc.Desc = "0-backgroud refresh 1-save refresh"
-	table.SetPK("tablename", "pks", "checkid")
 	return table
 }
 
 func publicTables() []*pghelp.DataTable {
-	return []*pghelp.DataTable{lx_version(), lx_intercept(), lx_controller(), lx_action(), lx_view(), lx_checkaddition(), lx_check(), lx_checkresult()}
+	return []*pghelp.DataTable{lx_version(), lx_intercept(), lx_controller(), lx_action(), lx_view(), lx_checkaddition(), lx_check()}
 
 }
 func NewProject(name, dburl string) (Project, error) {
@@ -226,7 +205,7 @@ func NewProject(name, dburl string) (Project, error) {
 	p.defaultAction = schema.Desc.DefaultAction
 	//先确保有公共的表
 	for _, v := range publicTables() {
-		if err := p.dbHelp.UpdateStruct(v, GRADE_ROOT); err != nil {
+		if err := p.dbHelp.UpdateStruct(v, grade.GRADE_ROOT); err != nil {
 			return nil, err
 		}
 	}
@@ -283,7 +262,7 @@ func (p *project) loadTemplate(f template.FuncMap) (*template.Template, error) {
 			return template.JS(src)
 		},
 		"PathJoin":    path.Join,
-		"GradeCanUse": GradeCanUse,
+		"GradeCanUse": grade.GradeCanUse,
 		"tmpl": func(tmpl string, data map[string]interface{}) template.HTML {
 			buf := &bytes.Buffer{}
 			rev.ExecuteTemplate(buf, tmpl, data)
@@ -362,7 +341,7 @@ func (p *project) DefaultAction() (string, string) {
 	}
 }
 
-func (p *project) InterceptScript(grade string, when int64) (string, error) {
+func (p *project) InterceptScript(gradestr string, when int64) (string, error) {
 	p.lockIntercept.Lock()
 	defer p.lockIntercept.Unlock()
 	if len(p.cacheIntercept) == 0 {
@@ -375,7 +354,7 @@ func (p *project) InterceptScript(grade string, when int64) (string, error) {
 	result := []string{}
 
 	for _, inp := range p.cacheIntercept {
-		if GradeCanUse(grade, inp.Grade) && inp.InterceptWhen == when {
+		if grade.GradeCanUse(gradestr, inp.Grade) && inp.InterceptWhen == when {
 			result = append(result, inp.Script)
 		}
 	}
@@ -385,7 +364,7 @@ func (p *project) InterceptScript(grade string, when int64) (string, error) {
 			var filter = [%s];
 			var GRADE = %q;
 			filter[0](c,filter.slice(1));
-		})`, strings.Join(result, ","), grade), nil
+		})`, strings.Join(result, ","), gradestr), nil
 	} else {
 		return "", nil
 	}
@@ -459,13 +438,29 @@ func (p *project) jsReverseUrl(call otto.FunctionCall) otto.Value {
 	v, _ := otto.ToValue(p.ReverseUrl(params...))
 	return v
 }
+func (p *project) jsTable(call otto.FunctionCall) otto.Value {
+	tablename := oftenfun.AssertString(call.Argument(0))
+	gradestr := oftenfun.AssertString(call.Argument(1))
+	return oftenfun.JSToValue(call.Otto, p.Table(tablename, gradestr).Object())
+}
+func (p *project) jsChecks(call otto.FunctionCall) otto.Value {
+	tablename := oftenfun.AssertString(call.Argument(0))
+	gradestr := oftenfun.AssertString(call.Argument(1))
+	chks, err := p.Checks(tablename, gradestr)
+	if err != nil {
+		panic(err)
+	}
+	return oftenfun.JSToValue(call.Otto, chks)
+}
+
 func (p *project) Object() map[string]interface{} {
 	return map[string]interface{}{
 		"ReverseUrl": p.jsReverseUrl,
 		"Name":       p.Name(),
 		"ClearCache": p.jsClearCache,
 		"DBHelp":     p.DBHelp().Object(),
-		"Bill":       p.jsBill,
+		"Table":      p.jsTable,
+		"Checks":     p.jsChecks,
 	}
 }
 func (p *project) jsClearCache(call otto.FunctionCall) otto.Value {
@@ -523,16 +518,29 @@ func (p *project) getTableDefine(tablename string) (result *pghelp.DataTable, er
 	defer p.lockTableDefine.Unlock()
 	var ok bool
 	if result, ok = p.cacheTableDefine[tablename]; !ok {
-		result, err = p.DBHelp().Table(tablename)
+		var tab *pghelp.DBTable
+		tab, err = p.DBHelp().Table(tablename)
 		if err != nil {
 			return
 		}
+		result = tab.DataTable
 		p.cacheTableDefine[tablename] = result
 	}
 	return
 }
-func reducedTableDefine(tab *pghelp.DataTable, grade string) (*pghelp.DataTable, bool) {
-	if !GradeCanUse(grade, tab.Desc.Grade) {
+func (p *project) Table(tablename, gradestr string) *pghelp.DBTable {
+	tab, err := p.getTableDefine(tablename)
+	if err != nil {
+		panic(err)
+	}
+	result, ok := reducedTableDefine(tab, gradestr)
+	if !ok {
+		panic(fmt.Errorf("the table %q not exits at grade:%q", tablename, gradestr))
+	}
+	return pghelp.NewDBTable(p.DBHelp(), result)
+}
+func reducedTableDefine(tab *pghelp.DataTable, gradestr string) (*pghelp.DataTable, bool) {
+	if !grade.GradeCanUse(gradestr, tab.Desc.Grade) {
 		return nil, false
 	}
 	result := pghelp.NewDataTable(tab.TableName)
@@ -540,21 +548,15 @@ func reducedTableDefine(tab *pghelp.DataTable, grade string) (*pghelp.DataTable,
 	//process the columns
 	for _, col := range tab.Columns() {
 		//the key column must to be add
-		if GradeCanUse(grade, col.Desc.Grade) || tab.IsPrimaryKey(col.Name) {
+		if grade.GradeCanUse(gradestr, col.Desc.Grade) || tab.IsPrimaryKey(col.Name) {
 			result.AddColumn(col.Clone())
 		}
 	}
 	result.SetPK(tab.GetPK()...)
 	//process the indexes
 	for idxname, idx := range tab.Indexes {
-		if GradeCanUse(grade, idx.Desc.Grade) {
+		if grade.GradeCanUse(gradestr, idx.Desc.Grade) {
 			result.Indexes[idxname] = idx.Clone()
-		}
-	}
-	//process the Relations
-	for name, value := range tab.Desc.Relations {
-		if GradeCanUse(grade, value.Grade) {
-			result.Desc.Relations[name] = value.Clone()
 		}
 	}
 	return result, true
@@ -619,7 +621,7 @@ func (p *project) loadCheck(tablename string) ([]*Check, error) {
 	}
 	return rev, nil
 }
-func (p *project) getCheck(tablename, grade string) ([]*Check, error) {
+func (p *project) Checks(tablename, gradestr string) ([]*Check, error) {
 	p.lockCheck.Lock()
 	defer p.lockCheck.Unlock()
 	if _, ok := p.cacheCheck[tablename]; !ok {
@@ -631,64 +633,9 @@ func (p *project) getCheck(tablename, grade string) ([]*Check, error) {
 	}
 	rev := []*Check{}
 	for _, chk := range p.cacheCheck[tablename] {
-		if GradeCanUse(grade, chk.Grade) {
+		if grade.GradeCanUse(gradestr, chk.Grade) {
 			rev = append(rev, chk)
 		}
 	}
 	return rev, nil
-}
-func (p *project) Bill(bname, grade string) (result *Bill, err error) {
-	b := &Bill{dbhelp: p.DBHelp(),
-		Name:        bname,
-		Grade:       grade,
-		Tables:      map[string]*pghelp.DataTable{},
-		Checks:      map[string][]*Check{},
-		CheckResult: map[string][]*CheckResult{},
-	}
-	var mainTable *pghelp.DataTable
-	mainTable, err = p.getTableDefine(bname)
-	if err != nil {
-		return
-	}
-	cpyMain, ok := reducedTableDefine(mainTable, grade)
-	if !ok {
-		err = jsmvcerror.CannotUseTable(mainTable.TableName, grade, mainTable.Desc.Grade)
-		return
-	}
-	b.Tables[bname] = cpyMain
-	for k, _ := range cpyMain.Desc.Relations {
-		var childTable *pghelp.DataTable
-		if childTable, err = p.getTableDefine(k); err != nil {
-			return
-		}
-		cpyChild, ok := reducedTableDefine(childTable, grade)
-		if !ok {
-			err = jsmvcerror.CannotUseTable(childTable.TableName, grade, childTable.Desc.Grade)
-			return
-		}
-		b.Tables[k] = cpyChild
-	}
-	b.Checks[b.Name], err = p.getCheck(bname, grade)
-	if err != nil {
-		return
-	}
-	for k, _ := range b.ChildTables() {
-		b.Checks[k], err = p.getCheck(k, grade)
-		if err != nil {
-			return
-		}
-	}
-	result = b
-
-	return
-
-}
-func (p *project) jsBill(call otto.FunctionCall) otto.Value {
-	bname := oftenfun.AssertString(call.Argument(0))
-	grade := oftenfun.AssertString(call.Argument(1))
-	b, err := p.Bill(bname, grade)
-	if err != nil {
-		panic(err)
-	}
-	return oftenfun.JSToValue(call.Otto, b.Object())
 }

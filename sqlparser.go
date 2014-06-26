@@ -10,6 +10,10 @@ import (
 	"strings"
 )
 
+const (
+	CHECK_SQL_OUTLINE_TABLENAME = "_check_outline_"
+)
+
 type SqlParser struct {
 	StringIdentifiers []string
 	AdditionParse     func(exp ast.Expression) (string, bool, error)
