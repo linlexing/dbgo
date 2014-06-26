@@ -1,0 +1,1 @@
+weed server -filer -ip=localhost -dir=./fs
