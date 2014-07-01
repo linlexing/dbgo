@@ -20,11 +20,18 @@ type JSPool struct {
 	pool chan *otto.Otto
 }
 
+func JSGradeCanUse(call otto.FunctionCall) otto.Value {
+	g1 := oftenfun.AssertString(call.Argument(0))
+	g2 := oftenfun.AssertString(call.Argument(1))
+
+	return oftenfun.JSToValue(call.Otto, grade.Grade(g1).GradeCanUse(g2))
+}
+
 func package_lx() map[string]interface{} {
 	return map[string]interface{}{
 		"GRADE_ROOT":   grade.GRADE_ROOT,
 		"GRADE_TAG":    grade.GRADE_TAG,
-		"GradeCanUse":  grade.JSGradeCanUse,
+		"GradeCanUse":  JSGradeCanUse,
 		"TABLE_ADD":    TABLE_ADD,
 		"TABLE_EDIT":   TABLE_EDIT,
 		"TABLE_DELETE": TABLE_DELETE,

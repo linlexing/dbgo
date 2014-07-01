@@ -1,0 +1,11 @@
+{
+	"RowCount":2,
+	"FileColumns":{
+		"script":{
+			"FileExt":".js"
+		},
+		"sqlwhere":{
+			"FileExt":".sql"
+		}
+	}
+}

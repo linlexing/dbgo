@@ -1,0 +1,12 @@
+{
+	"TableName":"lx_checkaddition",
+	"RowCount":2,
+	"Columns":{
+		"script":{
+			"FileExt":".js"
+		},
+		"sqlwhere":{
+			"FileExt":".sql"
+		}
+	}
+}

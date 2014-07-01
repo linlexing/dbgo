@@ -1,0 +1,2 @@
+﻿rt_user,1,用户名必须大于等于5个字符,3,{name},name.length<5,root,"","",""
+rt_user,2,无效的email,3,{email},"!regexp_like(email,'^[A-Za-z0-9._%-]+@[A-Za-z0-9.-]+[.][A-Za-z]+$')",root,"","",""

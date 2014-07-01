@@ -26,18 +26,18 @@ type Controller struct {
 	Grade   string
 }
 
-func (c *Controller) GetScript(srcIntercept, gradestr string) string {
+func (c *Controller) GetScript(srcIntercept string, gradestr grade.Grade) string {
 	interceptScript := ""
 	if srcIntercept != "" {
 		interceptScript = srcIntercept + "(c);"
 	}
 	src := c.Script
-	if !grade.GradeCanUse(gradestr, c.Grade) {
+	if !gradestr.GradeCanUse(c.Grade) {
 		return ""
 	}
 	result := []string{}
 	for _, v := range c.Actions {
-		if grade.GradeCanUse(gradestr, v.Grade) {
+		if gradestr.GradeCanUse(v.Grade) {
 			result = append(result, v.Script)
 		}
 	}
@@ -64,8 +64,8 @@ type ControllerAgent struct {
 	ActionName     string
 	TagPath        string
 	Title          string
-	Public         bool   //Indicate whether you can access without authentication
-	CurrentGrade   string //When this call, the user's Grade properties. After obtaining the value from the Session, and not to change it, even if the user changes their Grade other requests
+	Public         bool        //Indicate whether you can access without authentication
+	CurrentGrade   grade.Grade //When this call, the user's Grade properties. After obtaining the value from the Session, and not to change it, even if the user changes their Grade other requests
 	Result         Result
 	TemplateFun    template.FuncMap
 	script         string
@@ -224,9 +224,27 @@ func (c *ControllerAgent) jsAuthed(call otto.FunctionCall) otto.Value {
 	v, _ := otto.ToValue(c.Authed())
 	return v
 }
+func (c *ControllerAgent) jsModel(call otto.FunctionCall) otto.Value {
+	mname := oftenfun.AssertString(call.Argument(0))
+	return oftenfun.JSToValue(call.Otto, c.Project.Model(mname, c.CurrentGrade).Object())
+}
+func (c *ControllerAgent) jsGradeCanUse(call otto.FunctionCall) otto.Value {
+	byUseGrade := grade.Grade(oftenfun.AssertString(call.Argument(0)))
+	return oftenfun.JSToValue(call.Otto, c.CurrentGrade.GradeCanUse(byUseGrade))
+}
+func (c *ControllerAgent) jsModelChecks(call otto.FunctionCall) otto.Value {
+	mname := oftenfun.AssertString(call.Argument(0))
+	chks, err := c.Project.Checks(mname, c.CurrentGrade)
+	if err != nil {
+		panic(err)
+	}
+	return oftenfun.JSToValue(call.Otto, chks)
+}
 func (c *ControllerAgent) Object() map[string]interface{} {
 
 	return map[string]interface{}{
+		"Auth":             c.jsAuthed,
+		"GradeCanUse":      c.jsGradeCanUse,
 		"CurrentGrade":     c.CurrentGrade,
 		"ControllerName":   c.ControllerName,
 		"TagPath":          c.TagPath,
@@ -235,10 +253,11 @@ func (c *ControllerAgent) Object() map[string]interface{} {
 		"RenderstaticFile": c.jsRenderStaticFile,
 		"RenderJson":       c.jsRenderJson,
 		"HasResult":        c.jsHasResult,
-		"Auth":             c.jsAuthed,
 		"Session":          c.Session.Object(),
 		"Project":          c.Project.Object(),
 		"Method":           c.Request.Method,
+		"Model":            c.jsModel,
+		"ModelChecks":      c.jsModelChecks,
 		"TemplateFunc":     c.jsTemplateFunc,
 	}
 

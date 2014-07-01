@@ -37,3 +37,14 @@ app.directive('autofocus', function () {
     }
   };
 });
+app.directive('lxField', ['$compile',function ($compile) {
+  return {
+    restrict: 'A',
+    link: function (scope, element,attrs) {
+	  if(!attrs.ngModel){
+        attrs.$set("ngModel",attrs.lxField);
+	    $compile(element)(scope);
+	  }
+    }
+  };
+}]);

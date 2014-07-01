@@ -1,0 +1,3 @@
+tablename,id,displaylabel,level,script,sqlwhere,fields,grade,addition,runatserver
+rt_user,1,用户名必须大于等于5个字符,3,{name},root,,f
+rt_user,2,无效的email,3,{email},root,,f

@@ -48,7 +48,7 @@ func RouteFilter(c *ControllerAgent, f []Filter) {
 	var ctrl *Controller
 	var srcIntercept string
 	if c.Result == nil {
-		ctrl, err = c.Project.Controller(c.ControllerName, c.ActionName)
+		ctrl, err = c.Project.Controller(c.ControllerName, c.CurrentGrade)
 		if err != nil {
 			c.RenderError(err)
 		}
@@ -85,10 +85,10 @@ func SessionFilter(c *ControllerAgent, f []Filter) {
 	c.Session = NewSession(sid, c.Project.Name())
 	//取出特殊的Grade属性，该属性用于确定后续的所有拦截器、控制器的可见范围
 	//对于未登录用户，赋予特殊GRADE_TAG
-	c.CurrentGrade = c.Session.Get("Grade")
+	c.CurrentGrade = grade.Grade(c.Session.Get("Grade"))
 	if c.CurrentGrade == "" {
 		c.CurrentGrade = grade.GRADE_TAG
-		if err := c.Session.Set("Grade", c.CurrentGrade); err != nil {
+		if err := c.Session.Set("Grade", string(c.CurrentGrade)); err != nil {
 			c.RenderError(err)
 		}
 	}
