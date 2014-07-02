@@ -27,11 +27,29 @@ func TestImport(t *testing.T) {
 
 		})
 	if err != nil {
-		spew.Dump(err)
 		t.Error(err)
 	}
 }
 func TestVersion(t *testing.T) {
 	p := NewPGHelper("host=localhost database=postgres user=meta password=meta123 sslmode=disable")
 	spew.Dump(p.Version("root/tjj"))
+}
+func TestGradeVersion(t *testing.T) {
+	v1 := GradeVersion{1, 2}
+	if !v1.GE(GradeVersion{1, 2}) {
+		t.Error("error")
+	}
+	if v1.GE(GradeVersion{1, 3}) {
+		t.Error("error")
+	}
+	if v1.GE(GradeVersion{1, 2, 1}) {
+		t.Error("error")
+	}
+	if !v1.GE(GradeVersion{1}) {
+		t.Error("error")
+	}
+	if !v1.GE(GradeVersion{1, 1, 1}) {
+		t.Error("error")
+	}
+
 }

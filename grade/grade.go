@@ -36,6 +36,22 @@ func (g GradeVersion) String() string {
 	//  1.212.23.32
 	return strings.Join(rev, ".")
 }
+
+//the g > d,then return true
+func (g GradeVersion) GE(d GradeVersion) bool {
+	for i, v := range g {
+		if len(d) > i {
+			if v > d[i] {
+				return true
+			} else if v < d[i] {
+				return false
+			}
+		} else {
+			return true
+		}
+	}
+	return len(g) == len(d)
+}
 func ParseGradeVersion(value string) (GradeVersion, error) {
 	if value == "" {
 		return GradeVersion{}, nil

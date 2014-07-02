@@ -109,6 +109,15 @@ func (ahelp *PGHelper) Import(pathName string) error {
 	if err != nil {
 		return err
 	}
+	if config.CheckVersion {
+		current_version, err := ahelp.Version(config.CurrentGrade)
+		if err != nil {
+			return err
+		}
+		if !config.Version.GE(current_version) {
+			return fmt.Errorf("the table's version %v not ge current version %v", config.Version, current_version)
+		}
+	}
 	buf, err = ioutil.ReadFile(runAtImportFileName)
 	if err != nil {
 		return err
@@ -302,7 +311,7 @@ type ExportParam struct {
 	CheckVersion     bool
 }
 type dumpConfig struct {
-	Version          string
+	Version          GradeVersion
 	CurrentGrade     Grade
 	RowCount         int64
 	FileColumns      map[string]string
@@ -369,8 +378,12 @@ func (p *PGHelper) Export(param *ExportParam) error {
 	if err != nil {
 		return err
 	}
-
+	version, err := p.Version(param.CurrentGrade)
+	if err != nil {
+		return err
+	}
 	config := dumpConfig{
+		Version:          version,
 		CurrentGrade:     param.CurrentGrade,
 		RowCount:         count,
 		FileColumns:      param.FileColumns,
