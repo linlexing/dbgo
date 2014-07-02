@@ -31,12 +31,14 @@ type DataTable struct {
 	Indexes map[string]*Index
 }
 
-func NewDataTable(tableName string, grade Grade) *DataTable {
-	return &DataTable{
+func NewDataTable(tableName string, gradestr Grade) *DataTable {
+	rev := &DataTable{
 		pghelper.NewDataTable(tableName),
 		nil,
 		map[string]*Index{},
 	}
+	rev.Grade(gradestr)
+	return rev
 }
 func NewDataTableT(tab *pghelper.DataTable) *DataTable {
 	rev := &DataTable{
@@ -59,6 +61,7 @@ func (d *DataTable) Grade(params ...Grade) Grade {
 	}
 	if len(params) == 1 {
 		d.Desc["Grade"] = params[0]
+		return params[0]
 	}
 	panic("invalid params number,only 0 or 1")
 }
@@ -76,7 +79,7 @@ func (d *DataTable) Reduced(gradestr Grade) (*DataTable, bool) {
 	if !gradestr.GradeCanUse(d.Grade()) {
 		return nil, false
 	}
-	result := NewDataTable(d.TableName, gradestr)
+	result := NewDataTable(d.TableName, d.Grade())
 
 	//process the columns
 	for _, col := range d.Columns {
@@ -266,6 +269,7 @@ func NewDataTableJSON(data []byte) (*DataTable, error) {
 		return nil, err
 	}
 	rev := NewDataTable(tab.TableName, tab.Grade())
+
 	for _, v := range tab.Columns {
 		rev.AddColumn(NewColumnT(v.Name, v.Grade(), v.PGType, v.Default))
 	}

@@ -51,12 +51,14 @@ func (t *DBTable) BatchFillWhere(callBack func(table *DBTable, eof bool) error, 
 }
 
 type dumpConfig struct {
-	CurrentGrade Grade
-	RowCount     int64
-	FileColumns  []struct{ ColumnName, FileExt string }
+	CurrentGrade  Grade
+	RowCount      int64
+	FileColumns   []struct{ ColumnName, FileExt string }
+	SqlWhere      string
+	ImpAutoRemove bool
 }
 
-func (t *DBTable) Export(currentGrade Grade, pathName string, fileColumns []struct{ ColumnName, FileExt string }, sqlRunAtImport string, sqlwhere string, params ...interface{}) error {
+func (t *DBTable) Export(currentGrade Grade, pathName string, fileColumns []struct{ ColumnName, FileExt string }, sqlwhere string, impAutoRemove bool, sqlRunAtImport string) error {
 	const Import_Desc = "/*************************************************************/\n" +
 		"/*When the data imported temporary table, run the import SQL,*/\n" +
 		"/*finally merge data into actual table from temporary table. */\n" +
@@ -106,15 +108,17 @@ func (t *DBTable) Export(currentGrade Grade, pathName string, fileColumns []stru
 		}
 	}
 	//write the config.json
-	count, err := t.Count(sqlwhere, params...)
+	count, err := t.Count(sqlwhere)
 	if err != nil {
 		return err
 	}
 
 	config := dumpConfig{
-		CurrentGrade: currentGrade,
-		RowCount:     count,
-		FileColumns:  fileColumns,
+		CurrentGrade:  currentGrade,
+		RowCount:      count,
+		FileColumns:   fileColumns,
+		SqlWhere:      sqlwhere,
+		ImpAutoRemove: impAutoRemove,
 	}
 	if bys, err := json.MarshalIndent(config, "", "\t"); err != nil {
 		return err
@@ -184,7 +188,7 @@ func (t *DBTable) Export(currentGrade Grade, pathName string, fileColumns []stru
 			}
 		}
 		return nil
-	}, ExportBatch, sqlwhere, params...)
+	}, ExportBatch, sqlwhere)
 	if err != nil {
 		return err
 	}
@@ -337,7 +341,7 @@ func Import(ahelp *PGHelper, pathName string) error {
 				table.Clear()
 			}
 		}
-		if table.RowCount() >= ImportBatch {
+		if table.RowCount() >= 0 {
 			if _, err := table.Save(); err != nil {
 				return err
 			}
@@ -357,7 +361,7 @@ func Import(ahelp *PGHelper, pathName string) error {
 	if err := ahelp.ExecuteSql(runAtImportSql); err != nil {
 		return err
 	}
-	if err := ahelp.Merge(trueTableName, tmpTableName, table.DataTable); err != nil {
+	if err := ahelp.Merge(trueTableName, tmpTableName, table.ColumnNames(), table.PK, config.ImpAutoRemove, config.SqlWhere); err != nil {
 		return err
 	}
 	return nil

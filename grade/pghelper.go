@@ -48,10 +48,7 @@ func (p *PGHelper) UpdateStruct(newStruct *DataTable) error {
 	return p.PGHelper.UpdateStruct(trueOld.DataTable, newStruct.DataTable)
 
 }
-func (p *PGHelper) Merge(dest, source string, tabStruct *DataTable) error {
-	//todo:
-	return nil
-}
+
 func RunAtTrans(dburl string, txFunc func(help *PGHelper) error) (result_err error) {
 	return pghelper.RunAtTrans(dburl, func(help *pghelper.PGHelper) error {
 		return txFunc(NewPGHelperT(help))

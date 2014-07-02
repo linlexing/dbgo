@@ -8,7 +8,7 @@ import (
 func TestExport(t *testing.T) {
 	p := NewPGHelper("host=localhost database=postgres user=meta password=meta123 sslmode=disable")
 	tab, _ := p.Table("lx_check")
-	err := tab.Export(Grade("root"), "d:/temp/meta", []struct{ ColumnName, FileExt string }{struct{ ColumnName, FileExt string }{"script", ".js"}}, "", "")
+	err := tab.Export(Grade("root"), "d:/temp/meta", []struct{ ColumnName, FileExt string }{struct{ ColumnName, FileExt string }{"script", ".js"}}, "'root' like grade||'%'", true, "")
 	if err != nil {
 		t.Error(err)
 	}
@@ -16,7 +16,7 @@ func TestExport(t *testing.T) {
 func TestImport(t *testing.T) {
 	err := RunAtTrans("host=localhost database=postgres user=meta password=meta123 sslmode=disable",
 		func(p *PGHelper) error {
-			return Import(p, "d:/temp/meta/lx_check")
+			return Import(p, "d:/temp/meta_cpy/lx_check")
 
 		})
 	if err != nil {
