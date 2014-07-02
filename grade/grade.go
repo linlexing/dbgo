@@ -2,6 +2,7 @@ package grade
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 )
 
@@ -23,4 +24,30 @@ func (g Grade) GradeCanUse(canUseGrade interface{}) bool {
 		panic(fmt.Errorf("error type :%q", canUseGrade))
 	}
 
+}
+
+type GradeVersion []int64
+
+func (g GradeVersion) String() string {
+	rev := make([]string, len(g))
+	for i, v := range g {
+		rev[i] = strconv.FormatInt(v, 10)
+	}
+	//  1.212.23.32
+	return strings.Join(rev, ".")
+}
+func ParseGradeVersion(value string) (GradeVersion, error) {
+	if value == "" {
+		return GradeVersion{}, nil
+	}
+	strs := strings.Split(value, ".")
+	rev := make(GradeVersion, len(strs))
+	for i, v := range strs {
+		var err error
+		rev[i], err = strconv.ParseInt(v, 10, 64)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return rev, nil
 }

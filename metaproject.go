@@ -33,11 +33,11 @@ func NewMetaProject(dburl string) (result MetaProject) {
 		panic(err)
 	}
 
-	if err = p.DBHelp().UpdateStruct(t_project()); err != nil {
+	if err = p.DBHelper().UpdateStruct(t_project()); err != nil {
 		panic(err)
 	}
 	var pBill *grade.DBTable
-	if pBill, err = p.DBHelp().Table("lx_project"); err != nil {
+	if pBill, err = p.DBHelper().Table("lx_project"); err != nil {
 		panic(err)
 	}
 

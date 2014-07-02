@@ -37,7 +37,7 @@ type Project interface {
 	Name() string
 	MetaProject() string
 	Grade() string
-	DBHelp() *grade.PGHelper
+	DBHelper() *grade.PGHelper
 	DefaultAction() (string, string)
 	ReverseUrl(args ...string) string
 	ClearCache()
@@ -47,8 +47,8 @@ type Project interface {
 	Controller(ctrlname string, gradestr grade.Grade) (*Controller, error)
 	Model(mname string, gradestr grade.Grade) *grade.DBTable
 	Table(mname string, gradestr grade.Grade) *grade.DBTable
-	ExportTable(pathName, tableName, gradestr, sqlwhere string, fileColumns []struct{ ColumnName, FileExt string }) error
-	ImportTable(pathName string) error
+	DumpToDisk() error
+	RefreshFromDisk() error
 	Checks(tablename string, gradestr grade.Grade) ([]*Check, error)
 	TemplateSet(f template.FuncMap) (*template.Template, error)
 	Object() map[string]interface{}
@@ -94,11 +94,16 @@ type View struct {
 func lx_dump() *grade.DataTable {
 	table := grade.NewDataTable("lx_dump", grade.GRADE_ROOT)
 	table.AddColumn(grade.NewColumn("name", grade.GRADE_ROOT, pghelper.TypeString, true))
+	table.AddColumn(grade.NewColumn("id", grade.GRADE_ROOT, pghelper.TypeInt64, true))
 	table.AddColumn(grade.NewColumn("grade", grade.GRADE_ROOT, pghelper.TypeString, true))
 	table.AddColumn(grade.NewColumnT("tablename", grade.GRADE_ROOT, pghelper.NewPGType(pghelper.TypeString, 64, true), ""))
 	table.AddColumn(grade.NewColumn("sqlwhere", grade.GRADE_ROOT, pghelper.TypeString, false))
-	table.AddColumn(grade.NewColumn("columns", grade.GRADE_ROOT, pghelper.TypeJSON, false))
-	table.SetPK("name")
+	table.AddColumn(grade.NewColumn("filecolumns", grade.GRADE_ROOT, pghelper.TypeJSON, false))
+	table.AddColumn(grade.NewColumn("impautoremove", grade.GRADE_ROOT, pghelper.TypeBool, false))
+	table.AddColumn(grade.NewColumn("sqlrunatimport", grade.GRADE_ROOT, pghelper.TypeString, false))
+	table.AddColumn(grade.NewColumn("imprefreshstruct", grade.GRADE_ROOT, pghelper.TypeBool, false))
+	table.AddColumn(grade.NewColumn("checkversion", grade.GRADE_ROOT, pghelper.TypeBool, false))
+	table.SetPK("name", "id")
 	return table
 }
 
@@ -106,9 +111,9 @@ func lx_version() *grade.DataTable {
 	table := grade.NewDataTable("lx_version", grade.GRADE_ROOT)
 	table.AddColumn(grade.NewColumn("grade", grade.GRADE_ROOT, pghelper.TypeString, true))
 	table.AddColumn(grade.NewColumn("verno", grade.GRADE_ROOT, pghelper.TypeInt64, true))
-	table.AddColumn(grade.NewColumn("verlabel", grade.GRADE_ROOT, pghelper.TypeString, true))
-	table.AddColumn(grade.NewColumn("changelog", grade.GRADE_ROOT, pghelper.TypeString, true))
-	table.AddColumn(grade.NewColumn("releasetime", grade.GRADE_ROOT, pghelper.TypeTime, true))
+	table.AddColumn(grade.NewColumn("verlabel", grade.GRADE_ROOT, pghelper.TypeString, false))
+	table.AddColumn(grade.NewColumn("changelog", grade.GRADE_ROOT, pghelper.TypeString, false))
+	table.AddColumn(grade.NewColumn("releasetime", grade.GRADE_ROOT, pghelper.TypeTime, false))
 	table.SetPK("grade", "verno")
 	return table
 }
@@ -415,7 +420,7 @@ func (p *project) loadController(ctrlname string) (*Controller, error) {
 	}
 	return ctrl, nil
 }
-func (p *project) Controller(ctrlname, grade string) (*Controller, error) {
+func (p *project) Controller(ctrlname string, gradestr grade.Grade) (*Controller, error) {
 	p.lockController.Lock()
 	defer p.lockController.Unlock()
 	if _, ok := p.cacheController[ctrlname]; !ok {
