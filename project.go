@@ -1,6 +1,7 @@
 package main
 
 import (
+	"archive/zip"
 	"bytes"
 	"database/sql"
 	"fmt"
@@ -11,8 +12,12 @@ import (
 	"github.com/linlexing/pghelper"
 	"github.com/robertkrimen/otto"
 	"html/template"
+	"io"
+	"io/ioutil"
 	"net/url"
+	"os"
 	"path"
+	"path/filepath"
 	"strings"
 	"sync"
 )
@@ -36,19 +41,21 @@ type Intercept struct {
 type Project interface {
 	Name() string
 	MetaProject() string
+
 	Grade() string
 	DBHelper() *grade.PGHelper
 	DefaultAction() (string, string)
 	ReverseUrl(args ...string) string
 	ClearCache()
+	ReloadRepository() error
 
 	Version(grade grade.Grade) (int64, bool, error)
 	InterceptScript(gradestr grade.Grade, when int64) (string, error)
 	Controller(ctrlname string, gradestr grade.Grade) (*Controller, error)
 	Model(mname string, gradestr grade.Grade) *grade.DBTable
 	Table(mname string, gradestr grade.Grade) *grade.DBTable
-	DumpToDisk() error
-	RefreshFromDisk() error
+	ExportData(dumpName, expFileName string, gradestr grade.Grade) error
+	ImportData(impPath string) error
 	Checks(tablename string, gradestr grade.Grade) ([]*Check, error)
 	TemplateSet(f template.FuncMap) (*template.Template, error)
 	Object() map[string]interface{}
@@ -60,6 +67,7 @@ type project struct {
 	metaProject   string
 	grade         string
 	defaultAction string
+	repository    string
 
 	lockController  *sync.Mutex
 	lockTableDefine *sync.Mutex
@@ -68,7 +76,7 @@ type project struct {
 	lockTemplateSet *sync.Mutex
 	lockCheck       *sync.Mutex
 
-	cacheVersion     map[string]int64 //每级grade均对应一个最新的版本
+	cacheVersion     map[grade.Grade]int64 //每级grade均对应一个最新的版本
 	cacheIntercept   []*Intercept
 	cacheTableDefine map[string]*grade.DataTable
 	cacheController  map[string]*Controller
@@ -94,7 +102,7 @@ type View struct {
 func lx_dump() *grade.DataTable {
 	table := grade.NewDataTable("lx_dump", grade.GRADE_ROOT)
 	table.AddColumn(grade.NewColumn("name", grade.GRADE_ROOT, pghelper.TypeString, true))
-	table.AddColumn(grade.NewColumn("id", grade.GRADE_ROOT, pghelper.TypeInt64, true))
+	table.AddColumn(grade.NewColumnT("id", grade.GRADE_ROOT, pghelper.NewPGType(pghelper.TypeInt64, 0, true), "0"))
 	table.AddColumn(grade.NewColumn("grade", grade.GRADE_ROOT, pghelper.TypeString, true))
 	table.AddColumn(grade.NewColumnT("tablename", grade.GRADE_ROOT, pghelper.NewPGType(pghelper.TypeString, 64, true), ""))
 	table.AddColumn(grade.NewColumn("sqlwhere", grade.GRADE_ROOT, pghelper.TypeString, false))
@@ -184,15 +192,18 @@ func lx_check() *grade.DataTable {
 	table.SetPK("tablename", "id")
 	return table
 }
-
+func RepositoryPath(name string) string {
+	return filepath.Join(AppPath, "repository", name)
+}
 func publicTables() []*grade.DataTable {
 	return []*grade.DataTable{lx_dump(), lx_version(), lx_intercept(), lx_controller(), lx_action(), lx_view(), lx_checkaddition(), lx_check()}
 
 }
-func NewProject(name, dburl string) (Project, error) {
+func NewProject(name, dburl, repository string) (Project, error) {
 	p := &project{
-		name:     name,
-		dbHelper: grade.NewPGHelper(dburl),
+		name:       name,
+		dbHelper:   grade.NewPGHelper(dburl),
+		repository: repository,
 
 		lockController:  &sync.Mutex{},
 		lockTableDefine: &sync.Mutex{},
@@ -201,7 +212,7 @@ func NewProject(name, dburl string) (Project, error) {
 		lockTemplateSet: &sync.Mutex{},
 		lockCheck:       &sync.Mutex{},
 
-		cacheVersion:     map[string]int64{},
+		cacheVersion:     map[grade.Grade]int64{},
 		cacheIntercept:   []*Intercept{},
 		cacheTableDefine: map[string]*grade.DataTable{},
 		cacheController:  map[string]*Controller{},
@@ -228,15 +239,15 @@ func (p *project) Model(mname string, gradestr grade.Grade) *grade.DBTable {
 	return p.Table(mname, gradestr)
 }
 
-func (p *project) loadVersion() (map[string]int64, error) {
+func (p *project) loadVersion() (map[grade.Grade]int64, error) {
 	tab, err := p.dbHelper.GetDataTable(SQL_GerVersion)
 	if err != nil {
 		return nil, err
 	}
-	rev := map[string]int64{}
+	rev := map[grade.Grade]int64{}
 	for i := 0; i < tab.RowCount(); i++ {
 		row := tab.GetRow(i)
-		rev[row["grade"].(string)] = row["verno"].(int64)
+		rev[grade.Grade(row["grade"].(string))] = row["verno"].(int64)
 	}
 	return rev, nil
 }
@@ -278,9 +289,9 @@ func (p *project) loadTemplate(f template.FuncMap) (*template.Template, error) {
 			return template.JS(src)
 		},
 		"PathJoin": path.Join,
-		"GradeCanUse": func(g1, g2 string) bool {
-			return grade.Grade(g1).GradeCanUse(grade.Grade(g2))
-		},
+		/*"GradeCanUse": func(g1, g2 string) bool {
+			return grade.Grade(g1).CanUse(grade.Grade(g2))
+		},*/
 		"tmpl": func(tmpl string, data map[string]interface{}) template.HTML {
 			buf := &bytes.Buffer{}
 			rev.ExecuteTemplate(buf, tmpl, data)
@@ -313,7 +324,7 @@ func (p *project) loadTemplate(f template.FuncMap) (*template.Template, error) {
 	for i := 0; i < tab.RowCount(); i++ {
 		row := tab.GetRow(i)
 		content := fmt.Sprintf(`
-			<#if GradeCanUse .c.CurrentGrade %q#>
+			<#if .c.CurrentGrade.CanUse %q#>
 			%s
 			<#end#>`, row["grade"], row["content"])
 		_, err := rev.New(row["name"].(string)).Parse(content)
@@ -333,7 +344,7 @@ func (p *project) Grade() string {
 func (p *project) MetaProject() string {
 	return p.metaProject
 }
-func (p *project) Version(grade string) (int64, bool, error) {
+func (p *project) Version(gradestr grade.Grade) (int64, bool, error) {
 	p.lockVersion.Lock()
 	defer p.lockVersion.Unlock()
 	if len(p.cacheVersion) == 0 {
@@ -343,7 +354,7 @@ func (p *project) Version(grade string) (int64, bool, error) {
 		}
 		p.cacheVersion = ver
 	}
-	v, ok := p.cacheVersion[grade]
+	v, ok := p.cacheVersion[gradestr]
 	return v, ok, nil
 }
 
@@ -372,7 +383,7 @@ func (p *project) InterceptScript(gradestr grade.Grade, when int64) (string, err
 	result := []string{}
 
 	for _, inp := range p.cacheIntercept {
-		if gradestr.GradeCanUse(inp.Grade) && inp.InterceptWhen == when {
+		if gradestr.CanUse(inp.Grade) && inp.InterceptWhen == when {
 			result = append(result, inp.Script)
 		}
 	}
@@ -518,7 +529,7 @@ func (p *project) ClearTemplateSetCache() {
 func (p *project) ClearVersionCache() {
 	p.lockVersion.Lock()
 	defer p.lockVersion.Unlock()
-	p.cacheVersion = map[string]int64{}
+	p.cacheVersion = map[grade.Grade]int64{}
 	return
 }
 func (p *project) ClearCache() {
@@ -629,13 +640,159 @@ func (p *project) Checks(tablename string, gradestr grade.Grade) ([]*Check, erro
 	}
 	rev := []*Check{}
 	for _, chk := range p.cacheCheck[tablename] {
-		if gradestr.GradeCanUse(chk.Grade) {
+		if gradestr.CanUse(chk.Grade) {
 			rev = append(rev, chk)
 		}
 	}
 	return rev, nil
 }
-
-func (p *project) ImportTable(pathName string) error {
+func (p *project) ExportData(dumpName, expFileName string, gradestr grade.Grade) error {
+	dumpData := p.Model("lx_dump", gradestr)
+	if err := dumpData.FillWhere("name=$1", dumpName); err != nil {
+		return err
+	}
+	if dumpData.RowCount() == 0 {
+		return fmt.Errorf("lx_dump can't find record,the name is %q", dumpName)
+	}
+	tmpDir, err := ioutil.TempDir("", "dbgo_exp")
+	if err != nil {
+		return err
+	}
+	defer func() {
+		os.RemoveAll(tmpDir)
+	}()
+	for i := 0; i < dumpData.RowCount(); i++ {
+		row := dumpData.GetRow(i)
+		fileColumns := map[string]string{}
+		for k, v := range row["filecolumns"].(pghelper.JSON) {
+			fileColumns[k] = oftenfun.SafeToString(v)
+		}
+		param := &grade.ExportParam{
+			TableName:        row["tablename"].(string),
+			CurrentGrade:     gradestr,
+			PathName:         filepath.Join(tmpDir, row["tablename"].(string)),
+			FileColumns:      fileColumns,
+			SqlWhere:         oftenfun.SafeToString(row["sqlwhere"]),
+			ImpAutoRemove:    oftenfun.SafeToBool(row["impautoremove"]),
+			SqlRunAtImport:   oftenfun.SafeToString(row["sqlrunatimport"]),
+			ImpRefreshStruct: oftenfun.SafeToBool(row["imprefreshstruct"]),
+			CheckVersion:     oftenfun.SafeToBool(row["checkversion"]),
+		}
+		if err := p.DBHelper().Export(param); err != nil {
+			return err
+		}
+	}
+	if err := zipDir(tmpDir, expFileName); err != nil {
+		return err
+	}
 	return nil
+}
+func zipDir(src, dest string) error {
+	destFile, err := os.Create(dest)
+	if err != nil {
+		return nil
+	}
+	defer destFile.Close()
+	destW := zip.NewWriter(destFile)
+	filepath.Walk(src, func(filename string, info os.FileInfo, orgerr error) error {
+		if filename == src {
+			return nil
+		}
+		if info.IsDir() {
+			return nil
+		}
+		trueZipFileName, err := filepath.Rel(src, filename)
+		if err != nil {
+			return err
+		}
+		w, err := destW.Create(trueZipFileName)
+		if err != nil {
+			return err
+		}
+		openF, err := os.Open(filename)
+		if err != nil {
+			return err
+		}
+		defer openF.Close()
+		_, err = io.Copy(w, openF)
+		return err
+
+	})
+	if err = destW.Close(); err != nil {
+		return err
+	}
+	return nil
+}
+func unzip(src, dest string) error {
+	r, err := zip.OpenReader(src)
+	if err != nil {
+		return err
+	}
+	defer r.Close()
+
+	for _, f := range r.File {
+		rc, err := f.Open()
+		if err != nil {
+			return err
+		}
+		defer rc.Close()
+
+		fpath := filepath.Join(dest, f.Name)
+		if f.FileInfo().IsDir() {
+			err = os.MkdirAll(fpath, f.Mode())
+			if err != nil {
+				return err
+			}
+		} else {
+			err = os.MkdirAll(filepath.Dir(fpath), f.Mode())
+			if err != nil {
+				return err
+			}
+			f, err := os.OpenFile(
+				fpath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, f.Mode())
+			if err != nil {
+				return err
+			}
+			defer f.Close()
+
+			_, err = io.Copy(f, rc)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+func (p *project) ImportData(impPathName string) error {
+	//sub directory is table
+	dirs, err := ioutil.ReadDir(impPathName)
+	if err != nil {
+		return err
+	}
+	grade.RunAtTrans(p.DBHelper().DbUrl(), func(helper *grade.PGHelper) error {
+		for _, file := range dirs {
+			if file.IsDir() {
+				err := helper.Import(filepath.Join(impPathName, file.Name()))
+				if err != nil {
+					return err
+				}
+			}
+		}
+		return nil
+	})
+	return nil
+}
+func (p *project) UserStaticFileName(userName, fileName string) string {
+	return filepath.Join(AppPath, "userstatic", p.Name(), userName, fileName)
+}
+func (p *project) ReloadRepository() error {
+	if p.repository == "" {
+		return nil
+	}
+	if _, err := os.Stat(RepositoryPath(p.repository)); err == os.ErrExist {
+		return nil
+	} else if err != nil {
+		return err
+	}
+	return p.ImportData(RepositoryPath(p.repository))
 }

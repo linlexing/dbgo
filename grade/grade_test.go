@@ -10,7 +10,7 @@ func TestExport(t *testing.T) {
 	err := p.Export(&ExportParam{
 		TableName:        "lx_check",
 		CurrentGrade:     Grade("root"),
-		PathName:         "d:/temp/meta",
+		PathName:         "d:/temp/meta/lx_check",
 		FileColumns:      map[string]string{"script": ".js"},
 		SqlWhere:         "'root' like grade||'%'",
 		ImpAutoRemove:    true,

@@ -23,7 +23,6 @@ var (
 	SDB            *SessionManager
 	JSP            *JSPool
 	Jobs           *cron.Cron
-	NetFS          *WeedFS
 )
 
 func loadConfig() *Config {
@@ -33,7 +32,9 @@ func loadConfig() *Config {
 		os.Exit(1)
 	}
 	c := Config{}
-	json.Unmarshal(file, &c)
+	if err := json.Unmarshal(file, &c); err != nil {
+		panic(err)
+	}
 	return &c
 }
 func main() {
@@ -43,7 +44,6 @@ func main() {
 	}
 
 	c := loadConfig()
-	NetFS = NewWeedFS(c.WeedMaster)
 	DefaultProject = c.DefaultProject
 	MetaCache = NewCache(c.MetaDBUrl)
 	SDB = NewSessionManager(path.Join(AppPath, "sdb"), c.SessionTimeout)
@@ -57,7 +57,7 @@ func main() {
 		}
 	})
 	Jobs.Start()
-	Filters = []Filter{PanicFilter, RouteFilter, SessionFilter, AuthFilter, ActionFilter}
+	Filters = []Filter{PanicFilter, RouteFilter, SessionFilter, UrlAuthFilter, UserFilter, ActionFilter}
 	http.HandleFunc("/favicon.ico", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(404)
 	})

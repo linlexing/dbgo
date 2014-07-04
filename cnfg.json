@@ -2,6 +2,5 @@
 	"MetaDBUrl":"host=localhost database=postgres user=meta password=meta123 sslmode=disable",
 	"DefaultProject":"meta",
 	"Port":9001,
-	"SessionTimeout":20,
-	"WeedMaster":"http://localhost:8888"
+	"SessionTimeout":20
 }

@@ -24,7 +24,7 @@ func JSGradeCanUse(call otto.FunctionCall) otto.Value {
 	g1 := oftenfun.AssertString(call.Argument(0))
 	g2 := oftenfun.AssertString(call.Argument(1))
 
-	return oftenfun.JSToValue(call.Otto, grade.Grade(g1).GradeCanUse(g2))
+	return oftenfun.JSToValue(call.Otto, grade.Grade(g1).CanUse(g2))
 }
 
 func package_lx() map[string]interface{} {

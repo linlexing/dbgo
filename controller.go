@@ -32,12 +32,12 @@ func (c *Controller) GetScript(srcIntercept string, gradestr grade.Grade) string
 		interceptScript = srcIntercept + "(c);"
 	}
 	src := c.Script
-	if !gradestr.GradeCanUse(c.Grade) {
+	if !gradestr.CanUse(c.Grade) {
 		return ""
 	}
 	result := []string{}
 	for _, v := range c.Actions {
-		if gradestr.GradeCanUse(v.Grade) {
+		if gradestr.CanUse(v.Grade) {
 			result = append(result, v.Script)
 		}
 	}
@@ -60,6 +60,8 @@ type ControllerAgent struct {
 	Response       http.ResponseWriter
 	Session        *Session
 	Project        Project
+	UserName       string
+	Logged         bool
 	ControllerName string
 	ActionName     string
 	TagPath        string
@@ -140,6 +142,17 @@ func (c *ControllerAgent) RenderStaticFile(filename string) Result {
 	}
 	return c.Result
 }
+func (c *ControllerAgent) RenderUserStaticFile(filename string) Result {
+	if !c.Logged {
+		panic(fmt.Errorf("not logged"))
+	}
+	c.Result = &RenderUserStaticFileResult{
+		ProjectName: c.Project.Name(),
+		UserName:    c.UserName,
+		FileName:    filename,
+	}
+	return c.Result
+}
 
 //Rendering template corresponding to the current action
 func (c *ControllerAgent) Render(args map[string]interface{}) Result {
@@ -162,7 +175,7 @@ func (c *ControllerAgent) RequestUrl(args ...string) string {
 }
 
 //Check whether the controller is authed or is public
-func (c *ControllerAgent) Authed() bool {
+func (c *ControllerAgent) UrlAuthed() bool {
 	if c.Public {
 		return true
 	}
@@ -220,8 +233,8 @@ func (c *ControllerAgent) jsRenderJson(call otto.FunctionCall) otto.Value {
 	}
 	return otto.NullValue()
 }
-func (c *ControllerAgent) jsAuthed(call otto.FunctionCall) otto.Value {
-	v, _ := otto.ToValue(c.Authed())
+func (c *ControllerAgent) jsUrlAuthed(call otto.FunctionCall) otto.Value {
+	v, _ := otto.ToValue(c.UrlAuthed())
 	return v
 }
 func (c *ControllerAgent) jsModel(call otto.FunctionCall) otto.Value {
@@ -230,7 +243,7 @@ func (c *ControllerAgent) jsModel(call otto.FunctionCall) otto.Value {
 }
 func (c *ControllerAgent) jsGradeCanUse(call otto.FunctionCall) otto.Value {
 	byUseGrade := grade.Grade(oftenfun.AssertString(call.Argument(0)))
-	return oftenfun.JSToValue(call.Otto, c.CurrentGrade.GradeCanUse(byUseGrade))
+	return oftenfun.JSToValue(call.Otto, c.CurrentGrade.CanUse(byUseGrade))
 }
 func (c *ControllerAgent) jsModelChecks(call otto.FunctionCall) otto.Value {
 	mname := oftenfun.AssertString(call.Argument(0))
@@ -243,14 +256,14 @@ func (c *ControllerAgent) jsModelChecks(call otto.FunctionCall) otto.Value {
 func (c *ControllerAgent) Object() map[string]interface{} {
 
 	return map[string]interface{}{
-		"Auth":             c.jsAuthed,
+		"UrlAuth":          c.jsUrlAuthed,
 		"GradeCanUse":      c.jsGradeCanUse,
 		"CurrentGrade":     c.CurrentGrade,
 		"ControllerName":   c.ControllerName,
 		"TagPath":          c.TagPath,
 		"Render":           c.jsRender,
 		"RenderTemplate":   c.jsRenderTemplate,
-		"RenderstaticFile": c.jsRenderStaticFile,
+		"RenderStaticFile": c.jsRenderStaticFile,
 		"RenderJson":       c.jsRenderJson,
 		"HasResult":        c.jsHasResult,
 		"Session":          c.Session.Object(),

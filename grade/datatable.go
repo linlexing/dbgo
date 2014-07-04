@@ -76,7 +76,7 @@ func (d *DataTable) AddIndex(indexName string, index *Index) {
 	d.Indexes[indexName] = index
 }
 func (d *DataTable) Reduced(gradestr Grade) (*DataTable, bool) {
-	if !gradestr.GradeCanUse(d.Grade()) {
+	if !gradestr.CanUse(d.Grade()) {
 		return nil, false
 	}
 	result := NewDataTable(d.TableName, d.Grade())
@@ -84,14 +84,16 @@ func (d *DataTable) Reduced(gradestr Grade) (*DataTable, bool) {
 	//process the columns
 	for _, col := range d.Columns {
 		//the key column must to be add
-		if gradestr.GradeCanUse(col.Grade()) || d.IsPrimaryKey(col.Name) {
+		if gradestr.CanUse(col.Grade()) || d.IsPrimaryKey(col.Name) {
 			result.AddColumn(col.Clone())
 		}
 	}
+	//process the pk
 	result.SetPK(d.PK...)
+	result.PKConstraintName = d.PKConstraintName
 	//process the indexes
 	for idxname, idx := range d.Indexes {
-		if gradestr.GradeCanUse(idx.Grade()) {
+		if gradestr.CanUse(idx.Grade()) {
 			result.Indexes[idxname] = idx.Clone()
 		}
 	}

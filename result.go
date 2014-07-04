@@ -93,6 +93,16 @@ func (r *RenderStaticFileResult) Apply(req *http.Request, w http.ResponseWriter)
 	http.ServeFile(w, req, filepath.Join(AppPath, "static", r.ProjectName, r.FileName))
 }
 
+type RenderUserStaticFileResult struct {
+	ProjectName string
+	UserName    string
+	FileName    string
+}
+
+func (r *RenderUserStaticFileResult) Apply(req *http.Request, w http.ResponseWriter) {
+	http.ServeFile(w, req, filepath.Join(AppPath, "userstatic", r.ProjectName, r.UserName, r.FileName))
+}
+
 type RenderJsonResult struct {
 	obj interface{}
 }

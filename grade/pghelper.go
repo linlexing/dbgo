@@ -37,8 +37,8 @@ func (p *PGHelper) Table(tablename string) (*DBTable, error) {
 	if err != nil {
 		return nil, err
 	}
-	return NewDBTable(p, NewDataTableT(tab.DataTable)), nil
-
+	t := NewDBTable(p, NewDataTableT(tab.DataTable))
+	return t, nil
 }
 func (p *PGHelper) UpdateStruct(newStruct *DataTable) error {
 	oldStruct, err := p.Table(newStruct.TableName)
@@ -356,7 +356,7 @@ func (p *PGHelper) Export(param *ExportParam) error {
 			return fmt.Errorf("the filecolumns has invalid column:%q", c)
 		}
 	}
-	pathName := filepath.Join(param.PathName, t.TableName)
+	pathName := param.PathName
 	if err := os.MkdirAll(pathName, os.ModePerm); err != nil {
 		return err
 	}

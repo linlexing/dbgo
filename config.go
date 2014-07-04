@@ -5,5 +5,4 @@ type Config struct {
 	DefaultProject string
 	Port           int
 	SessionTimeout int
-	WeedMaster     string
 }

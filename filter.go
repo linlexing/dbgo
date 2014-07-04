@@ -11,8 +11,6 @@ import (
 	"strings"
 )
 
-var ()
-
 type Filter func(c *ControllerAgent, filterChain []Filter)
 
 func RouteFilter(c *ControllerAgent, f []Filter) {
@@ -96,11 +94,20 @@ func SessionFilter(c *ControllerAgent, f []Filter) {
 		f[0](c, f[1:])
 	}
 }
-func AuthFilter(c *ControllerAgent, f []Filter) {
-	if !c.Authed() {
+func UrlAuthFilter(c *ControllerAgent, f []Filter) {
+	if !c.UrlAuthed() {
 		log.WARN.Printf("Forbidden url:%s\n", c.Request.URL.String())
 		c.RenderError(jsmvcerror.ForbiddenError)
 	}
+	if len(f) > 0 && c.Result == nil {
+		f[0](c, f[1:])
+	}
+}
+func UserFilter(c *ControllerAgent, f []Filter) {
+	uName := c.Session.Get("_UserName")
+	c.UserName = uName
+	c.Logged = uName == ""
+
 	if len(f) > 0 && c.Result == nil {
 		f[0](c, f[1:])
 	}

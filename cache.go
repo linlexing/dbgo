@@ -5,7 +5,8 @@ import (
 )
 
 const (
-	META = "meta"
+	META            = "meta"
+	META_Repository = "root/meta"
 )
 
 type Cache struct {
@@ -16,7 +17,7 @@ type Cache struct {
 func NewCache(dburl string) *Cache {
 	return &Cache{
 		lock:         &sync.Mutex{},
-		projectCache: map[string]Project{META: NewMetaProject(dburl)}}
+		projectCache: map[string]Project{META: NewMetaProject(dburl, META_Repository)}}
 
 }
 func (c *Cache) Project(name string) (result Project, err error) {

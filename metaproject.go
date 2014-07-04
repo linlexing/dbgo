@@ -3,11 +3,8 @@ package main
 import (
 	"github.com/linlexing/dbgo/grade"
 	"github.com/linlexing/dbgo/jsmvcerror"
+	"github.com/linlexing/dbgo/oftenfun"
 	"github.com/linlexing/pghelper"
-)
-
-const (
-	SQL_GetProject = "select dburl from lx_project where name=$1"
 )
 
 type MetaProject interface {
@@ -18,22 +15,23 @@ type metaProject struct {
 	*project
 }
 
-func t_project() *grade.DataTable {
+func lx_project() *grade.DataTable {
 	table := grade.NewDataTable("lx_project", grade.GRADE_ROOT)
 	table.AddColumn(grade.NewColumn("name", grade.GRADE_ROOT, pghelper.TypeString, true, 50))
 	table.AddColumn(grade.NewColumn("dburl", grade.GRADE_ROOT, pghelper.TypeString, true))
 	table.AddColumn(grade.NewColumn("owner", grade.GRADE_ROOT, pghelper.TypeString, true))
+	table.AddColumn(grade.NewColumn("repository", grade.GRADE_ROOT, pghelper.TypeString, false))
 	table.SetPK("name")
 	return table
 }
-func NewMetaProject(dburl string) (result MetaProject) {
+func NewMetaProject(dburl, repository string) (result MetaProject) {
 	var err error
 	var p Project
-	if p, err = NewProject("meta", dburl); err != nil {
+	if p, err = NewProject("meta", dburl, repository); err != nil {
 		panic(err)
 	}
 
-	if err = p.DBHelper().UpdateStruct(t_project()); err != nil {
+	if err = p.DBHelper().UpdateStruct(lx_project()); err != nil {
 		panic(err)
 	}
 	var pBill *grade.DBTable
@@ -45,9 +43,10 @@ func NewMetaProject(dburl string) (result MetaProject) {
 		panic(err)
 	}
 	row := map[string]interface{}{
-		"name":  "meta",
-		"dburl": dburl,
-		"owner": "(system)",
+		"name":       "meta",
+		"dburl":      dburl,
+		"owner":      "(system)",
+		"repository": "root/meta",
 	}
 	if pBill.RowCount() == 0 {
 		err = pBill.AddRow(row)
@@ -64,14 +63,19 @@ func NewMetaProject(dburl string) (result MetaProject) {
 	return
 }
 func (p *metaProject) NewProject(name string) (result Project, err error) {
-	var tab *grade.DataTable
-	if tab, err = p.dbHelper.GetDataTable(SQL_GetProject, name); err != nil {
+	table := p.Model("lx_project", grade.GRADE_ROOT)
+	if err = table.FillByID(name); err != nil {
 		return
 	}
-	if tab.RowCount() == 0 {
+	if table.RowCount() == 0 {
 		err = jsmvcerror.NotFoundProject
 		return
 	}
-	result, err = NewProject(name, tab.GetValue(0, 0).(string))
+	row := table.GetRow(0)
+	result, err = NewProject(name, row["dburl"].(string), oftenfun.SafeToString(row["repository"]))
+	if err != nil {
+		return
+	}
+	result.ReloadRepository()
 	return
 }
