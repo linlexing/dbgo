@@ -7,8 +7,11 @@ import (
 	"github.com/linlexing/dbgo/oftenfun"
 	"github.com/robertkrimen/otto"
 	"html/template"
+	"io/ioutil"
 	"net/http"
 	"net/url"
+	"os"
+	"path/filepath"
 	"strings"
 )
 
@@ -105,6 +108,31 @@ func (c *ControllerAgent) RenderError(err error) Result {
 		Error: err,
 	}
 	return c.Result
+}
+func (c *ControllerAgent) userStaticFileName(fileName string) string {
+	return filepath.Join(AppPath, "userstatic", c.Project.Name(), c.UserName, fileName)
+}
+func (c *ControllerAgent) tempUserStaticFile(prefix string) (*os.File, error) {
+	return ioutil.TempFile(c.userStaticFileName("temp"), prefix)
+}
+func (c *ControllerAgent) tempUserStaticDir(prefix string) (string, error) {
+	return ioutil.TempDir(c.userStaticFileName("temp"), prefix)
+}
+func (c *ControllerAgent) ExportData(dumpName string) (string, error) {
+	expFile, err := c.tempUserStaticFile("exp_")
+	if err != nil {
+		return "", err
+	}
+	rev, err := filepath.Rel(c.userStaticFileName(""), expFile.Name())
+	if err != nil {
+		return "", err
+	}
+	defer expFile.Close()
+	err = c.Project.ExportData(dumpName, expFile, c.CurrentGrade)
+	if err != nil {
+		return "", err
+	}
+	return rev, nil
 }
 func (c *ControllerAgent) RenderJson(data interface{}) Result {
 	c.Result = &RenderJsonResult{data}

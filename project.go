@@ -48,13 +48,14 @@ type Project interface {
 	ReverseUrl(args ...string) string
 	ClearCache()
 	ReloadRepository() error
+	AddJob()
 
 	Version(grade grade.Grade) (int64, bool, error)
 	InterceptScript(gradestr grade.Grade, when int64) (string, error)
 	Controller(ctrlname string, gradestr grade.Grade) (*Controller, error)
 	Model(mname string, gradestr grade.Grade) *grade.DBTable
 	Table(mname string, gradestr grade.Grade) *grade.DBTable
-	ExportData(dumpName, expFileName string, gradestr grade.Grade) error
+	ExportData(dumpName string, expFile *os.File, gradestr grade.Grade) error
 	ImportData(impPath string) error
 	Checks(tablename string, gradestr grade.Grade) ([]*Check, error)
 	TemplateSet(f template.FuncMap) (*template.Template, error)
@@ -646,7 +647,7 @@ func (p *project) Checks(tablename string, gradestr grade.Grade) ([]*Check, erro
 	}
 	return rev, nil
 }
-func (p *project) ExportData(dumpName, expFileName string, gradestr grade.Grade) error {
+func (p *project) ExportData(dumpName string, expFile *os.File, gradestr grade.Grade) error {
 	dumpData := p.Model("lx_dump", gradestr)
 	if err := dumpData.FillWhere("name=$1", dumpName); err != nil {
 		return err
@@ -682,18 +683,13 @@ func (p *project) ExportData(dumpName, expFileName string, gradestr grade.Grade)
 			return err
 		}
 	}
-	if err := zipDir(tmpDir, expFileName); err != nil {
+	if err := zipDir(tmpDir, expFile); err != nil {
 		return err
 	}
 	return nil
 }
-func zipDir(src, dest string) error {
-	destFile, err := os.Create(dest)
-	if err != nil {
-		return nil
-	}
-	defer destFile.Close()
-	destW := zip.NewWriter(destFile)
+func zipDir(src string, dest *os.File) error {
+	destW := zip.NewWriter(dest)
 	filepath.Walk(src, func(filename string, info os.FileInfo, orgerr error) error {
 		if filename == src {
 			return nil
@@ -718,7 +714,7 @@ func zipDir(src, dest string) error {
 		return err
 
 	})
-	if err = destW.Close(); err != nil {
+	if err := destW.Close(); err != nil {
 		return err
 	}
 	return nil
@@ -782,9 +778,7 @@ func (p *project) ImportData(impPathName string) error {
 	})
 	return nil
 }
-func (p *project) UserStaticFileName(userName, fileName string) string {
-	return filepath.Join(AppPath, "userstatic", p.Name(), userName, fileName)
-}
+
 func (p *project) ReloadRepository() error {
 	if p.repository == "" {
 		return nil
