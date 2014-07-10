@@ -1,0 +1,14 @@
+{
+	"Version": [
+		1
+	],
+	"CurrentGrade": "root",
+	"RowCount": 0,
+	"FileColumns": {
+		"script": ""
+	},
+	"SqlWhere": "'root' like grade||'%'",
+	"ImpAutoRemove": true,
+	"ImpRefreshStruct": true,
+	"CheckVersion": true
+}

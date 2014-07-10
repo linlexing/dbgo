@@ -6,7 +6,6 @@ import (
 	"database/sql"
 	"fmt"
 	"github.com/linlexing/dbgo/grade"
-	"github.com/linlexing/dbgo/jsmvcerror"
 	"github.com/linlexing/dbgo/log"
 	"github.com/linlexing/dbgo/oftenfun"
 	"github.com/linlexing/pghelper"
@@ -38,21 +37,19 @@ type Intercept struct {
 	Script        string
 	Grade         string
 }
+
 type Project interface {
 	Name() string
-	MetaProject() string
 
-	Grade() string
 	DBHelper() *grade.PGHelper
 	DefaultAction() (string, string)
 	ReverseUrl(args ...string) string
 	ClearCache()
 	ReloadRepository() error
-	AddJob()
+	GetPackageNames(dirName string, gradestr grade.Grade) ([]string, error)
+	Require(rm *otto.Otto, fileName, currentModuleDir string, gradestr grade.Grade) (*otto.Script, string, error)
 
 	Version(grade grade.Grade) (int64, bool, error)
-	InterceptScript(gradestr grade.Grade, when int64) (string, error)
-	Controller(ctrlname string, gradestr grade.Grade) (*Controller, error)
 	Model(mname string, gradestr grade.Grade) *grade.DBTable
 	Table(mname string, gradestr grade.Grade) *grade.DBTable
 	ExportData(dumpName string, expFile *os.File, gradestr grade.Grade) error
@@ -63,24 +60,23 @@ type Project interface {
 }
 
 type project struct {
-	name          string
-	dbHelper      *grade.PGHelper
-	metaProject   string
-	grade         string
-	defaultAction string
-	repository    string
+	name        string
+	dbHelper    *grade.PGHelper
+	metaProject string
+	repository  string
 
-	lockController  *sync.Mutex
 	lockTableDefine *sync.Mutex
 	lockVersion     *sync.Mutex
-	lockIntercept   *sync.Mutex
 	lockTemplateSet *sync.Mutex
 	lockCheck       *sync.Mutex
+	lockPackage     *sync.Mutex
 
+	cachePackage map[struct {
+		Name  string
+		Grade grade.Grade
+	}]*otto.Script
 	cacheVersion     map[grade.Grade]int64 //每级grade均对应一个最新的版本
-	cacheIntercept   []*Intercept
 	cacheTableDefine map[string]*grade.DataTable
-	cacheController  map[string]*Controller
 	cacheTemplateSet *template.Template
 	cacheCheck       map[string][]*Check
 }
@@ -88,16 +84,6 @@ type Action struct {
 	ID     string
 	Script string
 	Grade  string
-}
-
-type ViewRegion struct {
-	Content string
-	Grade   string
-}
-type View struct {
-	Name    string
-	Regions []*ViewRegion
-	Grade   string
 }
 
 func lx_dump() *grade.DataTable {
@@ -126,36 +112,7 @@ func lx_version() *grade.DataTable {
 	table.SetPK("grade", "verno")
 	return table
 }
-func lx_intercept() *grade.DataTable {
-	table := grade.NewDataTable("lx_intercept", grade.GRADE_ROOT)
-	table.AddColumn(grade.NewColumn("id", grade.GRADE_ROOT, pghelper.TypeString, true))
-	table.AddColumn(grade.NewColumn("script", grade.GRADE_ROOT, pghelper.TypeString, true))
-	table.AddColumn(grade.NewColumn("whenint", grade.GRADE_ROOT, pghelper.TypeInt64, true))
-	table.AddColumn(grade.NewColumn("grade", grade.GRADE_ROOT, pghelper.TypeString, true))
-	table.SetPK("id")
-	return table
-}
-func lx_controller() *grade.DataTable {
 
-	table := grade.NewDataTable("lx_controller", grade.GRADE_ROOT)
-	table.AddColumn(grade.NewColumnT("name", grade.GRADE_ROOT, pghelper.NewPGType(pghelper.TypeString, 0, true), ""))
-	table.AddColumn(grade.NewColumnT("script", grade.GRADE_ROOT, pghelper.NewPGType(pghelper.TypeString, 0, false), ""))
-	table.AddColumn(grade.NewColumnT("public", grade.GRADE_ROOT, pghelper.NewPGType(pghelper.TypeBool, 0, true), ""))
-	table.AddColumn(grade.NewColumnT("grade", grade.GRADE_ROOT, pghelper.NewPGType(pghelper.TypeString, 0, true), ""))
-	table.SetPK("name")
-
-	return table
-}
-func lx_action() *grade.DataTable {
-	table := grade.NewDataTable("lx_action", grade.GRADE_ROOT)
-
-	table.AddColumn(grade.NewColumnT("ctrlname", grade.GRADE_ROOT, pghelper.NewPGType(pghelper.TypeString, 0, true), ""))
-	table.AddColumn(grade.NewColumnT("id", grade.GRADE_ROOT, pghelper.NewPGType(pghelper.TypeString, 0, true), ""))
-	table.AddColumn(grade.NewColumnT("script", grade.GRADE_ROOT, pghelper.NewPGType(pghelper.TypeString, 0, false), ""))
-	table.AddColumn(grade.NewColumnT("grade", grade.GRADE_ROOT, pghelper.NewPGType(pghelper.TypeString, 0, true), ""))
-	table.SetPK("ctrlname", "id")
-	return table
-}
 func lx_view() *grade.DataTable {
 	table := grade.NewDataTable("lx_view", grade.GRADE_ROOT)
 	table.AddColumn(grade.NewColumnT("name", grade.GRADE_ROOT, pghelper.NewPGType(pghelper.TypeString, 0, true), ""))
@@ -193,11 +150,11 @@ func lx_check() *grade.DataTable {
 	table.SetPK("tablename", "id")
 	return table
 }
-func RepositoryPath(name string) string {
-	return filepath.Join(AppPath, "repository", name)
+func RepositoryPath(repo string) string {
+	return filepath.Join(AppPath, "repository", repo, "_pd")
 }
 func publicTables() []*grade.DataTable {
-	return []*grade.DataTable{lx_dump(), lx_version(), lx_intercept(), lx_controller(), lx_action(), lx_view(), lx_checkaddition(), lx_check()}
+	return []*grade.DataTable{lx_dump(), lx_version(), lx_view(), lx_checkaddition(), lx_check()}
 
 }
 func NewProject(name, dburl, repository string) (Project, error) {
@@ -206,28 +163,22 @@ func NewProject(name, dburl, repository string) (Project, error) {
 		dbHelper:   grade.NewPGHelper(dburl),
 		repository: repository,
 
-		lockController:  &sync.Mutex{},
 		lockTableDefine: &sync.Mutex{},
 		lockVersion:     &sync.Mutex{},
-		lockIntercept:   &sync.Mutex{},
 		lockTemplateSet: &sync.Mutex{},
 		lockCheck:       &sync.Mutex{},
+		lockPackage:     &sync.Mutex{},
 
 		cacheVersion:     map[grade.Grade]int64{},
-		cacheIntercept:   []*Intercept{},
 		cacheTableDefine: map[string]*grade.DataTable{},
-		cacheController:  map[string]*Controller{},
 		cacheTemplateSet: nil,
 		cacheCheck:       map[string][]*Check{},
+		cachePackage: map[struct {
+			Name  string
+			Grade grade.Grade
+		}]*otto.Script{},
 	}
 
-	schema, err := p.dbHelper.Schema()
-	if err != nil {
-		return nil, err
-	}
-	p.grade = schema.Desc.Grade
-	p.metaProject = schema.Desc.MetaProject
-	p.defaultAction = schema.Desc.DefaultAction
 	//先确保有公共的表
 	for _, v := range publicTables() {
 		if err := p.dbHelper.UpdateStruct(v); err != nil {
@@ -249,25 +200,6 @@ func (p *project) loadVersion() (map[grade.Grade]int64, error) {
 	for i := 0; i < tab.RowCount(); i++ {
 		row := tab.GetRow(i)
 		rev[grade.Grade(row["grade"].(string))] = row["verno"].(int64)
-	}
-	return rev, nil
-}
-func (p *project) loadIntercept() ([]*Intercept, error) {
-	var tab *grade.DataTable
-	//获取Intercept
-	tab, err := p.dbHelper.GetDataTable(SQL_GetIntercept)
-	if err != nil {
-		return nil, err
-	}
-	rev := make([]*Intercept, tab.RowCount(), tab.RowCount())
-	for i := 0; i < tab.RowCount(); i++ {
-		row := tab.GetRow(i)
-		rev[i] = &Intercept{
-			ID:            row["id"].(string),
-			InterceptWhen: row["whenint"].(int64),
-			Script:        row["script"].(string),
-			Grade:         row["grade"].(string),
-		}
 	}
 	return rev, nil
 }
@@ -339,12 +271,7 @@ func (p *project) loadTemplate(f template.FuncMap) (*template.Template, error) {
 func (p *project) Name() string {
 	return p.name
 }
-func (p *project) Grade() string {
-	return p.grade
-}
-func (p *project) MetaProject() string {
-	return p.metaProject
-}
+
 func (p *project) Version(gradestr grade.Grade) (int64, bool, error) {
 	p.lockVersion.Lock()
 	defer p.lockVersion.Unlock()
@@ -363,87 +290,9 @@ func (p *project) DBHelper() *grade.PGHelper {
 	return p.dbHelper
 }
 func (p *project) DefaultAction() (string, string) {
-	s := strings.Split(p.defaultAction, ".")
-	if len(s) == 2 {
-		return s[0], s[1]
-	} else {
-		return "login", "login"
-	}
+	return "login", "login"
 }
 
-func (p *project) InterceptScript(gradestr grade.Grade, when int64) (string, error) {
-	p.lockIntercept.Lock()
-	defer p.lockIntercept.Unlock()
-	if len(p.cacheIntercept) == 0 {
-		inter, err := p.loadIntercept()
-		if err != nil {
-			return "", err
-		}
-		p.cacheIntercept = inter
-	}
-	result := []string{}
-
-	for _, inp := range p.cacheIntercept {
-		if gradestr.CanUse(inp.Grade) && inp.InterceptWhen == when {
-			result = append(result, inp.Script)
-		}
-	}
-	if len(result) > 0 {
-		return fmt.Sprintf(`
-		(function Intercept(c){
-			var filter = [%s];
-			var GRADE = %q;
-			filter[0](c,filter.slice(1));
-		})`, strings.Join(result, ","), gradestr), nil
-	} else {
-		return "", nil
-	}
-
-}
-
-func (p *project) loadController(ctrlname string) (*Controller, error) {
-	//从数据库取出定义
-	ctrlTab, err := p.dbHelper.GetDataTable(SQL_GetController, ctrlname)
-
-	if err != nil {
-		return nil, err
-	}
-	if ctrlTab.RowCount() == 0 {
-		return nil, jsmvcerror.NotFoundControl
-	}
-	ctrlRow := ctrlTab.GetRow(0)
-	ctrl := &Controller{
-		Name:   ctrlname,
-		Script: oftenfun.SafeToString(ctrlRow["script"]),
-		Public: oftenfun.SafeToBool(ctrlRow["public"]),
-		Grade:  oftenfun.SafeToString(ctrlRow["grade"]),
-	}
-	actionTab, err := p.dbHelper.GetDataTable(SQL_GetAction, ctrlname)
-	if err != nil {
-		return nil, err
-	}
-	for i := 0; i < actionTab.RowCount(); i++ {
-		actionRow := actionTab.GetRow(i)
-		ctrl.Actions = append(ctrl.Actions, &Action{
-			ID:     actionRow["id"].(string),
-			Script: actionRow["script"].(string),
-			Grade:  actionRow["grade"].(string),
-		})
-	}
-	return ctrl, nil
-}
-func (p *project) Controller(ctrlname string, gradestr grade.Grade) (*Controller, error) {
-	p.lockController.Lock()
-	defer p.lockController.Unlock()
-	if _, ok := p.cacheController[ctrlname]; !ok {
-		if ctrl, err := p.loadController(ctrlname); err != nil {
-			return nil, err
-		} else {
-			p.cacheController[ctrlname] = ctrl
-		}
-	}
-	return p.cacheController[ctrlname], nil
-}
 func (p *project) TemplateSet(f template.FuncMap) (*template.Template, error) {
 	p.lockTemplateSet.Lock()
 	defer p.lockTemplateSet.Unlock()
@@ -482,15 +331,19 @@ func (p *project) jsChecks(call otto.FunctionCall) otto.Value {
 	}
 	return oftenfun.JSToValue(call.Otto, chks)
 }
+func (p *project) jsReloadRepository(call otto.FunctionCall) otto.Value {
+	return oftenfun.JSToValue(call.Otto, p.ReloadRepository())
+}
 
 func (p *project) Object() map[string]interface{} {
 	return map[string]interface{}{
-		"ReverseUrl": p.jsReverseUrl,
-		"Name":       p.Name(),
-		"ClearCache": p.jsClearCache,
-		"DBHelper":   p.DBHelper().Object(),
-		"Model":      p.jsModel,
-		"Checks":     p.jsChecks,
+		"ReverseUrl":       p.jsReverseUrl,
+		"Name":             p.Name(),
+		"ClearCache":       p.jsClearCache,
+		"DBHelper":         p.DBHelper().Object(),
+		"Model":            p.jsModel,
+		"Checks":           p.jsChecks,
+		"ReloadRepository": p.jsReloadRepository,
 	}
 }
 func (p *project) jsClearCache(call otto.FunctionCall) otto.Value {
@@ -501,18 +354,6 @@ func (p *project) ClearCheckCache() {
 	p.lockCheck.Lock()
 	defer p.lockCheck.Unlock()
 	p.cacheCheck = map[string][]*Check{}
-	return
-}
-func (p *project) ClearControllerCache() {
-	p.lockController.Lock()
-	defer p.lockController.Unlock()
-	p.cacheController = map[string]*Controller{}
-	return
-}
-func (p *project) ClearInterceptCache() {
-	p.lockIntercept.Lock()
-	defer p.lockIntercept.Unlock()
-	p.cacheIntercept = nil
 	return
 }
 func (p *project) ClearTableDefineCache() {
@@ -533,11 +374,19 @@ func (p *project) ClearVersionCache() {
 	p.cacheVersion = map[grade.Grade]int64{}
 	return
 }
+func (p *project) ClearPackageCache() {
+	p.lockPackage.Lock()
+	defer p.lockPackage.Unlock()
+	p.cachePackage = map[struct {
+		Name  string
+		Grade grade.Grade
+	}]*otto.Script{}
+	return
+}
 func (p *project) ClearCache() {
 	log.INFO.Printf("project %s clear cache.", p.Name())
 	p.ClearCheckCache()
-	p.ClearControllerCache()
-	p.ClearInterceptCache()
+	p.ClearPackageCache()
 	p.ClearTableDefineCache()
 	p.ClearTemplateSetCache()
 	p.ClearVersionCache()
@@ -712,7 +561,6 @@ func zipDir(src string, dest *os.File) error {
 		defer openF.Close()
 		_, err = io.Copy(w, openF)
 		return err
-
 	})
 	if err := destW.Close(); err != nil {
 		return err
@@ -765,7 +613,7 @@ func (p *project) ImportData(impPathName string) error {
 	if err != nil {
 		return err
 	}
-	grade.RunAtTrans(p.DBHelper().DbUrl(), func(helper *grade.PGHelper) error {
+	return grade.RunAtTrans(p.DBHelper().DbUrl(), func(helper *grade.PGHelper) error {
 		for _, file := range dirs {
 			if file.IsDir() {
 				err := helper.Import(filepath.Join(impPathName, file.Name()))
@@ -776,17 +624,76 @@ func (p *project) ImportData(impPathName string) error {
 		}
 		return nil
 	})
-	return nil
 }
 
 func (p *project) ReloadRepository() error {
-	if p.repository == "" {
-		return nil
-	}
-	if _, err := os.Stat(RepositoryPath(p.repository)); err == os.ErrExist {
+	repositoryPath := RepositoryPath(p.repository)
+	log.TRACE.Printf("ReloadRepository,%q", repositoryPath)
+	if _, err := os.Stat(repositoryPath); err == os.ErrExist {
 		return nil
 	} else if err != nil {
 		return err
 	}
-	return p.ImportData(RepositoryPath(p.repository))
+	return p.ImportData(repositoryPath)
+}
+func (p *project) loadPackage(rm *otto.Otto, fileName string, gradestr grade.Grade) (*otto.Script, error) {
+	rev := ""
+	if err := p.DBHelper().Query(func(rows *sql.Rows) error {
+		var script string
+		for rows.Next() {
+			if err := rows.Scan(&script); err != nil {
+				return err
+			}
+			rev += "\n" + script
+		}
+		return nil
+	}, SQL_GetPackage, fileName, gradestr.String()); err != nil {
+		return nil, err
+	}
+	if rev == "" {
+		return nil, fmt.Errorf("empty package:%s(%s)", fileName, gradestr)
+	}
+	rev = "(function(module) {var require = module.require;var exports = module.exports;\n" + rev + "\n})"
+	return rm.Compile(fileName, rev)
+}
+func (p *project) Require(rm *otto.Otto, fileName, currentModuleDir string, gradestr grade.Grade) (*otto.Script, string, error) {
+	var moduleFileName string
+	//if is root path,then cut the /
+	if strings.HasPrefix(fileName, "/") {
+		moduleFileName = fileName
+	} else {
+		moduleFileName = path.Join(currentModuleDir, fileName)
+	}
+	moduleName := struct {
+		Name  string
+		Grade grade.Grade
+	}{moduleFileName, gradestr}
+	p.lockPackage.Lock()
+	defer p.lockPackage.Unlock()
+	if rev, ok := p.cachePackage[moduleName]; !ok {
+		m, err := p.loadPackage(rm, moduleFileName, gradestr)
+		if err != nil {
+			return nil, "", err
+		}
+		p.cachePackage[moduleName] = m
+		return m, moduleFileName, nil
+	} else {
+		return rev, moduleFileName, nil
+	}
+}
+func (p *project) GetPackageNames(dirName string, gradestr grade.Grade) ([]string, error) {
+	rev := []string{}
+	if err := p.DBHelper().Query(func(rows *sql.Rows) error {
+		var name string
+		for rows.Next() {
+			if err := rows.Scan(&name); err != nil {
+				return err
+			}
+			rev = append(rev, name)
+		}
+		return nil
+	}, SQL_GetPackageNames, dirName, string(gradestr)); err != nil {
+		return nil, err
+	}
+	return rev, nil
 }

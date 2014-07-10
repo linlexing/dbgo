@@ -1,0 +1,39 @@
+<#template "header" .#>
+<style>
+  .container{
+    max-width: 750px;
+  }
+</style>
+<script type="text/javascript">
+  var Data = <#.#>;
+  <#range $index, $check := .Checks#>
+    <#if not $check.RunAtServer#>
+      Data.Checks[<#$index#>].check=function(data){
+        return <#JS $check.Script#>;
+      };
+    <#end#>
+  <#end#>
+  app.controller('tableController',['$scope',function($scope){
+    $scope.Data = Data.Data;
+    $scope.Data.name="test";
+    console.log($scope.Data);
+  }]);
+  app.controller('tableController',['$scope',function($scope){
+    $scope.Data = Data.Data;
+    $scope.Data.name="test1";
+    console.log($scope.Data);
+  }]);
+</script>
+<div class="container main">
+  <div class="row">
+  <div class="panel panel-default center-block dlg">
+    <div class="panel-heading">
+      <h3 class="panel-title"><#.Title#></h3>
+    </div>
+    <div class="panel-body" ng-controller="tableController">
+      <#tmpl (PathJoin "table" .ModelName) .#>
+    </div>
+  </div>
+  <div>
+</div>
+<#template "footer" .#>

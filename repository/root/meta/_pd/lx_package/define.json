@@ -1,0 +1,49 @@
+{
+	"TableName": "lx_package",
+	"PKConstraintName": "lx_package_pkey",
+	"PK": [
+		"filename"
+	],
+	"Desc": {
+		"Grade": "root"
+	},
+	"Columns": [
+		{
+			"Name": "filename",
+			"PGType": {
+				"Type": 0,
+				"MaxSize": 0,
+				"NotNull": true
+			},
+			"Default": "",
+			"Desc": {
+				"Grade": "root"
+			}
+		},
+		{
+			"Name": "grade",
+			"PGType": {
+				"Type": 0,
+				"MaxSize": 0,
+				"NotNull": true
+			},
+			"Default": "",
+			"Desc": {
+				"Grade": "root"
+			}
+		},
+		{
+			"Name": "script",
+			"PGType": {
+				"Type": 0,
+				"MaxSize": 0,
+				"NotNull": true
+			},
+			"Default": "",
+			"Desc": {
+				"Grade": "root"
+			}
+		}
+	],
+	"Indexes": {}
+}

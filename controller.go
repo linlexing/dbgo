@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 )
@@ -59,24 +60,59 @@ func (c *Controller) GetScript(srcIntercept string, gradestr grade.Grade) string
 }
 
 type ControllerAgent struct {
-	Request        *http.Request
-	Response       http.ResponseWriter
-	Session        *Session
-	Project        Project
-	UserName       string
-	Logged         bool
-	ControllerName string
-	ActionName     string
-	TagPath        string
-	Title          string
-	Public         bool        //Indicate whether you can access without authentication
-	CurrentGrade   grade.Grade //When this call, the user's Grade properties. After obtaining the value from the Session, and not to change it, even if the user changes their Grade other requests
-	Result         Result
-	TemplateFun    template.FuncMap
-	script         string
-	jsRuntime      *otto.Otto
+	Request          *http.Request
+	Response         http.ResponseWriter
+	Session          *Session
+	Project          Project
+	UserName         string
+	Logged           bool
+	ControllerName   string
+	ActionName       string
+	TagPath          string
+	Title            string
+	Public           bool        //Indicate whether you can access without authentication
+	CurrentGrade     grade.Grade //When this call, the user's Grade properties. After obtaining the value from the Session, and not to change it, even if the user changes their Grade other requests
+	Result           Result
+	TemplateFun      template.FuncMap
+	Object           otto.Value
+	ControllerScript otto.Value
+	jsRuntime        *otto.Otto
 }
 
+func (c *ControllerAgent) Require(fileName, currentModuleDir string) otto.Value {
+
+	script, moduleFileName, err := c.Project.Require(c.jsRuntime, fileName, currentModuleDir, c.CurrentGrade)
+	if err != nil {
+		panic(err)
+	}
+	jsfun, err := c.jsRuntime.Run(script)
+	if err != nil {
+		panic(err)
+	}
+
+	tmpValue, err := c.jsRuntime.ToValue(map[string]interface{}{
+		"exports":    map[string]interface{}{},
+		"__dirname":  path.Dir(moduleFileName),
+		"__filename": path.Base(moduleFileName),
+		"require": func(call otto.FunctionCall) otto.Value {
+			return c.Require(oftenfun.AssertString(call.Argument(0)), path.Dir(moduleFileName))
+		},
+	})
+	if err != nil {
+		panic(err)
+	}
+	jsModule := tmpValue.Object()
+	exports, _ := jsModule.Get("exports")
+	rev, err := jsfun.Call(exports, jsModule)
+	if err != nil {
+		panic(err)
+	}
+	if rev.IsUndefined() {
+		return exports
+	} else {
+		return rev
+	}
+}
 func (c *ControllerAgent) QueryValues() url.Values {
 	return c.Request.URL.Query()
 }
@@ -94,12 +130,6 @@ func NewAgent(w http.ResponseWriter, r *http.Request) *ControllerAgent {
 	return c
 }
 func (c *ControllerAgent) RenderError(err error) Result {
-	if err == jsmvcerror.NotFoundProject ||
-		err == jsmvcerror.NotFoundControl ||
-		err.Error() == NotFoundAction {
-		c.Result = &NotFoundResult{}
-		return c.Result
-	}
 	if err == jsmvcerror.ForbiddenError {
 		c.Result = &ForbiddenResult{}
 		return c.Result
@@ -281,12 +311,12 @@ func (c *ControllerAgent) jsModelChecks(call otto.FunctionCall) otto.Value {
 	}
 	return oftenfun.JSToValue(call.Otto, chks)
 }
-func (c *ControllerAgent) Object() map[string]interface{} {
+func (c *ControllerAgent) object() map[string]interface{} {
 
 	return map[string]interface{}{
 		"UrlAuth":          c.jsUrlAuthed,
 		"GradeCanUse":      c.jsGradeCanUse,
-		"CurrentGrade":     c.CurrentGrade,
+		"CurrentGrade":     c.CurrentGrade.String(),
 		"ControllerName":   c.ControllerName,
 		"TagPath":          c.TagPath,
 		"Render":           c.jsRender,

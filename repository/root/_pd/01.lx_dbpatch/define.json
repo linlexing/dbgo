@@ -1,0 +1,49 @@
+{
+	"TableName": "lx_dbpatch",
+	"PKConstraintName": "lx_dbpatch_pkey",
+	"PK": [
+		"name"
+	],
+	"Desc": {
+		"Grade": "root"
+	},
+	"Columns": [
+		{
+			"Name": "name",
+			"PGType": {
+				"Type": 0,
+				"MaxSize": 0,
+				"NotNull": true
+			},
+			"Default": "",
+			"Desc": {
+				"Grade": "root"
+			}
+		},
+		{
+			"Name": "grade",
+			"PGType": {
+				"Type": 0,
+				"MaxSize": 0,
+				"NotNull": true
+			},
+			"Default": "",
+			"Desc": {
+				"Grade": "root"
+			}
+		},
+		{
+			"Name": "script",
+			"PGType": {
+				"Type": 0,
+				"MaxSize": 0,
+				"NotNull": true
+			},
+			"Default": "",
+			"Desc": {
+				"Grade": "root"
+			}
+		}
+	],
+	"Indexes": {}
+}

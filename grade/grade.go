@@ -25,6 +25,12 @@ func (g Grade) CanUse(canUseGrade interface{}) bool {
 	}
 
 }
+func (g Grade) Child(str string) Grade {
+	return Grade(string(g) + "/" + str)
+}
+func (g Grade) String() string {
+	return string(g)
+}
 
 type GradeVersion []int64
 

@@ -16,7 +16,7 @@ import (
 
 var (
 	// Loggers
-	MetaCache      *Cache
+	Projects       *DBGo
 	DefaultProject string
 	Filters        []Filter
 	AppPath        string
@@ -37,15 +37,44 @@ func loadConfig() *Config {
 	}
 	return &c
 }
+func writeConfig(c *Config) error {
+	file, e := os.Create("./cnfg.json")
+	defer file.Close()
+	if e != nil {
+		return e
+	}
+	if bys, err := json.Marshal(c); err != nil {
+		return err
+	} else if _, err := file.Write(bys); err != nil {
+		return err
+	}
+	return nil
+}
+func initiDBGo(c *Config) error {
+	Projects = NewDBGo(c.DBUrl)
+	if c.MetaDBUrl == "" {
+		metaUrl, err := Projects.CreateProject("meta", "meta123")
+		if err != nil {
+			return err
+		}
+		c.MetaDBUrl = metaUrl
+		if err := writeConfig(c); err != nil {
+			return err
+		}
+	}
+	Projects.ReadyMetaProject(c.MetaDBUrl)
+	return nil
+}
 func main() {
 	var err error
 	if AppPath, err = filepath.Abs("."); err != nil {
 		log.INFO.Fatal(err)
 	}
-
 	c := loadConfig()
 	DefaultProject = c.DefaultProject
-	MetaCache = NewCache(c.MetaDBUrl)
+	if err = initiDBGo(c); err != nil {
+		log.INFO.Fatal(err)
+	}
 	SDB = NewSessionManager(path.Join(AppPath, "sdb"), c.SessionTimeout)
 	defer SDB.Close()
 	JSP = NewJSPool(10)
@@ -57,7 +86,7 @@ func main() {
 		}
 	})
 	Jobs.Start()
-	Filters = []Filter{PanicFilter, RouteFilter, SessionFilter, UrlAuthFilter, UserFilter, ActionFilter}
+	Filters = []Filter{PanicFilter, RouteFilter, SessionFilter, BuildObjectFilter, InterceptFilter, LoadControlFilter, UrlAuthFilter, UserFilter, ActionFilter}
 	http.HandleFunc("/favicon.ico", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(404)
 	})

@@ -3,9 +3,11 @@ package main
 import (
 	"code.google.com/p/go-uuid/uuid"
 	"encoding/base64"
+	"fmt"
 	"github.com/linlexing/dbgo/grade"
 	"github.com/linlexing/dbgo/jsmvcerror"
 	"github.com/linlexing/dbgo/log"
+	"github.com/robertkrimen/otto"
 	"net/http"
 	"path"
 	"strings"
@@ -34,7 +36,7 @@ func RouteFilter(c *ControllerAgent, f []Filter) {
 
 	}
 	c.Title = c.Request.URL.Query().Get("title")
-	c.Project, err = MetaCache.Project(pname)
+	c.Project, err = Projects.Project(pname)
 	if err != nil {
 		c.RenderError(err)
 	}
@@ -43,29 +45,11 @@ func RouteFilter(c *ControllerAgent, f []Filter) {
 			c.ControllerName, c.ActionName = c.Project.DefaultAction()
 		}
 	}
-	var ctrl *Controller
-	var srcIntercept string
-	if c.Result == nil {
-		ctrl, err = c.Project.Controller(c.ControllerName, c.CurrentGrade)
-		if err != nil {
-			c.RenderError(err)
-		}
-	}
-	if c.Result == nil {
-		srcIntercept, err = c.Project.InterceptScript(c.CurrentGrade, BEFORE)
-		if err != nil {
-			c.RenderError(err)
-		}
-	}
-	if c.Result == nil {
-		c.script = ctrl.GetScript(srcIntercept, c.CurrentGrade)
-		c.Public = ctrl.Public
-	}
+
 	if len(f) > 0 && c.Result == nil {
 		f[0](c, f[1:])
 	}
 }
-
 func SessionFilter(c *ControllerAgent, f []Filter) {
 	var sid string
 	if cookie, err := c.Request.Cookie("sid"); err != nil {
@@ -94,6 +78,81 @@ func SessionFilter(c *ControllerAgent, f []Filter) {
 		f[0](c, f[1:])
 	}
 }
+func BuildObjectFilter(c *ControllerAgent, f []Filter) {
+	var err error
+	c.Object, err = c.jsRuntime.ToValue(c.object())
+	if err != nil {
+		c.RenderError(err)
+	}
+	if len(f) > 0 && c.Result == nil {
+		f[0](c, f[1:])
+	}
+}
+func InterceptFilter(c *ControllerAgent, f []Filter) {
+	var filterFuncs []otto.Value
+	names, err := c.Project.GetPackageNames("/intercept", c.CurrentGrade)
+
+	if err != nil {
+		c.RenderError(err)
+		goto end
+	}
+	filterFuncs = make([]otto.Value, len(names))
+	for i, v := range names {
+		jsValue := c.Require(v, "/")
+		oneIntercept := jsValue.Object()
+		whenValue, err := oneIntercept.Get("When")
+		if err != nil {
+			c.RenderError(err)
+			goto end
+		}
+		when, err := whenValue.ToInteger()
+		if err != nil {
+			c.RenderError(err)
+			goto end
+		}
+		if when == BEFORE {
+			interceptFun, err := oneIntercept.Get("Intercept")
+			if err != nil {
+				c.RenderError(err)
+				goto end
+			}
+			filterFuncs[i] = interceptFun
+		}
+	}
+	if c.Result == nil && len(filterFuncs) > 0 {
+
+		jsFilterFuncs, err := c.jsRuntime.ToValue(filterFuncs)
+		if err != nil {
+			c.RenderError(err)
+			goto end
+		}
+		_, err = filterFuncs[0].Call(filterFuncs[0], c.Object, jsFilterFuncs)
+		if err != nil {
+			c.RenderError(err)
+			goto end
+		}
+	}
+end:
+	if len(f) > 0 && c.Result == nil {
+		f[0](c, f[1:])
+	}
+}
+func LoadControlFilter(c *ControllerAgent, f []Filter) {
+	c.ControllerScript = c.Require(path.Join("/controller", c.ControllerName), "/")
+	pub, err := c.ControllerScript.Object().Get("Public")
+	if err != nil {
+		c.Public = false
+		goto end
+	}
+	c.Public, err = pub.ToBoolean()
+	if err != nil {
+		c.Public = false
+	}
+end:
+	if len(f) > 0 && c.Result == nil {
+		f[0](c, f[1:])
+	}
+}
 func UrlAuthFilter(c *ControllerAgent, f []Filter) {
 	if !c.UrlAuthed() {
 		log.WARN.Printf("Forbidden url:%s\n", c.Request.URL.String())
@@ -104,7 +163,7 @@ func UrlAuthFilter(c *ControllerAgent, f []Filter) {
 	}
 }
 func UserFilter(c *ControllerAgent, f []Filter) {
-	uName := c.Session.Get("_UserName")
+	uName := c.Session.Get("_username")
 	c.UserName = uName
 	c.Logged = uName == ""
 
@@ -113,20 +172,23 @@ func UserFilter(c *ControllerAgent, f []Filter) {
 	}
 }
 func ActionFilter(c *ControllerAgent, f []Filter) {
-	if c.script != "" {
-		args, err := c.jsRuntime.ToValue(c.Object())
+	actionFunc, err := c.ControllerScript.Object().Get(c.ActionName)
+	if err != nil {
+		c.RenderError(err)
+		goto end
+	}
+	if actionFunc.IsFunction() {
+		_, err = actionFunc.Call(actionFunc, c.Object)
 		if err != nil {
 			c.RenderError(err)
-			return
+			goto end
 		}
-		if _, err := c.jsRuntime.Call(c.script, nil, args, c.ActionName); err != nil {
-			if err.Error() == NotFoundAction {
-				c.RenderError(err)
-			} else {
-				c.RenderError(jsmvcerror.NewJavascriptError(c.script, err))
-			}
-		}
+	} else {
+		c.RenderError(fmt.Errorf("the action %q not exists", c.ActionName))
+		goto end
 	}
+
+end:
 	if len(f) > 0 && c.Result == nil {
 		f[0](c, f[1:])
 	}

@@ -26,18 +26,12 @@ func JSGradeCanUse(call otto.FunctionCall) otto.Value {
 
 	return oftenfun.JSToValue(call.Otto, grade.Grade(g1).CanUse(g2))
 }
-
-func package_lx() map[string]interface{} {
+func package_grade() map[string]interface{} {
 	return map[string]interface{}{
-		"GRADE_ROOT":   grade.GRADE_ROOT,
-		"GRADE_TAG":    grade.GRADE_TAG,
-		"GradeCanUse":  JSGradeCanUse,
-		"TABLE_ADD":    TABLE_ADD,
-		"TABLE_EDIT":   TABLE_EDIT,
-		"TABLE_DELETE": TABLE_DELETE,
-		"TABLE_BROWSE": TABLE_DELETE,
+		"GradeCanUse": JSGradeCanUse,
 	}
 }
+
 func package_fmt() map[string]interface{} {
 	return map[string]interface{}{
 		"Sprint": func(call otto.FunctionCall) otto.Value {
@@ -56,8 +50,8 @@ func NewJSPool(size int) *JSPool {
 	// Create a buffered channel allowing 'size' senders
 	p.pool = make(chan *otto.Otto, size)
 	first := otto.New()
-	first.Set("lx", package_lx())
-	first.Set("fmt", package_fmt())
+	first.Set("_grade", package_grade())
+	first.Set("_fmt", package_fmt())
 	p.pool <- first
 	for x := 1; x < size; x++ {
 		p.pool <- first.Copy()

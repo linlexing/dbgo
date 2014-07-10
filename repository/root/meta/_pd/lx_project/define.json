@@ -1,0 +1,61 @@
+{
+	"TableName": "lx_project",
+	"PKConstraintName": "lx_project_pkey",
+	"PK": [
+		"name"
+	],
+	"Desc": {
+		"Grade": "root/meta"
+	},
+	"Columns": [
+		{
+			"Name": "name",
+			"PGType": {
+				"Type": 0,
+				"MaxSize": 50,
+				"NotNull": true
+			},
+			"Default": "",
+			"Desc": {
+				"Grade": "root/meta"
+			}
+		},
+		{
+			"Name": "dburl",
+			"PGType": {
+				"Type": 0,
+				"MaxSize": 0,
+				"NotNull": true
+			},
+			"Default": "",
+			"Desc": {
+				"Grade": "root/meta"
+			}
+		},
+		{
+			"Name": "owner",
+			"PGType": {
+				"Type": 0,
+				"MaxSize": 0,
+				"NotNull": true
+			},
+			"Default": "",
+			"Desc": {
+				"Grade": "root/meta"
+			}
+		},
+		{
+			"Name": "repository",
+			"PGType": {
+				"Type": 0,
+				"MaxSize": 0,
+				"NotNull": true
+			},
+			"Default": "",
+			"Desc": {
+				"Grade": "root/meta"
+			}
+		}
+	],
+	"Indexes": {}
+}

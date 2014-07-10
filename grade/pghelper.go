@@ -1,6 +1,7 @@
 package grade
 
 import (
+	"bytes"
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
@@ -12,6 +13,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"text/template"
 )
 
 type PGHelper struct {
@@ -135,9 +137,14 @@ func (ahelp *PGHelper) Import(pathName string) error {
 	tmpTableName := "import_tmp_lx"
 	trueTableName := tmptable.TableName
 
-	runAtImportSql = strings.Replace(runAtImportSql, "<#.TempTableName#>", tmpTableName, -1)
-	runAtImportSql = strings.Replace(runAtImportSql, "<#.Grade#>", string(config.CurrentGrade), -1)
-
+	runAtImportSql, err = tmplExecute(runAtImportSql, map[string]interface{}{
+		"TempTableName": tmpTableName,
+		"ExportGrade":   string(config.CurrentGrade),
+		"SqlWhere":      config.SqlWhere,
+	})
+	if err != nil {
+		return err
+	}
 	table := NewDBTable(ahelp, tmptable)
 	table.TableName = tmpTableName
 	table.Temp = true
@@ -145,6 +152,7 @@ func (ahelp *PGHelper) Import(pathName string) error {
 	if err := table.UpdateStruct(); err != nil {
 		return err
 	}
+	defer ahelp.DropTable(tmpTableName)
 	dataCSV, err := os.Open(dataCsvFileName)
 	if err != nil {
 		return err
@@ -321,6 +329,23 @@ type dumpConfig struct {
 	CheckVersion     bool
 }
 
+func tmplExecute(tmplSrc string, param interface{}) (string, error) {
+	tmpl := template.New("expimp_template")
+	tmpl.Delims("<#", "#>")
+	tmpl.Funcs(template.FuncMap{
+		"PGSignStr": pghelper.PGSignStr,
+	})
+
+	tmpl, err := tmpl.Parse(tmplSrc)
+	if err != nil {
+		return "", err
+	}
+	buf := &bytes.Buffer{}
+	if err = tmpl.Execute(buf, param); err != nil {
+		return "", err
+	}
+	return buf.String(), nil
+}
 func (p *PGHelper) Export(param *ExportParam) error {
 	const Import_Desc = "/*************************************************************/\n" +
 		"/*When the data imported temporary table, run the import SQL,*/\n" +
@@ -373,8 +398,12 @@ func (p *PGHelper) Export(param *ExportParam) error {
 			return err
 		}
 	}
+	sqlWhere, err := tmplExecute(param.SqlWhere, map[string]interface{}{"CurrentGrade": string(param.CurrentGrade)})
+	if err != nil {
+		return err
+	}
 	//write the config.json
-	count, err := t.Count(param.SqlWhere)
+	count, err := t.Count(sqlWhere)
 	if err != nil {
 		return err
 	}
@@ -387,9 +416,10 @@ func (p *PGHelper) Export(param *ExportParam) error {
 		CurrentGrade:     param.CurrentGrade,
 		RowCount:         count,
 		FileColumns:      param.FileColumns,
-		SqlWhere:         param.SqlWhere,
+		SqlWhere:         sqlWhere,
 		ImpAutoRemove:    param.ImpAutoRemove,
 		ImpRefreshStruct: param.ImpRefreshStruct,
+		CheckVersion:     param.CheckVersion,
 	}
 	if bys, err := json.MarshalIndent(config, "", "\t"); err != nil {
 		return err
@@ -447,7 +477,7 @@ func (p *PGHelper) Export(param *ExportParam) error {
 			}
 		}
 		return nil
-	}, ExportBatch, param.SqlWhere)
+	}, ExportBatch, sqlWhere)
 	if err != nil {
 		return err
 	}
