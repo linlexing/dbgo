@@ -3,6 +3,7 @@ package main
 import (
 	"code.google.com/p/go-uuid/uuid"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"github.com/linlexing/dbgo/grade"
 	"github.com/linlexing/dbgo/jsmvcerror"
@@ -46,6 +47,21 @@ func RouteFilter(c *ControllerAgent, f []Filter) {
 		}
 	}
 
+	if len(f) > 0 && c.Result == nil {
+		f[0](c, f[1:])
+	}
+}
+func ParseJsonFilter(c *ControllerAgent, f []Filter) {
+	if strings.Contains(c.Request.Header.Get("Content-Type"), "application/json") {
+		decoder := json.NewDecoder(c.Request.Body)
+		t := map[string]interface{}{}
+		err := decoder.Decode(&t)
+		if err != nil {
+			c.RenderError(err)
+		} else {
+			c.JsonBody = t
+		}
+	}
 	if len(f) > 0 && c.Result == nil {
 		f[0](c, f[1:])
 	}

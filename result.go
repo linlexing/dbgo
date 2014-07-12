@@ -57,7 +57,6 @@ type RenderHtmlResult struct {
 }
 
 func (r *RenderHtmlResult) Apply(req *http.Request, w http.ResponseWriter) {
-	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Write([]byte(r.html))
 }
@@ -70,7 +69,6 @@ type RenderTemplateResult struct {
 }
 
 func (r *RenderTemplateResult) Apply(req *http.Request, w http.ResponseWriter) {
-	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	if r.TemplateSet.Lookup(r.TemplateName) == nil {
 		w.Write([]byte(fmt.Sprintf("can't found template:%s\n",
@@ -104,24 +102,15 @@ func (r *RenderUserStaticFileResult) Apply(req *http.Request, w http.ResponseWri
 }
 
 type RenderJsonResult struct {
-	obj interface{}
+	obj map[string]interface{}
 }
 
 func (r *RenderJsonResult) Apply(req *http.Request, w http.ResponseWriter) {
-	var b []byte
-	var err error
-	switch v := r.obj.(type) {
-	case string:
-		b = []byte(v)
-	default:
-		b, err = json.Marshal(r.obj)
-	}
+	w.Header().Set("Content-Type", "application/json;charset=UTF-8")
+	encoder := json.NewEncoder(w)
 
-	if err != nil {
+	if err := encoder.Encode(r.obj); err != nil {
 		(&ErrorResult{Error: err}).Apply(req, w)
 		return
 	}
-	w.WriteHeader(http.StatusOK)
-	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	w.Write(b)
 }

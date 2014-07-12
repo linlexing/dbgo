@@ -64,6 +64,7 @@ type ControllerAgent struct {
 	Response         http.ResponseWriter
 	Session          *Session
 	Project          Project
+	JsonBody         map[string]interface{}
 	UserName         string
 	Logged           bool
 	ControllerName   string
@@ -164,7 +165,7 @@ func (c *ControllerAgent) ExportData(dumpName string) (string, error) {
 	}
 	return rev, nil
 }
-func (c *ControllerAgent) RenderJson(data interface{}) Result {
+func (c *ControllerAgent) RenderJson(data map[string]interface{}) Result {
 	c.Result = &RenderJsonResult{data}
 	return c.Result
 }
@@ -281,14 +282,8 @@ func (c *ControllerAgent) jsRenderStaticFile(call otto.FunctionCall) otto.Value 
 	return otto.NullValue()
 }
 func (c *ControllerAgent) jsRenderJson(call otto.FunctionCall) otto.Value {
-	if len(call.ArgumentList) > 0 {
-		if call.Argument(0).Class() == "String" {
-			c.RenderJson(call.Argument(0).String())
-		} else if call.Argument(0).Class() == "Object" {
-			v, _ := c.jsRuntime.Call("JSON.stringify", nil, call.Argument(0))
-			c.RenderJson(v.String())
-		}
-	}
+	v := oftenfun.AssertObject(call.Argument(0))
+	c.RenderJson(v)
 	return otto.NullValue()
 }
 func (c *ControllerAgent) jsUrlAuthed(call otto.FunctionCall) otto.Value {
@@ -314,10 +309,12 @@ func (c *ControllerAgent) jsModelChecks(call otto.FunctionCall) otto.Value {
 func (c *ControllerAgent) object() map[string]interface{} {
 
 	return map[string]interface{}{
+		"ActionName":       c.ActionName,
 		"UrlAuth":          c.jsUrlAuthed,
 		"GradeCanUse":      c.jsGradeCanUse,
 		"CurrentGrade":     c.CurrentGrade.String(),
 		"ControllerName":   c.ControllerName,
+		"JsonBody":         c.JsonBody,
 		"TagPath":          c.TagPath,
 		"Render":           c.jsRender,
 		"RenderTemplate":   c.jsRenderTemplate,

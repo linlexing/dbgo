@@ -19,6 +19,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"time"
 )
 
 const (
@@ -65,20 +66,25 @@ type project struct {
 	metaProject string
 	repository  string
 
-	lockTableDefine *sync.Mutex
-	lockVersion     *sync.Mutex
-	lockTemplateSet *sync.Mutex
-	lockCheck       *sync.Mutex
-	lockPackage     *sync.Mutex
+	lockTableDefine  *sync.Mutex
+	lockVersion      *sync.Mutex
+	lockTemplateSet  *sync.Mutex
+	lockCheck        *sync.Mutex
+	lockPackage      *sync.Mutex
+	lockPackageNames *sync.Mutex
 
 	cachePackage map[struct {
 		Name  string
 		Grade grade.Grade
 	}]*otto.Script
-	cacheVersion     map[grade.Grade]int64 //每级grade均对应一个最新的版本
-	cacheTableDefine map[string]*grade.DataTable
-	cacheTemplateSet *template.Template
-	cacheCheck       map[string][]*Check
+	cacheVersion      map[grade.Grade]int64 //每级grade均对应一个最新的版本
+	cacheTableDefine  map[string]*grade.DataTable
+	cacheTemplateSet  *template.Template
+	cacheCheck        map[string][]*Check
+	cachePackageNames map[struct {
+		FileName string
+		Grade    grade.Grade
+	}][]string
 }
 type Action struct {
 	ID     string
@@ -99,26 +105,6 @@ func lx_dump() *grade.DataTable {
 	table.AddColumn(grade.NewColumn("imprefreshstruct", grade.GRADE_ROOT, pghelper.TypeBool, false))
 	table.AddColumn(grade.NewColumn("checkversion", grade.GRADE_ROOT, pghelper.TypeBool, false))
 	table.SetPK("name", "id")
-	return table
-}
-
-func lx_version() *grade.DataTable {
-	table := grade.NewDataTable("lx_version", grade.GRADE_ROOT)
-	table.AddColumn(grade.NewColumn("grade", grade.GRADE_ROOT, pghelper.TypeString, true))
-	table.AddColumn(grade.NewColumn("verno", grade.GRADE_ROOT, pghelper.TypeInt64, true))
-	table.AddColumn(grade.NewColumn("verlabel", grade.GRADE_ROOT, pghelper.TypeString, false))
-	table.AddColumn(grade.NewColumn("changelog", grade.GRADE_ROOT, pghelper.TypeString, false))
-	table.AddColumn(grade.NewColumn("releasetime", grade.GRADE_ROOT, pghelper.TypeTime, false))
-	table.SetPK("grade", "verno")
-	return table
-}
-
-func lx_view() *grade.DataTable {
-	table := grade.NewDataTable("lx_view", grade.GRADE_ROOT)
-	table.AddColumn(grade.NewColumnT("name", grade.GRADE_ROOT, pghelper.NewPGType(pghelper.TypeString, 0, true), ""))
-	table.AddColumn(grade.NewColumnT("grade", grade.GRADE_ROOT, pghelper.NewPGType(pghelper.TypeString, 0, true), ""))
-	table.AddColumn(grade.NewColumnT("content", grade.GRADE_ROOT, pghelper.NewPGType(pghelper.TypeString, 0, false), ""))
-	table.SetPK("name")
 	return table
 }
 
@@ -154,7 +140,7 @@ func RepositoryPath(repo string) string {
 	return filepath.Join(AppPath, "repository", repo, "_pd")
 }
 func publicTables() []*grade.DataTable {
-	return []*grade.DataTable{lx_dump(), lx_version(), lx_view(), lx_checkaddition(), lx_check()}
+	return []*grade.DataTable{lx_dump(), lx_checkaddition(), lx_check()}
 
 }
 func NewProject(name, dburl, repository string) (Project, error) {
@@ -163,11 +149,12 @@ func NewProject(name, dburl, repository string) (Project, error) {
 		dbHelper:   grade.NewPGHelper(dburl),
 		repository: repository,
 
-		lockTableDefine: &sync.Mutex{},
-		lockVersion:     &sync.Mutex{},
-		lockTemplateSet: &sync.Mutex{},
-		lockCheck:       &sync.Mutex{},
-		lockPackage:     &sync.Mutex{},
+		lockTableDefine:  &sync.Mutex{},
+		lockVersion:      &sync.Mutex{},
+		lockTemplateSet:  &sync.Mutex{},
+		lockCheck:        &sync.Mutex{},
+		lockPackage:      &sync.Mutex{},
+		lockPackageNames: &sync.Mutex{},
 
 		cacheVersion:     map[grade.Grade]int64{},
 		cacheTableDefine: map[string]*grade.DataTable{},
@@ -177,6 +164,10 @@ func NewProject(name, dburl, repository string) (Project, error) {
 			Name  string
 			Grade grade.Grade
 		}]*otto.Script{},
+		cachePackageNames: map[struct {
+			FileName string
+			Grade    grade.Grade
+		}][]string{},
 	}
 
 	//先确保有公共的表
@@ -383,6 +374,15 @@ func (p *project) ClearPackageCache() {
 	}]*otto.Script{}
 	return
 }
+func (p *project) ClearPackageNamesCache() {
+	p.lockPackageNames.Lock()
+	defer p.lockPackageNames.Unlock()
+	p.cachePackageNames = map[struct {
+		FileName string
+		Grade    grade.Grade
+	}][]string{}
+	return
+}
 func (p *project) ClearCache() {
 	log.INFO.Printf("project %s clear cache.", p.Name())
 	p.ClearCheckCache()
@@ -390,6 +390,7 @@ func (p *project) ClearCache() {
 	p.ClearTableDefineCache()
 	p.ClearTemplateSetCache()
 	p.ClearVersionCache()
+	p.ClearPackageNamesCache()
 }
 
 func (p *project) getTableDefine(tablename string) (result *grade.DataTable, err error) {
@@ -634,7 +635,36 @@ func (p *project) ReloadRepository() error {
 	} else if err != nil {
 		return err
 	}
-	return p.ImportData(repositoryPath)
+	if err := p.ImportData(repositoryPath); err != nil {
+		return err
+	}
+	//fetch the static file to disk
+	return p.DBHelper().Query(func(rows *sql.Rows) error {
+		var filename string
+		var filetime time.Time
+		var content sql.RawBytes
+		for rows.Next() {
+			if err := rows.Scan(&filename, &content, &filetime); err != nil {
+				return err
+			}
+			trueFileName := filepath.Join(AppPath, "static", p.Name(), filename)
+			if err := os.MkdirAll(filepath.Dir(trueFileName), os.ModePerm); err != nil {
+				return err
+			}
+			info, err := os.Stat(trueFileName)
+			if err == os.ErrExist || (err == nil && filetime.After(info.ModTime())) {
+				if err := ioutil.WriteFile(trueFileName, []byte(content), os.ModePerm); err != nil {
+					return err
+				}
+				if err := os.Chtimes(trueFileName, filetime, filetime); err != nil {
+					return err
+				}
+			} else if err != nil {
+				return err
+			}
+		}
+		return nil
+	}, SQL_GetStatic)
 }
 func (p *project) loadPackage(rm *otto.Otto, fileName string, gradestr grade.Grade) (*otto.Script, error) {
 	rev := ""
@@ -681,19 +711,31 @@ func (p *project) Require(rm *otto.Otto, fileName, currentModuleDir string, grad
 		return rev, moduleFileName, nil
 	}
 }
-func (p *project) GetPackageNames(dirName string, gradestr grade.Grade) ([]string, error) {
-	rev := []string{}
-	if err := p.DBHelper().Query(func(rows *sql.Rows) error {
-		var name string
-		for rows.Next() {
-			if err := rows.Scan(&name); err != nil {
-				return err
+func (p *project) GetPackageNames(dirNameStr string, gradestr grade.Grade) ([]string, error) {
+	p.lockPackageNames.Lock()
+	defer p.lockPackageNames.Unlock()
+	dirName := struct {
+		FileName string
+		Grade    grade.Grade
+	}{dirNameStr, gradestr}
+	if rev, ok := p.cachePackageNames[dirName]; ok {
+		return rev, nil
+	} else {
+		rev := []string{}
+		if err := p.DBHelper().Query(func(rows *sql.Rows) error {
+			var name string
+			for rows.Next() {
+				if err := rows.Scan(&name); err != nil {
+					return err
+				}
+				rev = append(rev, name)
 			}
-			rev = append(rev, name)
+			return nil
+		}, SQL_GetPackageNames, dirNameStr, string(gradestr)); err != nil {
+			return nil, err
 		}
-		return nil
-	}, SQL_GetPackageNames, dirName, string(gradestr)); err != nil {
-		return nil, err
+		p.cachePackageNames[dirName] = rev
+		return rev, nil
 	}
-	return rev, nil
+
 }

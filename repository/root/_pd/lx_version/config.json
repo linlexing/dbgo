@@ -5,7 +5,10 @@
 	"CurrentGrade": "root",
 	"RowCount": 0,
 	"FileColumns": {
-		"script": ".sql"
+		"changelog": ".txt"
+	},
+	"FileTimeColumns":{
+		"releasetime":"changelog"
 	},
 	"SqlWhere": "grade_canuse('root',grade)",
 	"ImpAutoRemove": true,

@@ -86,7 +86,7 @@ func main() {
 		}
 	})
 	Jobs.Start()
-	Filters = []Filter{PanicFilter, RouteFilter, SessionFilter, BuildObjectFilter, InterceptFilter, LoadControlFilter, UrlAuthFilter, UserFilter, ActionFilter}
+	Filters = []Filter{PanicFilter, RouteFilter, ParseJsonFilter, SessionFilter, BuildObjectFilter, InterceptFilter, LoadControlFilter, UrlAuthFilter, UserFilter, ActionFilter}
 	http.HandleFunc("/favicon.ico", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(404)
 	})

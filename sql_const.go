@@ -21,4 +21,5 @@ const (
 	SQL_GetCheckResult  = "select pks,checkid,grade,refreshtime,refreshby from lx_checkresult where tablename=$1 and pks=$2 and $3 like grade||'%'"
 	SQL_GetPackage      = `select script from lx_package where filename like $1||'%' and right(filename,length(filename)-length($1))~'^[^/]*$' and grade_canuse($2,grade) order by filename`
 	SQL_GetPackageNames = `select filename from lx_package where filename like $1||'%' and right(filename,length(filename)-length($1))~'^/?[^/]+\.js$' and grade_canuse($2,grade) order by filename`
+	SQL_GetStatic       = "select filename,content,lasttime from lx_static order by filename"
 )

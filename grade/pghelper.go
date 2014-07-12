@@ -14,6 +14,7 @@ import (
 	"path/filepath"
 	"strings"
 	"text/template"
+	"time"
 )
 
 type PGHelper struct {
@@ -94,6 +95,7 @@ func (p *PGHelper) Object() map[string]interface{} {
 		"Table":        p.jsTable,
 	}
 }
+
 func (ahelp *PGHelper) Import(pathName string) error {
 	configFileName := filepath.Join(pathName, "config.json")
 	defineFileName := filepath.Join(pathName, "define.json")
@@ -121,9 +123,12 @@ func (ahelp *PGHelper) Import(pathName string) error {
 		}
 	}
 	buf, err = ioutil.ReadFile(runAtImportFileName)
-	if err != nil {
+	if os.IsNotExist(err) {
+		buf = nil
+	} else if err != nil {
 		return err
 	}
+
 	runAtImportSql := string(buf)
 
 	buf, err = ioutil.ReadFile(defineFileName)
@@ -154,18 +159,41 @@ func (ahelp *PGHelper) Import(pathName string) error {
 	}
 	defer ahelp.DropTable(tmpTableName)
 	dataCSV, err := os.Open(dataCsvFileName)
-	if err != nil {
+	if err != nil && !os.IsNotExist(err) {
+		return err
+	} else if err == nil {
+		// close fo on exit and check for its returned error
+		defer func() {
+			if err := dataCSV.Close(); err != nil {
+				panic(err)
+			}
+		}()
+		// make a reader buffer
+		rCSV := csv.NewReader(dataCSV)
+		if err := importFromCsv(pathName, rCSV, table, &config); err != nil {
+			return err
+		}
+	}
+	//update true table struct if the ImpRefreshStruct is true
+	table.TableName = trueTableName
+	table.Temp = false
+	if config.ImpRefreshStruct {
+		if err := table.UpdateStruct(); err != nil {
+			return err
+		}
+	}
+	//run import sql
+	if err := ahelp.ExecuteSql(runAtImportSql); err != nil {
 		return err
 	}
-	// close fo on exit and check for its returned error
-	defer func() {
-		if err := dataCSV.Close(); err != nil {
-			panic(err)
-		}
-	}()
-	// make a reader buffer
-	rCSV := csv.NewReader(dataCSV)
+	if err := ahelp.Merge(trueTableName, tmpTableName, table.ColumnNames(), table.PK, config.ImpAutoRemove, config.SqlWhere); err != nil {
+		return err
+	}
+	return nil
+}
+func importFromCsv(pathName string, rCSV *csv.Reader, table *DBTable, config *dumpConfig) error {
 	var colNames []string
+	var err error
 	colNames, err = rCSV.Read()
 	if err != nil && err != io.EOF {
 		return err
@@ -173,7 +201,6 @@ func (ahelp *PGHelper) Import(pathName string) error {
 	if err == nil {
 		//map text column index to table column index
 		columnIndexes := make([]int, len(colNames))
-		fileColumnIndexes := map[string]int{}
 		for i, v := range colNames {
 			bFound := false
 			for _, col := range table.Columns {
@@ -187,9 +214,19 @@ func (ahelp *PGHelper) Import(pathName string) error {
 				return fmt.Errorf("the column %q not exits at table", v)
 			}
 		}
+
+		fileColumnIndexes := map[string]int{}
 		for k, _ := range config.FileColumns {
 			fileColumnIndexes[k] = table.ColumnIndex(k)
 			if fileColumnIndexes[k] < 0 {
+				return fmt.Errorf("the column %q not exits at table", k)
+			}
+		}
+
+		fileTimeColumnIndexes := map[string]int{}
+		for k, _ := range config.FileTimeColumns {
+			fileTimeColumnIndexes[k] = table.ColumnIndex(k)
+			if fileTimeColumnIndexes[k] < 0 {
 				return fmt.Errorf("the column %q not exits at table", k)
 			}
 		}
@@ -235,6 +272,19 @@ func (ahelp *PGHelper) Import(pathName string) error {
 					}
 				}
 			}
+			//process the file time column data
+			for i, flColumnName := range config.FileTimeColumns {
+				if ext, ok := config.FileColumns[flColumnName]; ok {
+					icolIndex := fileTimeColumnIndexes[i]
+					tv, err := readFileTimeColumn(pathName, flColumnName, ext, keys)
+					if err != nil {
+						return err
+					}
+					addValues[icolIndex] = tv
+				} else {
+					return fmt.Errorf("the column %s not is file column", flColumnName)
+				}
+			}
 			if err := table.AddValues(addValues...); err != nil {
 				return err
 			}
@@ -255,27 +305,19 @@ func (ahelp *PGHelper) Import(pathName string) error {
 			return err
 		}
 	}
-	//update true table struct if the ImpRefreshStruct is true
-	table.TableName = trueTableName
-	table.Temp = false
-	if config.ImpRefreshStruct {
-		if err := table.UpdateStruct(); err != nil {
-			return err
-		}
-	}
-	//run import sql
-	if err := ahelp.ExecuteSql(runAtImportSql); err != nil {
-		return err
-	}
-	if err := ahelp.Merge(trueTableName, tmpTableName, table.ColumnNames(), table.PK, config.ImpAutoRemove, config.SqlWhere); err != nil {
-		return err
-	}
 	return nil
 }
-
 func readFileColumn(pathName, columnName, ext string, primaryKey []interface{}) ([]byte, error) {
 	fileName := filepath.Join(pathName, columnName, primaryKeys2FileName(primaryKey, ext))
 	return ioutil.ReadFile(fileName)
+}
+func readFileTimeColumn(pathName, columnName, ext string, primaryKey []interface{}) (time.Time, error) {
+	fileName := filepath.Join(pathName, columnName, primaryKeys2FileName(primaryKey, ext))
+	if info, err := os.Stat(fileName); err != nil {
+		return time.Time{}, err
+	} else {
+		return info.ModTime(), nil
+	}
 }
 func primaryKeys2FileName(values []interface{}, ext string) string {
 	strs := oftenfun.SafeToStrings(values)
@@ -306,12 +348,33 @@ func writeFileColumn(pathName, columnName, ext string, primaryKey []interface{},
 	}
 	return nil
 }
+func writeFileTimeColumn(pathName, columnName, ext string, primaryKey []interface{}, value interface{}) error {
+
+	fileName := filepath.Join(pathName, columnName, primaryKeys2FileName(primaryKey, ext))
+	if _, err := os.Stat(fileName); err != nil {
+		return err
+	}
+	var t time.Time
+	switch tv := value.(type) {
+	case time.Time:
+		t = tv
+	case pghelper.NullTime:
+		t = tv.Time
+	default:
+		panic(fmt.Errorf("the type %T invalid", value))
+	}
+	if err := os.Chtimes(fileName, t, t); err != nil {
+		return err
+	}
+	return nil
+}
 
 type ExportParam struct {
 	TableName        string
 	CurrentGrade     Grade
 	PathName         string
 	FileColumns      map[string]string
+	FileTimeColumns  map[string]string
 	SqlWhere         string
 	ImpAutoRemove    bool
 	SqlRunAtImport   string
@@ -323,6 +386,7 @@ type dumpConfig struct {
 	CurrentGrade     Grade
 	RowCount         int64
 	FileColumns      map[string]string
+	FileTimeColumns  map[string]string
 	SqlWhere         string
 	ImpAutoRemove    bool
 	ImpRefreshStruct bool
@@ -386,8 +450,10 @@ func (p *PGHelper) Export(param *ExportParam) error {
 		return err
 	}
 	//write the runatimport sql
-	if err := ioutil.WriteFile(filepath.Join(pathName, "runatimport.sql"), []byte(param.SqlRunAtImport), os.ModePerm); err != nil {
-		return err
+	if param.SqlRunAtImport != "" {
+		if err := ioutil.WriteFile(filepath.Join(pathName, "runatimport.sql"), []byte(param.SqlRunAtImport), os.ModePerm); err != nil {
+			return err
+		}
 	}
 	//write the table struct define
 	if bys, err := json.MarshalIndent(t.DataTable, "", "\t"); err != nil {
@@ -416,6 +482,7 @@ func (p *PGHelper) Export(param *ExportParam) error {
 		CurrentGrade:     param.CurrentGrade,
 		RowCount:         count,
 		FileColumns:      param.FileColumns,
+		FileTimeColumns:  param.FileTimeColumns,
 		SqlWhere:         sqlWhere,
 		ImpAutoRemove:    param.ImpAutoRemove,
 		ImpRefreshStruct: param.ImpRefreshStruct,
@@ -462,7 +529,14 @@ func (p *PGHelper) Export(param *ExportParam) error {
 					if err := writeFileColumn(pathName, col.Name, ext, table.KeyValues(i), row[colIdx]); err != nil {
 						return err
 					}
-
+				} else if flColumnName, ok := param.FileTimeColumns[col.Name]; ok {
+					if ext, ok := param.FileColumns[flColumnName]; ok {
+						if err := writeFileTimeColumn(pathName, flColumnName, ext, table.KeyValues(i), row[colIdx]); err != nil {
+							return err
+						}
+					} else {
+						return fmt.Errorf("the column %s not is file column", flColumnName)
+					}
 				} else {
 					if str, err := col.String(row[colIdx]); err != nil {
 						return err

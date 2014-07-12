@@ -1,5 +1,5 @@
 //PGType const
-i =0;
+var i =0;
 var TypeString 			= i++;
 var TypeBool 			= i++;
 var TypeInt64 			= i++;

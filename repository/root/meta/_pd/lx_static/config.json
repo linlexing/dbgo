@@ -5,7 +5,10 @@
 	"CurrentGrade": "root",
 	"RowCount": 0,
 	"FileColumns": {
-		"script": ".sql"
+		"content": ""
+	},
+	"FileTimeColumns":{
+		"lasttime":"content"
 	},
 	"SqlWhere": "grade_canuse('root',grade)",
 	"ImpAutoRemove": true,

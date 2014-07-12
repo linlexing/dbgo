@@ -1,0 +1,62 @@
+{
+	"TableName": "lx_version",
+	"PKConstraintName": "lx_version_pkey",
+	"PK": [
+		"grade",
+		"verno"
+	],
+	"Desc": {
+		"Grade": "root"
+	},
+	"Columns": [
+		{
+			"Name": "grade",
+			"PGType": {
+				"Type": 0,
+				"MaxSize": 0,
+				"NotNull": true
+			},
+			"Default": "",
+			"Desc": {
+				"Grade": "root"
+			}
+		},
+		{
+			"Name": "verno",
+			"PGType": {
+				"Type": 2,
+				"MaxSize": 0,
+				"NotNull": true
+			},
+			"Default": "",
+			"Desc": {
+				"Grade": "root"
+			}
+		},
+		{
+			"Name": "changelog",
+			"PGType": {
+				"Type": 0,
+				"MaxSize": 0,
+				"NotNull": false
+			},
+			"Default": "",
+			"Desc": {
+				"Grade": "root"
+			}
+		},
+		{
+			"Name": "releasetime",
+			"PGType": {
+				"Type": 4,
+				"MaxSize": 0,
+				"NotNull": false
+			},
+			"Default": "",
+			"Desc": {
+				"Grade": "root"
+			}
+		}
+	],
+	"Indexes": {}
+}

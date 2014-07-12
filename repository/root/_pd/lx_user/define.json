@@ -1,0 +1,61 @@
+{
+	"TableName": "lx_user",
+	"PKConstraintName": "lx_user_pkey",
+	"PK": [
+		"name"
+	],
+	"Desc": {
+		"Grade": "root"
+	},
+	"Columns": [
+		{
+			"Name": "name",
+			"PGType": {
+				"Type": 0,
+				"MaxSize": 64,
+				"NotNull": true
+			},
+			"Default": "",
+			"Desc": {
+				"Grade": "root"
+			}
+		},
+		{
+			"Name": "pwd",
+			"PGType": {
+				"Type": 5,
+				"MaxSize": 0,
+				"NotNull": true
+			},
+			"Default": "",
+			"Desc": {
+				"Grade": "root"
+			}
+		},
+		{
+			"Name": "salt",
+			"PGType": {
+				"Type": 5,
+				"MaxSize": 0,
+				"NotNull": true
+			},
+			"Default": "",
+			"Desc": {
+				"Grade": "root"
+			}
+		},
+		{
+			"Name": "email",
+			"PGType": {
+				"Type": 0,
+				"MaxSize": 300,
+				"NotNull": true
+			},
+			"Default": "",
+			"Desc": {
+				"Grade": "root"
+			}
+		}
+	],
+	"Indexes": {}
+}
