@@ -1,7 +1,13 @@
-pc = require("/const.js")
+var pc = require("/const.js");
+var fmt= require("/fmt.js");
 exports.When =pc.BFORE;
 exports.Intercept = function(c,filter){
   //render table,get table's data,checks,checkresult etc.
+  c.RenderNGPage=function(args){
+    args=args||{};
+	args.tmplName = fmt.Sprintf("%s/%s",c.ControllerName,c.ActionName);
+	c.RenderTemplate("ngpage",args);
+  };
   c.RenderModelOperate=function(optName,keys,args){
     args=args||{};
     opt = c.Model("rt_modeloperate");

@@ -2,7 +2,10 @@ filename,grade
 /const.js,root
 /fmt.js,root
 /grade.js,root
+/convert.js,root
+/sha256.js,root
 /intercept/root_001.js,root
 /controller/login.js,root
+/controller/home.js,root
 /controller/manager.js,root
 /controller/static.js,root

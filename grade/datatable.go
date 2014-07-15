@@ -110,7 +110,6 @@ func (d *DataTable) Object() map[string]interface{} {
 		"DeleteRow":        d.jsDeleteRow,
 		"Find":             d.jsFind,
 		"GetOriginRow":     d.jsGetOriginRow,
-		"GetRow":           d.jsGetRow,
 		"GetValue":         d.jsGetValue,
 		"GetValues":        d.jsGetValues,
 		"HasChange":        d.jsHasChange,
@@ -119,6 +118,7 @@ func (d *DataTable) Object() map[string]interface{} {
 		"KeyValues":        d.jsKeyValues,
 		"NewRow":           d.jsNewRow,
 		"PK":               d.jsPK,
+		"Row":              d.jsRow,
 		"RowCount":         d.jsRowCount,
 		"Rows":             d.jsRows,
 		"Search":           d.jsSearch,
@@ -166,11 +166,11 @@ func (d *DataTable) jsAddColumn(call otto.FunctionCall) otto.Value {
 	return otto.NullValue()
 }
 
-func (d *DataTable) jsGetRow(call otto.FunctionCall) otto.Value {
+func (d *DataTable) jsRow(call otto.FunctionCall) otto.Value {
 
 	index := oftenfun.AssertInteger(call.Argument(0))
 
-	return oftenfun.JSToValue(call.Otto, d.GetRow(index))
+	return oftenfun.JSToValue(call.Otto, d.Row(index))
 }
 func (d *DataTable) jsNewRow(call otto.FunctionCall) otto.Value {
 	return oftenfun.JSToValue(call.Otto, d.NewRow())

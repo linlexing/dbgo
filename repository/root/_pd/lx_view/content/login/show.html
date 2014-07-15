@@ -41,7 +41,7 @@
 	}
 </style>
 <script>
-	app.controller('MainCtrl', ['$scope', '$http',function($scope,$http) {
+	app.controller('MainCtrl', ['$scope', '$http','$window',function($scope,$http,$window) {
 		$scope.userName = '';
 		$scope.password = '';
 		$scope.error = null;
@@ -49,7 +49,7 @@
 			$http.post(<#url "login.auth"#>,{userName:$scope.userName,password:$scope.password})
 				.success(function(data,status,headers,config,statusText){
 					if(data.ok){
-
+						$window.location = <#url "home.show"#>;
 					}else{
 						$scope.error="the user name or password invalid"
 					}

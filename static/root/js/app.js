@@ -28,7 +28,7 @@ var BILL_BROWSE = i++;
 function regexp_like(value,regstr){
 	return new RegExp(regstr,"m").test(value);
 }
-var app = angular.module('app',['ui.bootstrap']);
+var app = angular.module('app',['mgcrea.ngStrap']);
 app.directive('lxField', ['$compile',function ($compile) {
   return {
     restrict: 'A',

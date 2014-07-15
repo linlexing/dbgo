@@ -7,7 +7,7 @@
 	"FileColumns": {
 		"script": ""
 	},
-	"SqlWhere": "'root' like grade||'%'",
+	"SqlWhere": "grade_canuse('root',grade)",
 	"ImpAutoRemove": true,
 	"ImpRefreshStruct": true,
 	"CheckVersion": true

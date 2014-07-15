@@ -1,4 +1,5 @@
 name,grade
 table,root
 ngpage,root
-login/login,root
+login/show,root
+home/show,root

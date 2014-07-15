@@ -1,3 +1,8 @@
 filename,grade
 /const.js,root
+/fmt.js,root
+/grade.js,root
 /intercept/root_001.js,root
+/controller/login.js,root
+/controller/manager.js,root
+/controller/static.js,root

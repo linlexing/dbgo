@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/sha256"
 	"fmt"
 	"github.com/linlexing/dbgo/grade"
 	"github.com/linlexing/dbgo/oftenfun"
@@ -31,7 +32,29 @@ func package_grade() map[string]interface{} {
 		"GradeCanUse": JSGradeCanUse,
 	}
 }
-
+func package_convert() map[string]interface{} {
+	return map[string]interface{}{
+		"Str2Bytes": func(call otto.FunctionCall) otto.Value {
+			str := oftenfun.AssertString(call.Argument(0))
+			rev := []byte(str)
+			return oftenfun.JSToValue(call.Otto, rev)
+		},
+		"Bytes2Str": func(call otto.FunctionCall) otto.Value {
+			bys := oftenfun.AssertByteArray(call.Argument(0))
+			rev := string(bys)
+			return oftenfun.JSToValue(call.Otto, rev)
+		},
+	}
+}
+func package_sha256() map[string]interface{} {
+	return map[string]interface{}{
+		"Sum256": func(call otto.FunctionCall) otto.Value {
+			bys := oftenfun.AssertByteArray(call.Argument(0))
+			rev := sha256.Sum256(bys)
+			return oftenfun.JSToValue(call.Otto, rev)
+		},
+	}
+}
 func package_fmt() map[string]interface{} {
 	return map[string]interface{}{
 		"Sprint": func(call otto.FunctionCall) otto.Value {
@@ -50,8 +73,12 @@ func NewJSPool(size int) *JSPool {
 	// Create a buffered channel allowing 'size' senders
 	p.pool = make(chan *otto.Otto, size)
 	first := otto.New()
-	first.Set("_grade", package_grade())
-	first.Set("_fmt", package_fmt())
+	first.Set("_go", map[string]interface{}{
+		"grade":   package_grade(),
+		"fmt":     package_fmt(),
+		"sha256":  package_sha256(),
+		"convert": package_convert(),
+	})
 	p.pool <- first
 	for x := 1; x < size; x++ {
 		p.pool <- first.Copy()

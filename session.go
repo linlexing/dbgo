@@ -46,6 +46,17 @@ func (s *SessionManager) Get(pname, sid, key string) string {
 		return string(buf)
 	}
 }
+func (s *SessionManager) All() (map[string]string, error) {
+	rev := map[string]string{}
+	iter := s.db.NewIterator(nil, nil)
+	for iter.Next() {
+		// Remember that the contents of the returned slice should not be modified, and
+		// only valid until the next call to Next.
+		rev[string(iter.Key())] = string(iter.Value())
+	}
+	iter.Release()
+	return rev, iter.Error()
+}
 func bytes2Time(b []byte) time.Time {
 	result := time.Time{}
 	if err := result.UnmarshalBinary(b); err != nil {
@@ -120,6 +131,9 @@ func (s *Session) Set(key, value string) (err error) {
 }
 func (s *Session) Get(key string) string {
 	return SDB.Get(s.ProjectName, s.SessionID, key)
+}
+func (s *Session) All() (map[string]string, error) {
+	return SDB.All()
 }
 func (s *Session) jsGet(call otto.FunctionCall) otto.Value {
 	r, _ := otto.ToValue(s.Get(call.Argument(0).String()))

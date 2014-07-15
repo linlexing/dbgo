@@ -218,6 +218,34 @@ func AssertArray(v otto.Value) []interface{} {
 	}
 	return nv.([]interface{})
 }
+func AssertByteArray(value otto.Value) []byte {
+	switch value.Class() {
+	case "GoArray", "Array":
+		nv, err := value.Export()
+		if err != nil {
+			panic(err)
+		}
+		switch tv := nv.(type) {
+		case []byte:
+			return tv
+		case []interface{}:
+			rev := make([]byte, len(tv))
+			for i, v := range tv {
+				switch ttv := v.(type) {
+				case byte:
+					rev[i] = ttv
+				default:
+					panic(fmt.Errorf("the value %v(%T) not is byte", ttv, ttv))
+				}
+			}
+			return rev
+		default:
+			panic(fmt.Errorf("the value %v(%T) not is byte array", tv, tv))
+		}
+	default:
+		panic(jsmvcerror.JSNotIsArray)
+	}
+}
 func AssertString(v interface{}) string {
 	switch t := v.(type) {
 	case otto.Value:

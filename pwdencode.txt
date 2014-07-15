@@ -1,0 +1,15 @@
+package main
+
+import
+( "fmt"
+ "crypto/sha256"
+)
+
+func main() {
+  pwd := []byte("llx123")
+  salt := []byte{1,2,3,4,5,6 ,7,8,9,10}
+  hash := sha256.Sum256(append(salt,pwd...))
+  fmt.Printf("pwd:\\\\x%X\nsalt:\\\\x%X\nhash:\\\\x%X\n",pwd,salt,hash)
+}
+
+insert into lx_user(name,pwd,salt)values('llx',E'\\x9BD4B5E7DDB0B64405E7D10FB79B203866CCD06E7F177D1E69F13B2197574F9E',E'\\x0102030405060708090A')

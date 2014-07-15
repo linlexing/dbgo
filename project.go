@@ -41,6 +41,7 @@ type Intercept struct {
 
 type Project interface {
 	Name() string
+	DisplayLabel() string
 
 	DBHelper() *grade.PGHelper
 	DefaultAction() (string, string)
@@ -61,10 +62,11 @@ type Project interface {
 }
 
 type project struct {
-	name        string
-	dbHelper    *grade.PGHelper
-	metaProject string
-	repository  string
+	name         string
+	displayLabel string
+	dbHelper     *grade.PGHelper
+	metaProject  string
+	repository   string
 
 	lockTableDefine  *sync.Mutex
 	lockVersion      *sync.Mutex
@@ -85,11 +87,6 @@ type project struct {
 		FileName string
 		Grade    grade.Grade
 	}][]string
-}
-type Action struct {
-	ID     string
-	Script string
-	Grade  string
 }
 
 func lx_dump() *grade.DataTable {
@@ -143,11 +140,12 @@ func publicTables() []*grade.DataTable {
 	return []*grade.DataTable{lx_dump(), lx_checkaddition(), lx_check()}
 
 }
-func NewProject(name, dburl, repository string) (Project, error) {
+func NewProject(name, label, dburl, repository string) (Project, error) {
 	p := &project{
-		name:       name,
-		dbHelper:   grade.NewPGHelper(dburl),
-		repository: repository,
+		name:         name,
+		displayLabel: label,
+		dbHelper:     grade.NewPGHelper(dburl),
+		repository:   repository,
 
 		lockTableDefine:  &sync.Mutex{},
 		lockVersion:      &sync.Mutex{},
@@ -189,7 +187,7 @@ func (p *project) loadVersion() (map[grade.Grade]int64, error) {
 	}
 	rev := map[grade.Grade]int64{}
 	for i := 0; i < tab.RowCount(); i++ {
-		row := tab.GetRow(i)
+		row := tab.Row(i)
 		rev[grade.Grade(row["grade"].(string))] = row["verno"].(int64)
 	}
 	return rev, nil
@@ -246,7 +244,7 @@ func (p *project) loadTemplate(f template.FuncMap) (*template.Template, error) {
 		return nil, err
 	}
 	for i := 0; i < tab.RowCount(); i++ {
-		row := tab.GetRow(i)
+		row := tab.Row(i)
 		content := fmt.Sprintf(`
 			<#if .c.CurrentGrade.CanUse %q#>
 			%s
@@ -281,7 +279,7 @@ func (p *project) DBHelper() *grade.PGHelper {
 	return p.dbHelper
 }
 func (p *project) DefaultAction() (string, string) {
-	return "login", "login"
+	return "login", "show"
 }
 
 func (p *project) TemplateSet(f template.FuncMap) (*template.Template, error) {
@@ -513,7 +511,7 @@ func (p *project) ExportData(dumpName string, expFile *os.File, gradestr grade.G
 		os.RemoveAll(tmpDir)
 	}()
 	for i := 0; i < dumpData.RowCount(); i++ {
-		row := dumpData.GetRow(i)
+		row := dumpData.Row(i)
 		fileColumns := map[string]string{}
 		for k, v := range row["filecolumns"].(pghelper.JSON) {
 			fileColumns[k] = oftenfun.SafeToString(v)
@@ -667,24 +665,33 @@ func (p *project) ReloadRepository() error {
 	}, SQL_GetStatic)
 }
 func (p *project) loadPackage(rm *otto.Otto, fileName string, gradestr grade.Grade) (*otto.Script, error) {
-	rev := ""
+	strTmp := []string{}
 	if err := p.DBHelper().Query(func(rows *sql.Rows) error {
 		var script string
 		for rows.Next() {
 			if err := rows.Scan(&script); err != nil {
 				return err
 			}
-			rev += "\n" + script
+			strTmp = append(strTmp, script)
 		}
 		return nil
 	}, SQL_GetPackage, fileName, gradestr.String()); err != nil {
 		return nil, err
 	}
-	if rev == "" {
+	str := strings.Join(strTmp, "\n")
+	if len(strTmp) == 0 {
 		return nil, fmt.Errorf("empty package:%s(%s)", fileName, gradestr)
 	}
-	rev = "(function(module) {var require = module.require;var exports = module.exports;\n" + rev + "\n})"
-	return rm.Compile(fileName, rev)
+	rev := "(function(module) {var require = module.require;var exports = module.exports;" + str + ";module.exports=exports;})"
+	src, err := rm.Compile(fileName, rev)
+	if err != nil {
+		src := []string{}
+		for i, v := range strings.Split(str, "\n") {
+			src = append(src, fmt.Sprintf("%d\t%s", i+1, v))
+		}
+		return nil, fmt.Errorf("error:%s\nsource:\n%s", err, strings.Join(src, "\n"))
+	}
+	return src, nil
 }
 func (p *project) Require(rm *otto.Otto, fileName, currentModuleDir string, gradestr grade.Grade) (*otto.Script, string, error) {
 	var moduleFileName string
@@ -738,4 +745,7 @@ func (p *project) GetPackageNames(dirNameStr string, gradestr grade.Grade) ([]st
 		return rev, nil
 	}
 
+}
+func (p *project) DisplayLabel() string {
+	return p.displayLabel
 }

@@ -17,7 +17,7 @@ type metaProject struct {
 func NewMetaProject(dburl string) (result MetaProject) {
 	var err error
 	var p Project
-	if p, err = NewProject("meta", dburl, grade.GRADE_ROOT.Child("meta").String()); err != nil {
+	if p, err = NewProject("meta", "meta project", dburl, grade.GRADE_ROOT.Child("meta").String()); err != nil {
 		panic(err)
 	}
 	result = &metaProject{project: p.(*project)}
@@ -35,8 +35,8 @@ func (p *metaProject) NewProject(name string) (result Project, err error) {
 		err = jsmvcerror.NotFoundProject
 		return
 	}
-	row := table.GetRow(0)
-	result, err = NewProject(name, row["dburl"].(string), oftenfun.SafeToString(row["repository"]))
+	row := table.Row(0)
+	result, err = NewProject(name, oftenfun.SafeToString(row["displaylabel"]), row["dburl"].(string), oftenfun.SafeToString(row["repository"]))
 	if err != nil {
 		return
 	}

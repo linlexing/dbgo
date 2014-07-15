@@ -21,6 +21,18 @@
 			}
 		},
 		{
+			"Name": "displaylabel",
+			"PGType": {
+				"Type": 0,
+				"MaxSize": 0,
+				"NotNull": false
+			},
+			"Default": "",
+			"Desc": {
+				"Grade": "root/meta"
+			}
+		},
+		{
 			"Name": "dburl",
 			"PGType": {
 				"Type": 0,

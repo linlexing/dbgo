@@ -20,45 +20,6 @@ const (
 	SessionAuthUrlPrex = "auth."
 )
 
-//http请求时，系统对每一个Controller的Route进行判断，符合条件的
-//执行相应的脚本里的函数
-type Controller struct {
-	Name    string
-	Script  string
-	Actions []*Action
-	Public  bool
-	Grade   string
-}
-
-func (c *Controller) GetScript(srcIntercept string, gradestr grade.Grade) string {
-	interceptScript := ""
-	if srcIntercept != "" {
-		interceptScript = srcIntercept + "(c);"
-	}
-	src := c.Script
-	if !gradestr.CanUse(c.Grade) {
-		return ""
-	}
-	result := []string{}
-	for _, v := range c.Actions {
-		if gradestr.CanUse(v.Grade) {
-			result = append(result, v.Script)
-		}
-	}
-	return fmt.Sprintf(`
-		(function(c,action){
-			exports={};
-			%s;
-			%s;
-			%s;
-			if(exports[action]==null){
-				throw %q;
-			}else{
-				exports[action](c);
-			}
-		})`, interceptScript, src, strings.Join(result, ";"), NotFoundAction)
-}
-
 type ControllerAgent struct {
 	Request          *http.Request
 	Response         http.ResponseWriter
@@ -66,7 +27,6 @@ type ControllerAgent struct {
 	Project          Project
 	JsonBody         map[string]interface{}
 	UserName         string
-	Logged           bool
 	ControllerName   string
 	ActionName       string
 	TagPath          string
@@ -109,6 +69,7 @@ func (c *ControllerAgent) Require(fileName, currentModuleDir string) otto.Value 
 		panic(err)
 	}
 	if rev.IsUndefined() {
+		exports, _ := jsModule.Get("exports")
 		return exports
 	} else {
 		return rev
@@ -125,7 +86,8 @@ func NewAgent(w http.ResponseWriter, r *http.Request) *ControllerAgent {
 		Response: w,
 	}
 	c.TemplateFun = template.FuncMap{
-		"url": c.RequestUrl,
+		"url":     c.Url,
+		"authurl": c.AuthUrl,
 	}
 
 	return c
@@ -178,7 +140,13 @@ func (c *ControllerAgent) RenderTemplate(tname string, args map[string]interface
 		"ControllerName": c.ControllerName,
 		"ActionName":     c.ActionName,
 		"ViewName":       tname,
+		"UserName":       c.UserName,
+		"Session":        c.Session,
 		"CurrentGrade":   c.CurrentGrade,
+		"Project": map[string]interface{}{
+			"Name":         c.Project.Name(),
+			"DisplayLabel": c.Project.DisplayLabel(),
+		},
 	}
 	if c.Title != "" {
 		data["Title"] = c.Title
@@ -202,7 +170,7 @@ func (c *ControllerAgent) RenderStaticFile(filename string) Result {
 	return c.Result
 }
 func (c *ControllerAgent) RenderUserStaticFile(filename string) Result {
-	if !c.Logged {
+	if c.UserName == "" {
 		panic(fmt.Errorf("not logged"))
 	}
 	c.Result = &RenderUserStaticFileResult{
@@ -220,7 +188,14 @@ func (c *ControllerAgent) Render(args map[string]interface{}) Result {
 
 //Combination of URL and authentication
 // can:"controller.action" or "controller action"
-func (c *ControllerAgent) RequestUrl(args ...string) string {
+func (c *ControllerAgent) AuthUrl(args ...string) string {
+	url := c.Url(args...)
+	if err := c.Session.Set(SessionAuthUrlPrex+url, "1"); err != nil {
+		panic(err)
+	}
+	return url
+}
+func (c *ControllerAgent) Url(args ...string) string {
 	v := []string{}
 	if len(args) > 0 && strings.Contains(args[0], ".") {
 		v = strings.Split(args[0], ".")
@@ -229,7 +204,6 @@ func (c *ControllerAgent) RequestUrl(args ...string) string {
 		v = args
 	}
 	url := c.Project.ReverseUrl(v...)
-	c.Session.Set(SessionAuthUrlPrex+url, "1")
 	return url
 }
 
@@ -238,7 +212,7 @@ func (c *ControllerAgent) UrlAuthed() bool {
 	if c.Public {
 		return true
 	}
-	url := c.Project.ReverseUrl(c.ControllerName, c.ActionName, c.TagPath)
+	url := c.Request.URL.Path
 	return c.Session.Get(SessionAuthUrlPrex+url) == "1"
 }
 func (c *ControllerAgent) jsQueryValues(call otto.FunctionCall) otto.Value {
@@ -306,11 +280,19 @@ func (c *ControllerAgent) jsModelChecks(call otto.FunctionCall) otto.Value {
 	}
 	return oftenfun.JSToValue(call.Otto, chks)
 }
+func (c *ControllerAgent) jsAuthUrl(call otto.FunctionCall) otto.Value {
+	strs := make([]string, len(call.ArgumentList))
+	for i, v := range call.ArgumentList {
+		strs[i] = oftenfun.AssertString(v)
+	}
+	return oftenfun.JSToValue(call.Otto, c.AuthUrl(strs...))
+}
 func (c *ControllerAgent) object() map[string]interface{} {
 
 	return map[string]interface{}{
 		"ActionName":       c.ActionName,
-		"UrlAuth":          c.jsUrlAuthed,
+		"UrlAuthed":        c.jsUrlAuthed,
+		"AuthUrl":          c.jsAuthUrl,
 		"GradeCanUse":      c.jsGradeCanUse,
 		"CurrentGrade":     c.CurrentGrade.String(),
 		"ControllerName":   c.ControllerName,

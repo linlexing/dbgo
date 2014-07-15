@@ -49,7 +49,19 @@
 			"PGType": {
 				"Type": 0,
 				"MaxSize": 300,
-				"NotNull": true
+				"NotNull": false
+			},
+			"Default": "",
+			"Desc": {
+				"Grade": "root"
+			}
+		},
+		{
+			"Name": "deptcode",
+			"PGType": {
+				"Type": 0,
+				"MaxSize": 0,
+				"NotNull": false
 			},
 			"Default": "",
 			"Desc": {

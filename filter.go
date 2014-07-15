@@ -81,6 +81,7 @@ func SessionFilter(c *ControllerAgent, f []Filter) {
 
 	}
 	c.Session = NewSession(sid, c.Project.Name())
+
 	//取出特殊的Grade属性，该属性用于确定后续的所有拦截器、控制器的可见范围
 	//对于未登录用户，赋予特殊GRADE_TAG
 	c.CurrentGrade = grade.Grade(c.Session.Get("Grade"))
@@ -171,7 +172,7 @@ end:
 }
 func UrlAuthFilter(c *ControllerAgent, f []Filter) {
 	if !c.UrlAuthed() {
-		log.WARN.Printf("Forbidden url:%s\n", c.Request.URL.String())
+		log.WARN.Printf("Forbidden url:%s,sid:%s", c.Request.URL.String(), c.Session.SessionID)
 		c.RenderError(jsmvcerror.ForbiddenError)
 	}
 	if len(f) > 0 && c.Result == nil {
@@ -181,7 +182,6 @@ func UrlAuthFilter(c *ControllerAgent, f []Filter) {
 func UserFilter(c *ControllerAgent, f []Filter) {
 	uName := c.Session.Get("_username")
 	c.UserName = uName
-	c.Logged = uName == ""
 
 	if len(f) > 0 && c.Result == nil {
 		f[0](c, f[1:])
