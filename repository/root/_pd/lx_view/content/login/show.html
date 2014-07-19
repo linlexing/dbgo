@@ -11,12 +11,6 @@
 		margin: 0 auto;
 	}
 	.form-signin .form-signin-heading,
-	.form-signin .checkbox {
-		margin-bottom: 10px;
-	}
-	.form-signin .checkbox {
-		font-weight: normal;
-	}
 	.form-signin .form-control {
 		position: relative;
 		height: auto;
@@ -29,29 +23,54 @@
 	.form-signin .form-control:focus {
 		z-index: 2;
 	}
-	.form-signin input[type="text"] {
-		margin-bottom: -1px;
-		border-bottom-right-radius: 0;
-		border-bottom-left-radius: 0;
+	.form-signin .input-group {
+		width:100%;
 	}
-	.form-signin input[type="password"] {
-		margin-bottom: 10px;
-		border-top-left-radius: 0;
-		border-top-right-radius: 0;
+	.form-signin button {
+		margin-top: 10px;
 	}
+	.form-signin .input-group-addon{
+		width:40px;
+	}
+
 </style>
 <script>
-	app.controller('MainCtrl', ['$scope', '$http','$window',function($scope,$http,$window) {
+	app.config(['$translateProvider', function ($translateProvider) {
+		$translateProvider.translations('en', {
+			"TITLE": "login",
+			"FORM_TITLE":"Please sign in",
+			"USER_NAME_HINT":"User name",
+			"PWD_HINT":"Password",
+			"SIGN_IN_BUTTON":"Sign in",
+			"ERROR":"The user name or password invalid"
+		});
+
+		$translateProvider.translations('zh_CN', {
+	    	"TITLE": "登录",
+			"FORM_TITLE":"请登录",
+			"USER_NAME_HINT":"用户名",
+			"PWD_HINT":"密码",
+			"SIGN_IN_BUTTON":"登录",
+			"ERROR":"用户名或者密码无效"
+		});
+		$translateProvider.determinePreferredLanguage();
+	}]);
+	app.controller('MainCtrl', ['$scope', '$http','$window','$translate',function($scope,$http,$window,$translate) {
 		$scope.userName = '';
 		$scope.password = '';
 		$scope.error = null;
+		$translate('TITLE').then(function (title) {
+			document.title=title;
+		});
 		$scope.auth=function(){
 			$http.post(<#url "login.auth"#>,{userName:$scope.userName,password:$scope.password})
 				.success(function(data,status,headers,config,statusText){
 					if(data.ok){
 						$window.location = <#url "home.show"#>;
 					}else{
-						$scope.error="the user name or password invalid"
+						$translate('ERROR').then(function (err) {
+							$scope.error=err;
+						});
 					}
 				})
 				.error(function(data,status,headers,config,statusText){
@@ -62,10 +81,16 @@
 </script>
 <div class="container" ng-controller="MainCtrl" >
 	<form name="frmLogin" class="form-signin" role="form" novalidate>
-		<h2 class="form-signin-heading">Please sign in</h2>
-		<input type="text" class="form-control" placeholder="User name" required autofocus ng-model="userName" ng-change="error=null"></input>
-		<input type="password" class="form-control" placeholder="Password" required ng-model="password" ng-change="error=null"></input>
+		<h2 class="form-signin-heading" translate>FORM_TITLE</h2>
+		<div class="input-group">
+			<div class="input-group-addon"><i class="icon-user"></i></div>
+			<input type="text" class="form-control" placeholder="{{ 'USER_NAME_HINT' | translate }}" required autofocus ng-model="userName" ng-change="error=null"></input>
+		</div>
+		<div class="input-group">
+			<div class="input-group-addon" ><i class="icon-key"></i></div>
+			<input type="password" class="form-control" placeholder="{{ 'PWD_HINT' | translate }}" required ng-model="password" ng-change="error=null"></input>
+		</div>
 		<p class="text-danger" ng-show="error">{{error}}</p>
-		<button class="btn btn-lg btn-primary btn-block" type="submit" ng-click="auth()" ng-disabled="frmLogin.$invalid">Sign in</button>
+		<button class="btn btn-lg btn-primary btn-block" type="submit" ng-click="auth()" ng-disabled="frmLogin.$invalid" translate>SIGN_IN_BUTTON</button>
 	</form>
 </div>

@@ -1,20 +1,68 @@
+<style type="text/css">
+.navbar-header button{
+	float:left;
+}
+.dropdown-menu > li > a > img {
+	margin-right: 8px;
+	vertical-align: -35%;
+	width: 24px;
+	padding-right: 0;
+	margin-top: 0;
+}
+</style>
 <script>
-document.title ="<#.c.Project.Name#> - <#.c.UserName#> [<#.c.Session.Get "_deptcode"#>]";
+	document.title ="<#.c.Project.Name#> - <#.c.UserName#> [<#.c.Session.Get "_deptcode"#>]";
+	app.config(['$translateProvider', function ($translateProvider) {
+		$translateProvider.translations('en', {
+			"PROJECT_LABEL": <#.c.Project.DisplayLabel.en#>,
+			"LANGUAGE":"Language",
+			"EN":"English",
+			"ZH_CN":"Simplified Chinese"
+		});
+
+		$translateProvider.translations('zh_CN', {
+			"PROJECT_LABEL": <#.c.Project.DisplayLabel.zh_CN#>,
+			"LANGUAGE":"语言",
+			"EN":"英语",
+			"ZH_CN":"简体中文"
+		});
+		$translateProvider.determinePreferredLanguage();
+	}]);
+	app.controller('navbarCtrl', ['$translate', '$scope', function ($translate, $scope) {
+		$scope.changeLanguage = function (langKey) {
+			$translate.use(langKey);
+		};
+}]);
 </script>
-<div class="navbar navbar-inverse navbar-fixed-top" role="navigation">
+<div class="navbar navbar-inverse navbar-fixed-top" role="navigation" ng-controller="navbarCtrl">
 	<div class="container-fluid">
 		<div class="navbar-header">
-			<button type="button" class="navbar-toggle collapsed" style="float:left;" data-toggle="collapse">
+			<button type="button" class="navbar-toggle" ng-init="navCollapsed = true" ng-click="navCollapsed = !navCollapsed">
 				<span class="sr-only">Toggle navigation</span>
 				<span class="icon-bar"></span>
 				<span class="icon-bar"></span>
 				<span class="icon-bar"></span>
 			</button>
-			<div class="navbar-brand" ><span class="hidden-xs">name name 名称me 名称me 名称me 名称<#.c.Project.DisplayLabel#></span> <small>[当前Grade:<#.c.CurrentGrade#>]</small></div>
-
+			<div class="navbar-brand navbar-left" ><i class="icon-home"></i> <span class="hidden-xs" translate>PROJECT_LABEL</span><span class="visible-xs-inline"><#.c.Project.Name#></span></div>
+		</div>
+		<div class="navbar-collapse collapse" ng-class="{'in':!navCollapsed}">
+			<ul class="nav navbar-nav navbar-right">
+				<li class="hidden-xs">
+					<a href="#" data-animation="am-flip-x" bs-dropdown data-placement="bottom-right" data-template="language-list.html" data-container="body"><i class="icon-align-justify"></i> <span translate>LANGUAGE</span></a>
+				</li>
+				<li class="visible-xs">
+					<a href="#" data-animation="am-flip-x" bs-dropdown data-placement="bottom-left" data-template="language-list.html" data-container="body"><i class="icon-align-justify"></i> <span translate>LANGUAGE</span></a>
+				</li>
+			</ul>
 		</div>
 	</div>
 </div>
+<script type="text/ng-template" id="language-list.html">
+	<ul class="dropdown-menu">
+		<li><a href="" ng-click="changeLanguage('en')"><img src=<#static "img/flags/en.png"#>></img>&nbsp;<span translate>EN</span></a></li>
+		<li><a href="" ng-click="changeLanguage('zh_CN')"><img src=<#static "img/flags/zhcn.png"#>></img>&nbsp;<span translate>ZH_CN</span></a></li>
+	</ul>
+</script>
 
 <div class="container">
 

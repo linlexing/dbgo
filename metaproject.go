@@ -4,6 +4,7 @@ import (
 	"github.com/linlexing/dbgo/grade"
 	"github.com/linlexing/dbgo/jsmvcerror"
 	"github.com/linlexing/dbgo/oftenfun"
+	"github.com/linlexing/pghelper"
 )
 
 type MetaProject interface {
@@ -17,7 +18,7 @@ type metaProject struct {
 func NewMetaProject(dburl string) (result MetaProject) {
 	var err error
 	var p Project
-	if p, err = NewProject("meta", "meta project", dburl, grade.GRADE_ROOT.Child("meta").String()); err != nil {
+	if p, err = NewProject("meta", pghelper.JSON{"en": "meta project", "zh_CN": "元数据库"}, dburl, grade.GRADE_ROOT.Child("meta").String()); err != nil {
 		panic(err)
 	}
 	result = &metaProject{project: p.(*project)}
@@ -36,7 +37,11 @@ func (p *metaProject) NewProject(name string) (result Project, err error) {
 		return
 	}
 	row := table.Row(0)
-	result, err = NewProject(name, oftenfun.SafeToString(row["displaylabel"]), row["dburl"].(string), oftenfun.SafeToString(row["repository"]))
+	label := pghelper.JSON{}
+	if row["label"] != nil {
+		label = row["label"].(pghelper.JSON)
+	}
+	result, err = NewProject(name, label, row["dburl"].(string), oftenfun.SafeToString(row["repository"]))
 	if err != nil {
 		return
 	}

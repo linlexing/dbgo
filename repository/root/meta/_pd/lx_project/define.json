@@ -21,9 +21,9 @@
 			}
 		},
 		{
-			"Name": "displaylabel",
+			"Name": "label",
 			"PGType": {
-				"Type": 0,
+				"Type": 11,
 				"MaxSize": 0,
 				"NotNull": false
 			},

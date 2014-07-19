@@ -41,7 +41,7 @@ type Intercept struct {
 
 type Project interface {
 	Name() string
-	DisplayLabel() string
+	DisplayLabel() pghelper.JSON
 
 	DBHelper() *grade.PGHelper
 	DefaultAction() (string, string)
@@ -63,7 +63,7 @@ type Project interface {
 
 type project struct {
 	name         string
-	displayLabel string
+	displayLabel pghelper.JSON
 	dbHelper     *grade.PGHelper
 	metaProject  string
 	repository   string
@@ -140,7 +140,8 @@ func publicTables() []*grade.DataTable {
 	return []*grade.DataTable{lx_dump(), lx_checkaddition(), lx_check()}
 
 }
-func NewProject(name, label, dburl, repository string) (Project, error) {
+func NewProject(name string, label pghelper.JSON, dburl, repository string) (Project, error) {
+
 	p := &project{
 		name:         name,
 		displayLabel: label,
@@ -216,8 +217,11 @@ func (p *project) loadTemplate(f template.FuncMap) (*template.Template, error) {
 		},*/
 		"tmpl": func(tmpl string, data map[string]interface{}) template.HTML {
 			buf := &bytes.Buffer{}
-			rev.ExecuteTemplate(buf, tmpl, data)
-			return template.HTML(buf.String())
+			if err := rev.ExecuteTemplate(buf, tmpl, data); err != nil {
+				return template.HTML(err.Error())
+			} else {
+				return template.HTML(buf.String())
+			}
 		},
 		"css": func(tmpl string, data map[string]interface{}) template.CSS {
 			buf := &bytes.Buffer{}
@@ -650,7 +654,7 @@ func (p *project) ReloadRepository() error {
 				return err
 			}
 			info, err := os.Stat(trueFileName)
-			if err == os.ErrExist || (err == nil && filetime.After(info.ModTime())) {
+			if os.IsNotExist(err) || (err == nil && filetime.After(info.ModTime())) {
 				if err := ioutil.WriteFile(trueFileName, []byte(content), os.ModePerm); err != nil {
 					return err
 				}
@@ -746,6 +750,6 @@ func (p *project) GetPackageNames(dirNameStr string, gradestr grade.Grade) ([]st
 	}
 
 }
-func (p *project) DisplayLabel() string {
+func (p *project) DisplayLabel() pghelper.JSON {
 	return p.displayLabel
 }
