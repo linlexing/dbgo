@@ -2,13 +2,14 @@ package grade
 
 import (
 	"encoding/json"
+	"github.com/linlexing/datatable.go"
 	"github.com/linlexing/dbgo/oftenfun"
-	"github.com/linlexing/pghelper"
+	"github.com/linlexing/dbhelper"
 	"github.com/robertkrimen/otto"
 )
 
 type Index struct {
-	*pghelper.Index
+	*dbhelper.Index
 }
 
 func (i *Index) Clone() *Index {
@@ -26,21 +27,21 @@ func (i *Index) Grade(params ...Grade) Grade {
 }
 
 type DataTable struct {
-	*pghelper.DataTable
+	*dbhelper.DataTable
 	Columns []*DataColumn
 	Indexes map[string]*Index
 }
 
 func NewDataTable(tableName string, gradestr Grade) *DataTable {
 	rev := &DataTable{
-		pghelper.NewDataTable(tableName),
+		dbhelper.NewDataTable(tableName),
 		nil,
 		map[string]*Index{},
 	}
 	rev.Grade(gradestr)
 	return rev
 }
-func NewDataTableT(tab *pghelper.DataTable) *DataTable {
+func NewDataTableT(tab *dbhelper.DataTable) *DataTable {
 	rev := &DataTable{
 		tab,
 		nil,
@@ -90,45 +91,43 @@ func (d *DataTable) Reduced(gradestr Grade) (*DataTable, bool) {
 	}
 	//process the pk
 	result.SetPK(d.PK...)
-	result.PKConstraintName = d.PKConstraintName
 	//process the indexes
 	for idxname, idx := range d.Indexes {
 		if gradestr.CanUse(idx.Grade()) {
-			result.Indexes[idxname] = idx.Clone()
+			result.AddIndex(idxname, idx.Clone())
 		}
 	}
 	return result, true
 }
 func (d *DataTable) Object() map[string]interface{} {
 	return map[string]interface{}{
-		"AddColumn":        d.jsAddColumn,
-		"AddRow":           d.jsAddRow,
-		"AddValues":        d.jsAddValues,
-		"ColumnNames":      d.jsColumnNames,
-		"Columns":          d.jsColumns,
-		"DeleteAll":        d.jsDeleteAll,
-		"DeleteRow":        d.jsDeleteRow,
-		"Find":             d.jsFind,
-		"GetOriginRow":     d.jsGetOriginRow,
-		"GetValue":         d.jsGetValue,
-		"GetValues":        d.jsGetValues,
-		"HasChange":        d.jsHasChange,
-		"HasPrimaryKey":    d.jsHasPrimaryKey,
-		"IsPrimaryKey":     d.jsIsPrimaryKey,
-		"KeyValues":        d.jsKeyValues,
-		"NewRow":           d.jsNewRow,
-		"PK":               d.jsPK,
-		"Row":              d.jsRow,
-		"RowCount":         d.jsRowCount,
-		"Rows":             d.jsRows,
-		"Search":           d.jsSearch,
-		"SetPK":            d.jsSetPK,
-		"SetValues":        d.jsSetValues,
-		"UpdateRow":        d.jsUpdateRow,
-		"Desc":             d.Desc,
-		"PKConstraintName": d.PKConstraintName,
-		"TableName":        d.TableName,
-		"Indexes":          d.Indexes,
+		"AddColumn":     d.jsAddColumn,
+		"AddRow":        d.jsAddRow,
+		"AddValues":     d.jsAddValues,
+		"ColumnNames":   d.jsColumnNames,
+		"Columns":       d.jsColumns,
+		"DeleteAll":     d.jsDeleteAll,
+		"DeleteRow":     d.jsDeleteRow,
+		"Find":          d.jsFind,
+		"GetOriginRow":  d.jsGetOriginRow,
+		"GetValue":      d.jsGetValue,
+		"GetValues":     d.jsGetValues,
+		"HasChange":     d.jsHasChange,
+		"HasPrimaryKey": d.jsHasPrimaryKey,
+		"IsPrimaryKey":  d.jsIsPrimaryKey,
+		"KeyValues":     d.jsKeyValues,
+		"NewRow":        d.jsNewRow,
+		"PK":            d.jsPK,
+		"Row":           d.jsRow,
+		"RowCount":      d.jsRowCount,
+		"Rows":          d.jsRows,
+		"Search":        d.jsSearch,
+		"SetPK":         d.jsSetPK,
+		"SetValues":     d.jsSetValues,
+		"UpdateRow":     d.jsUpdateRow,
+		"Desc":          d.Desc,
+		"TableName":     d.TableName,
+		"Indexes":       d.Indexes,
 	}
 }
 func (d *DataTable) jsRows(call otto.FunctionCall) otto.Value {
@@ -147,22 +146,12 @@ func (d *DataTable) jsSetPK(call otto.FunctionCall) otto.Value {
 
 }
 func (d *DataTable) jsAddColumn(call otto.FunctionCall) otto.Value {
-
 	name := oftenfun.AssertString(call.Argument(0))
-	dt := pghelper.PGTypeType(oftenfun.AssertInteger(call.Argument(1)))
-	grade := Grade(oftenfun.AssertString(call.Argument(2)))
-	param := []interface{}{}
-	if len(call.ArgumentList) > 3 {
-		param = append(param, oftenfun.AssertBool(call.Argument(3)))
-	}
-	if len(call.ArgumentList) > 4 {
-		param = append(param, oftenfun.AssertInteger(call.Argument(4)))
-
-	}
-	if len(call.ArgumentList) > 5 {
-		param = append(param, oftenfun.AssertString(call.Argument(5)))
-	}
-	d.AddColumn(NewColumn(name, grade, dt, param...))
+	datatype := datatable.ColumnType(oftenfun.AssertString(call.Argument(1)))
+	maxsize := oftenfun.AssertInteger(call.Argument(2))
+	notnull := oftenfun.AssertBool(call.Argument(3))
+	grade := Grade(oftenfun.AssertString(call.Argument(4)))
+	d.AddColumn(NewColumn(name, grade, datatype, maxsize, notnull))
 	return otto.NullValue()
 }
 
@@ -273,7 +262,7 @@ func NewDataTableJSON(data []byte) (*DataTable, error) {
 	rev := NewDataTable(tab.TableName, tab.Grade())
 
 	for _, v := range tab.Columns {
-		rev.AddColumn(NewColumnT(v.Name, v.Grade(), v.PGType, v.Default))
+		rev.AddColumn(NewColumn(v.Name, v.Grade(), v.DataType, v.MaxSize, v.NotNull))
 	}
 	for k, v := range tab.Indexes {
 		rev.AddIndex(k, v)

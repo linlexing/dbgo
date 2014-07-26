@@ -2,7 +2,6 @@ package grade
 
 import (
 	"github.com/linlexing/dbgo/oftenfun"
-	"github.com/linlexing/pghelper"
 	"github.com/robertkrimen/otto"
 )
 
@@ -13,33 +12,30 @@ const (
 
 type DBTable struct {
 	*DataTable
-	dbHelper *PGHelper
+	dbHelper *DBHelper
 }
 
-func NewDBTable(ahelp *PGHelper, table *DataTable) *DBTable {
+func NewDBTable(ahelp *DBHelper, table *DataTable) *DBTable {
 	return &DBTable{table, ahelp}
 }
 func (t *DBTable) Fill(strSql string, params ...interface{}) (result_err error) {
-	return pghelper.NewDBTable(t.dbHelper.PGHelper, t.DataTable.DataTable).Fill(strSql, params...)
+	return t.dbHelper.FillTable(t.DataTable.DataTable, strSql, params...)
 }
 func (t *DBTable) FillByID(ids ...interface{}) (err error) {
-	return pghelper.NewDBTable(t.dbHelper.PGHelper, t.DataTable.DataTable).FillByID(ids...)
+	return t.dbHelper.FillTable(t.DataTable.DataTable, t.SelectAllByID(), ids...)
 }
 func (t *DBTable) FillWhere(strWhere string, params ...interface{}) (err error) {
-	return pghelper.NewDBTable(t.dbHelper.PGHelper, t.DataTable.DataTable).FillWhere(strWhere, params...)
+	return t.dbHelper.FillTable(t.DataTable.DataTable, t.SelectAllByWhere(strWhere), params...)
 }
 func (t *DBTable) Save() (rcount int64, result_err error) {
-	return pghelper.NewDBTable(t.dbHelper.PGHelper, t.DataTable.DataTable).Save()
-
+	return t.dbHelper.SaveChange(t.DataTable.DataTable)
 }
 func (t *DBTable) Count(strWhere string, params ...interface{}) (count int64, err error) {
-	return pghelper.NewDBTable(t.dbHelper.PGHelper, t.DataTable.DataTable).Count(strWhere, params...)
-}
-func (t *DBTable) BatchFillWhere(callBack func(table *DBTable, eof bool) error, batchRow int64, strWhere string, params ...interface{}) (err error) {
-	return pghelper.NewDBTable(t.dbHelper.PGHelper, t.DataTable.DataTable).BatchFillWhere(
-		func(table *pghelper.DBTable, eof bool) error {
-			return callBack(t, eof)
-		}, batchRow, strWhere, params...)
+	if strWhere != "" {
+		strWhere = "\nwhere\n" + strWhere
+	}
+	v, err := t.dbHelper.QueryOne("select count(*) from "+t.TableName+strWhere, params...)
+	return v.(int64), nil
 }
 
 func (t *DBTable) jsFill(call otto.FunctionCall) otto.Value {

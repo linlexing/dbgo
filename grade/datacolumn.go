@@ -2,12 +2,13 @@ package grade
 
 import (
 	"fmt"
+	"github.com/linlexing/datatable.go"
 	"github.com/linlexing/dbgo/oftenfun"
-	"github.com/linlexing/pghelper"
+	"github.com/linlexing/dbhelper"
 )
 
 type DataColumn struct {
-	*pghelper.DataColumn
+	*dbhelper.DataColumn
 }
 
 func (d *DataColumn) Clone() *DataColumn {
@@ -23,26 +24,19 @@ func (d *DataColumn) Grade(params ...Grade) Grade {
 	}
 	panic(fmt.Sprintf("invalid params number,only 0 or 1,param:%v", params))
 }
-func NewColumnT(name string, gradestr Grade, dt *pghelper.PGType, def string) *DataColumn {
-	rev := &DataColumn{
-		pghelper.NewColumnT(name, dt, def),
-	}
-	rev.Grade(gradestr)
-	return rev
+func NewColumn(name string, gradestr Grade, dataType datatable.ColumnType, maxsize int, notnull bool) *DataColumn {
+	c := &DataColumn{dbhelper.NewDataColumn(name, dataType, maxsize, notnull)}
+	c.Grade(gradestr)
+	return c
 }
-func NewColumn(name string, gradestr Grade, dataType pghelper.PGTypeType, param ...interface{}) *DataColumn {
-	rev := &DataColumn{
-		pghelper.NewColumn(name, dataType, param...),
-	}
-	rev.Grade(gradestr)
-	return rev
-}
+
 func (d *DataColumn) Object() map[string]interface{} {
 	return map[string]interface{}{
-		"Index":   d.Index(),
-		"Name":    d.Name,
-		"Desc":    d.Desc,
-		"Default": d.Default,
-		"PGType":  d.PGType,
+		"Index":    d.Index(),
+		"Name":     d.Name,
+		"Desc":     d.Desc,
+		"DataType": d.DataType,
+		"MaxSize":  d.MaxSize,
+		"NotNUll":  d.NotNull,
 	}
 }

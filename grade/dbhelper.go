@@ -5,8 +5,11 @@ import (
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
+	"github.com/linlexing/datatable.go"
 	"github.com/linlexing/dbgo/oftenfun"
-	"github.com/linlexing/pghelper"
+	"github.com/linlexing/dbhelper"
+	_ "github.com/linlexing/myhelper"
+	_ "github.com/linlexing/pghelper"
 	"github.com/robertkrimen/otto"
 	"io"
 	"io/ioutil"
@@ -17,54 +20,57 @@ import (
 	"time"
 )
 
-type PGHelper struct {
-	*pghelper.PGHelper
+type DBHelper struct {
+	*dbhelper.DBHelper
 }
 
-func NewPGHelper(dburl string) *PGHelper {
-	return NewPGHelperT(pghelper.NewPGHelper(dburl))
+func NewDBHelper(dbDriver, dburl string) *DBHelper {
+	return NewDBHelperT(dbhelper.NewDBHelper(dbDriver, dburl))
 }
-func NewPGHelperT(ahelp *pghelper.PGHelper) *PGHelper {
-	return &PGHelper{ahelp}
+func NewDBHelperT(ahelp *dbhelper.DBHelper) *DBHelper {
+	return &DBHelper{ahelp}
 }
-func (p *PGHelper) GetDataTable(strSql string, params ...interface{}) (*DataTable, error) {
-	tab, err := p.PGHelper.GetDataTable(strSql, params...)
+func (p *DBHelper) GetData(strSql string, params ...interface{}) (*DataTable, error) {
+	tab, err := p.DBHelper.GetData(strSql, params...)
 	if err != nil {
 		return nil, err
 	}
 	return NewDataTableT(tab), nil
 
 }
-func (p *PGHelper) Table(tablename string) (*DBTable, error) {
-	tab, err := p.PGHelper.Table(tablename)
+func (p *DBHelper) Table(tablename string) (*DBTable, error) {
+	tab, err := p.DBHelper.Table(tablename)
 	if err != nil {
 		return nil, err
 	}
-	t := NewDBTable(p, NewDataTableT(tab.DataTable))
+	t := NewDBTable(p, NewDataTableT(tab))
 	return t, nil
 }
-func (p *PGHelper) UpdateStruct(newStruct *DataTable) error {
-	oldStruct, err := p.Table(newStruct.TableName)
-	if _, ok := err.(pghelper.ERROR_NotFoundTable); err != nil && !ok {
+func (p *DBHelper) UpdateStruct(newStruct *DataTable) error {
+	var oldStruct *DBTable
+	if exists, err := p.TableExists(newStruct.TableName); err != nil {
 		return err
+	} else {
+		if exists {
+			oldStruct, err = p.Table(newStruct.TableName)
+			if err != nil {
+				return err
+			}
+		}
 	}
 	if oldStruct == nil {
-		return p.PGHelper.UpdateStruct(nil, newStruct.DataTable)
+		return p.DBHelper.UpdateStruct(nil, newStruct.DataTable)
 	}
-	trueOld, ok := oldStruct.DataTable.Reduced(newStruct.Grade())
+	trueOld, ok := oldStruct.Reduced(newStruct.Grade())
 	if !ok {
 		return fmt.Errorf("the oldStruct's grade is %q,newStruct can't use it", oldStruct.DataTable.Grade())
 	}
-	return p.PGHelper.UpdateStruct(trueOld.DataTable, newStruct.DataTable)
+
+	return p.DBHelper.UpdateStruct(trueOld.DataTable, newStruct.DataTable)
 
 }
 
-func RunAtTrans(dburl string, txFunc func(help *PGHelper) error) (result_err error) {
-	return pghelper.RunAtTrans(dburl, func(help *pghelper.PGHelper) error {
-		return txFunc(NewPGHelperT(help))
-	})
-}
-func (p *PGHelper) jsTable(call otto.FunctionCall) otto.Value {
+func (p *DBHelper) jsTable(call otto.FunctionCall) otto.Value {
 	tablename := oftenfun.AssertString(call.Argument(0))
 	tab, err := p.Table(tablename)
 	if err != nil {
@@ -72,7 +78,7 @@ func (p *PGHelper) jsTable(call otto.FunctionCall) otto.Value {
 	}
 	return oftenfun.JSToValue(call.Otto, tab.Object())
 }
-func (p *PGHelper) jsGetDataTable(call otto.FunctionCall) otto.Value {
+func (p *DBHelper) jsGetData(call otto.FunctionCall) otto.Value {
 
 	strSql := oftenfun.AssertString(call.Argument(0))
 	params := make([]interface{}, len(call.ArgumentList)-1)
@@ -83,20 +89,20 @@ func (p *PGHelper) jsGetDataTable(call otto.FunctionCall) otto.Value {
 			panic(err)
 		}
 	}
-	result, err := p.GetDataTable(strSql, params...)
+	result, err := p.GetData(strSql, params...)
 	if err != nil {
 		panic(err)
 	}
 	return oftenfun.JSToValue(call.Otto, result.Object())
 }
-func (p *PGHelper) Object() map[string]interface{} {
+func (p *DBHelper) Object() map[string]interface{} {
 	return map[string]interface{}{
-		"GetDataTable": p.jsGetDataTable,
-		"Table":        p.jsTable,
+		"GetData": p.jsGetData,
+		"Table":   p.jsTable,
 	}
 }
 
-func (ahelp *PGHelper) Import(pathName string) error {
+func (ahelp *DBHelper) Import(pathName string) error {
 	configFileName := filepath.Join(pathName, "config.json")
 	defineFileName := filepath.Join(pathName, "define.json")
 	dataCsvFileName := filepath.Join(pathName, "data.csv")
@@ -142,7 +148,7 @@ func (ahelp *PGHelper) Import(pathName string) error {
 	tmpTableName := "import_tmp_lx"
 	trueTableName := tmptable.TableName
 
-	runAtImportSql, err = tmplExecute(runAtImportSql, map[string]interface{}{
+	runAtImportSql, err = ahelp.tmplExecute(runAtImportSql, map[string]interface{}{
 		"TempTableName": tmpTableName,
 		"ExportGrade":   string(config.CurrentGrade),
 		"SqlWhere":      config.SqlWhere,
@@ -152,7 +158,7 @@ func (ahelp *PGHelper) Import(pathName string) error {
 	}
 	table := NewDBTable(ahelp, tmptable)
 	table.TableName = tmpTableName
-	table.Temp = true
+	table.Temporary = true
 	//create table
 	if err := table.UpdateStruct(); err != nil {
 		return err
@@ -176,15 +182,17 @@ func (ahelp *PGHelper) Import(pathName string) error {
 	}
 	//update true table struct if the ImpRefreshStruct is true
 	table.TableName = trueTableName
-	table.Temp = false
+	table.Temporary = false
 	if config.ImpRefreshStruct {
 		if err := table.UpdateStruct(); err != nil {
 			return err
 		}
 	}
 	//run import sql
-	if err := ahelp.ExecuteSql(runAtImportSql); err != nil {
-		return err
+	if runAtImportSql != "" {
+		if _, err := ahelp.Exec(runAtImportSql); err != nil {
+			return err
+		}
 	}
 	if err := ahelp.Merge(trueTableName, tmpTableName, table.ColumnNames(), table.PK, config.ImpAutoRemove, config.SqlWhere); err != nil {
 		return err
@@ -237,7 +245,7 @@ func importFromCsv(pathName string, rCSV *csv.Reader, table *DBTable, config *du
 			//process the csv data
 			for i, v := range line {
 				icolIndex := columnIndexes[i]
-				tv, err := table.Columns[icolIndex].Parse(v)
+				tv, err := table.Columns[icolIndex].DecodeString(v)
 				if err != nil {
 					return err
 				}
@@ -262,13 +270,13 @@ func importFromCsv(pathName string, rCSV *csv.Reader, table *DBTable, config *du
 					addValues[icolIndex] = tv
 
 				} else {
-					switch table.Columns[icolIndex].PGType.Type {
-					case pghelper.TypeBytea:
+					switch table.Columns[icolIndex].DataType {
+					case datatable.Bytea:
 						addValues[icolIndex] = tv
-					case pghelper.TypeString:
+					case datatable.String:
 						addValues[icolIndex] = string(tv)
 					default:
-						return fmt.Errorf("the column %q 's type %#v invalid", i, table.Columns[icolIndex].PGType)
+						return fmt.Errorf("the column %q 's type %#v invalid", i, table.Columns[icolIndex].DataType)
 					}
 				}
 			}
@@ -358,8 +366,8 @@ func writeFileTimeColumn(pathName, columnName, ext string, primaryKey []interfac
 	switch tv := value.(type) {
 	case time.Time:
 		t = tv
-	case pghelper.NullTime:
-		t = tv.Time
+	case nil:
+		t = time.Now()
 	default:
 		panic(fmt.Errorf("the type %T invalid", value))
 	}
@@ -393,11 +401,11 @@ type dumpConfig struct {
 	CheckVersion     bool
 }
 
-func tmplExecute(tmplSrc string, param interface{}) (string, error) {
+func (d *DBHelper) tmplExecute(tmplSrc string, param interface{}) (string, error) {
 	tmpl := template.New("expimp_template")
 	tmpl.Delims("<#", "#>")
 	tmpl.Funcs(template.FuncMap{
-		"PGSignStr": pghelper.PGSignStr,
+		"StringExpress": d.StringExpress,
 	})
 
 	tmpl, err := tmpl.Parse(tmplSrc)
@@ -410,7 +418,7 @@ func tmplExecute(tmplSrc string, param interface{}) (string, error) {
 	}
 	return buf.String(), nil
 }
-func (p *PGHelper) Export(param *ExportParam) error {
+func (p *DBHelper) Export(param *ExportParam) error {
 	const Import_Desc = "/*************************************************************/\n" +
 		"/*When the data imported temporary table, run the import SQL,*/\n" +
 		"/*finally merge data into actual table from temporary table. */\n" +
@@ -464,7 +472,7 @@ func (p *PGHelper) Export(param *ExportParam) error {
 			return err
 		}
 	}
-	sqlWhere, err := tmplExecute(param.SqlWhere, map[string]interface{}{"CurrentGrade": string(param.CurrentGrade)})
+	sqlWhere, err := p.tmplExecute(param.SqlWhere, map[string]interface{}{"CurrentGrade": string(param.CurrentGrade)})
 	if err != nil {
 		return err
 	}
@@ -520,7 +528,21 @@ func (p *PGHelper) Export(param *ExportParam) error {
 	if err != nil {
 		return err
 	}
-	err = t.BatchFillWhere(func(table *DBTable, eof bool) error {
+	stepTable, err := p.StepTable(t.DataTable.DataTable, ExportBatch, t.SelectAllByWhere(sqlWhere))
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if err := stepTable.Close(); err != nil {
+			panic(err)
+		}
+	}()
+	for {
+		table, eof, err := stepTable.Step()
+		if err != nil {
+			return err
+		}
+
 		for i := 0; i < table.RowCount(); i++ {
 			row := table.GetValues(i)
 			line := []string{}
@@ -538,22 +560,16 @@ func (p *PGHelper) Export(param *ExportParam) error {
 						return fmt.Errorf("the column %s not is file column", flColumnName)
 					}
 				} else {
-					if str, err := col.String(row[colIdx]); err != nil {
-						return err
-					} else {
-						line = append(line, str)
-					}
-
+					line = append(line, col.EncodeString(row[colIdx]))
 				}
 			}
 			if err := wCSV.Write(line); err != nil {
 				return err
 			}
 		}
-		return nil
-	}, ExportBatch, sqlWhere)
-	if err != nil {
-		return err
+		if eof {
+			break
+		}
 	}
 	wCSV.Flush()
 	if err = wCSV.Error(); err != nil {
@@ -561,10 +577,20 @@ func (p *PGHelper) Export(param *ExportParam) error {
 	}
 	return nil
 }
-func (p *PGHelper) Version(gradestr Grade) (GradeVersion, error) {
-	str, err := p.GetString("select string_agg(cast(verno as text),'.') from lx_version where $1 like grade||'%'", string(gradestr))
+func (p *DBHelper) Version(gradestr Grade) (GradeVersion, error) {
+	var tab *DataTable
+	var err error
+	if gradestr == GRADE_TAG {
+		tab, err = p.GetData("select verno from lx_version")
+	} else {
+		tab, err = p.GetData("select verno from lx_version where $1 like concat(grade,'%')", gradestr.String())
+	}
 	if err != nil {
 		return nil, err
 	}
-	return ParseGradeVersion(str)
+	rev := make([]string, tab.RowCount())
+	for i, v := range tab.GetColumnValues(0) {
+		rev[i] = fmt.Sprintf("%d", v)
+	}
+	return ParseGradeVersion(strings.Join(rev, "."))
 }

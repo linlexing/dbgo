@@ -6,7 +6,11 @@ import (
 )
 
 func TestExport(t *testing.T) {
-	p := NewPGHelper("host=localhost database=postgres user=meta password=meta123 sslmode=disable")
+	p := NewDBHelper("postgres", "host=localhost database=postgres user=root password=meta123 sslmode=disable")
+	if err := p.Open(); err != nil {
+		t.Error(err)
+	}
+	defer p.Close()
 	err := p.Export(&ExportParam{
 		TableName:        "lx_check",
 		CurrentGrade:     Grade("root"),
@@ -21,17 +25,31 @@ func TestExport(t *testing.T) {
 	}
 }
 func TestImport(t *testing.T) {
-	err := RunAtTrans("host=localhost database=postgres user=meta password=meta123 sslmode=disable",
-		func(p *PGHelper) error {
-			return p.Import("d:/temp/meta_cpy/lx_check")
-
-		})
+	p := NewDBHelper("postgres", "host=localhost database=postgres user=root password=meta123 sslmode=disable")
+	if err := p.Open(); err != nil {
+		t.Error(err)
+	}
+	defer p.Close()
+	if err := p.Begin(); err != nil {
+		t.Error(err)
+	}
+	defer func() {
+		if err := recover(); err != nil {
+			p.Rollback()
+			t.Error(err)
+		} else {
+			if err := p.Commit(); err != nil {
+				t.Error(err)
+			}
+		}
+	}()
+	err := p.Import("d:/temp/meta_cpy/lx_check")
 	if err != nil {
 		t.Error(err)
 	}
 }
 func TestVersion(t *testing.T) {
-	p := NewPGHelper("host=localhost database=postgres user=meta password=meta123 sslmode=disable")
+	p := NewDBHelper("postgres", "host=localhost database=postgres user=meta password=meta123 sslmode=disable")
 	spew.Dump(p.Version("root/tjj"))
 }
 func TestGradeVersion(t *testing.T) {
