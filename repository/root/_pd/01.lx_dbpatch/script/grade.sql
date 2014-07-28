@@ -1,5 +1,5 @@
+{{if eq .DriverName,"postgres"}}
 DROP FUNCTION IF EXISTS grade_canuse(text, text);
-
 CREATE FUNCTION grade_canuse(current_grade text, canuse_grade text)
   RETURNS boolean AS
 $BODY$
@@ -14,3 +14,4 @@ BEGIN
 END;
 $BODY$
   LANGUAGE plpgsql IMMUTABLE;
+{{end}}

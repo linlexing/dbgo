@@ -1,6 +1,7 @@
 package grade
 
 import (
+	"crypto/rand"
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
@@ -76,6 +77,28 @@ func (p *DBHelper) UpdateStruct(newStruct *DataTable) error {
 
 }
 
+func (p *DBHelper) jsExecT(call otto.FunctionCall) otto.Value {
+	sql := oftenfun.AssertString(call.Argument(0))
+	templateParam := oftenfun.AssertObject(call.Argument(1))
+	args := []interface{}{}
+	if len(call.ArgumentList) > 2 {
+		args = oftenfun.AssertArray(call.Argument(2))
+	}
+	_, err := p.ExecT(sql, templateParam, args...)
+	if err != nil {
+		panic(err)
+	}
+	return otto.UndefinedValue()
+}
+func (p *DBHelper) jsGoExecT(call otto.FunctionCall) otto.Value {
+	sql := oftenfun.AssertString(call.Argument(0))
+	templateParam := oftenfun.AssertObject(call.Argument(1))
+	err := p.GoExecT(sql, templateParam)
+	if err != nil {
+		panic(err)
+	}
+	return otto.UndefinedValue()
+}
 func (p *DBHelper) jsTable(call otto.FunctionCall) otto.Value {
 	tablename := oftenfun.AssertString(call.Argument(0))
 	tab, err := p.Table(tablename)
@@ -106,6 +129,8 @@ func (p *DBHelper) Object() map[string]interface{} {
 	return map[string]interface{}{
 		"GetData": p.jsGetData,
 		"Table":   p.jsTable,
+		"ExecT":   p.jsExecT,
+		"GoExecT": p.jsGoExecT,
 	}
 }
 
@@ -113,7 +138,7 @@ func (ahelp *DBHelper) Import(pathName string) error {
 	configFileName := filepath.Join(pathName, "config.json")
 	defineFileName := filepath.Join(pathName, "define.json")
 	dataCsvFileName := filepath.Join(pathName, "data.csv")
-	runAtImportFileName := filepath.Join(pathName, "runatimport.sql")
+	runAtImportFileName := filepath.Join(pathName, "runatimport.js")
 	if _, err := os.Stat(configFileName); err == os.ErrNotExist {
 		return fmt.Errorf("the dir %q invalid,can't foud the config.json", pathName)
 	}
@@ -142,7 +167,7 @@ func (ahelp *DBHelper) Import(pathName string) error {
 		return err
 	}
 
-	runAtImportSql := string(buf)
+	runAtImport := string(buf)
 
 	buf, err = ioutil.ReadFile(defineFileName)
 	if err != nil {
@@ -152,7 +177,16 @@ func (ahelp *DBHelper) Import(pathName string) error {
 	if err != nil {
 		return err
 	}
-	tmpTableName := "import_tmp_lx"
+	tmpTableName := ""
+	{
+		b := make([]byte, 8)
+		_, err := rand.Read(b)
+		if err != nil {
+			return err
+		}
+		tmpTableName = fmt.Sprintf("tmp_%x", b)
+	}
+
 	trueTableName := tmptable.TableName
 
 	table := NewDBTable(ahelp, tmptable)
@@ -188,12 +222,19 @@ func (ahelp *DBHelper) Import(pathName string) error {
 		}
 	}
 	//run import sql
-	if runAtImportSql != "" {
-		if _, err := ahelp.ExecT(runAtImportSql, map[string]interface{}{
-			"TempTableName": tmpTableName,
-			"ExportGrade":   string(config.CurrentGrade),
-			"SqlWhere":      config.SqlWhere,
-		}); err != nil {
+	if runAtImport != "" {
+		js := fmt.Sprintf("(%s)", runAtImport)
+		rm := otto.New()
+		jsfun, err := rm.Run(js)
+		if err != nil {
+			return err
+		}
+		h, err := rm.ToValue(ahelp.Object())
+		if err != nil {
+			return err
+		}
+		_, err = jsfun.Call(jsfun, h, tmpTableName, config.CurrentGrade.String(), config.SqlWhere)
+		if err != nil {
 			return err
 		}
 	}
@@ -388,7 +429,7 @@ type ExportParam struct {
 	FileTimeColumns  map[string]string
 	SqlWhere         string
 	ImpAutoRemove    bool
-	SqlRunAtImport   string
+	RunAtImport      string
 	ImpRefreshStruct bool
 	CheckVersion     bool
 }
@@ -422,8 +463,8 @@ func (p *DBHelper) Export(param *ExportParam) error {
 		return err
 	}
 	//write the runatimport sql
-	if param.SqlRunAtImport != "" {
-		if err := ioutil.WriteFile(filepath.Join(pathName, "runatimport.sql"), []byte(param.SqlRunAtImport), os.ModePerm); err != nil {
+	if param.RunAtImport != "" {
+		if err := ioutil.WriteFile(filepath.Join(pathName, "runatimport.js"), []byte(param.RunAtImport), os.ModePerm); err != nil {
 			return err
 		}
 	}
@@ -544,7 +585,7 @@ func (p *DBHelper) Version(gradestr Grade) (GradeVersion, error) {
 	if gradestr == GRADE_TAG {
 		tab, err = p.GetData("select verno from lx_version")
 	} else {
-		tab, err = p.GetData("select verno from lx_version where $1 like concat(grade,'%')", gradestr.String())
+		tab, err = p.GetData("select verno from lx_version where {{ph}} like concat(grade,'%')", gradestr.String())
 	}
 	if err != nil {
 		return nil, err

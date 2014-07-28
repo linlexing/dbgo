@@ -18,14 +18,14 @@ func TestExport(t *testing.T) {
 		FileColumns:      map[string]string{"script": ".js"},
 		SqlWhere:         "'root' like grade||'%'",
 		ImpAutoRemove:    true,
-		SqlRunAtImport:   "",
+		RunAtImport:      "",
 		ImpRefreshStruct: true})
 	if err != nil {
 		t.Error(err)
 	}
 }
 func TestImport(t *testing.T) {
-	p := NewDBHelper("postgres host=localhost database=postgres user=root password=meta123 sslmode=disable")
+	p := NewDBHelper("postgres host=localhost database=postgres user=meta password=meta123 sslmode=disable")
 	if err := p.Open(); err != nil {
 		t.Error(err)
 	}
@@ -43,7 +43,7 @@ func TestImport(t *testing.T) {
 			}
 		}
 	}()
-	err := p.Import("d:/temp/meta_cpy/lx_check")
+	err := p.Import(`D:\SkyDrive\go\src\github.com\linlexing\dbgo\repository\root\meta\_pd\01.lx_project`)
 	if err != nil {
 		t.Error(err)
 	}

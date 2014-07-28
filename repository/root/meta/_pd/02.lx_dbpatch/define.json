@@ -10,36 +10,27 @@
 	"Columns": [
 		{
 			"Name": "name",
-			"PGType": {
-				"Type": 0,
-				"MaxSize": 0,
-				"NotNull": true
-			},
-			"Default": "",
+			"DataType": "string",
+			"MaxSize": 300,
+			"NotNull": true,
 			"Desc": {
 				"Grade": "root"
 			}
 		},
 		{
 			"Name": "grade",
-			"PGType": {
-				"Type": 0,
-				"MaxSize": 0,
-				"NotNull": true
-			},
-			"Default": "",
+			"DataType": "string",
+			"MaxSize": 500,
+			"NotNull": true,
 			"Desc": {
 				"Grade": "root"
 			}
 		},
 		{
 			"Name": "script",
-			"PGType": {
-				"Type": 0,
-				"MaxSize": 0,
-				"NotNull": true
-			},
-			"Default": "",
+			"DataType": "string",
+			"MaxSize": 0,
+			"NotNull": false,
 			"Desc": {
 				"Grade": "root"
 			}

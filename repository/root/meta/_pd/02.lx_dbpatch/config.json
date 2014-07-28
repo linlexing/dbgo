@@ -2,12 +2,12 @@
 	"Version": [
 		1
 	],
-	"CurrentGrade": "root",
+	"CurrentGrade": "root/meta",
 	"RowCount": 0,
 	"FileColumns": {
 		"script": ".sql"
 	},
-	"SqlWhere": "'root' like grade||'%'",
+	"SqlWhere": "'root/meta' like grade||'%'",
 	"ImpAutoRemove": true,
 	"ImpRefreshStruct": true,
 	"CheckVersion": true

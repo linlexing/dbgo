@@ -1,1 +1,0 @@
-exports=_go.fmt;

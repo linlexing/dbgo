@@ -250,7 +250,7 @@ func AssertString(v interface{}) string {
 	switch t := v.(type) {
 	case otto.Value:
 		if !t.IsString() {
-			panic(jsmvcerror.JSNotIsString)
+			panic(fmt.Errorf("the value %v not is string", v))
 		}
 		nv, err := t.ToString()
 		if err != nil {

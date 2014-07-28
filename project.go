@@ -581,7 +581,7 @@ func (p *project) ExportData(dumpName string, expFile *os.File, gradestr grade.G
 			FileColumns:      fileColumns,
 			SqlWhere:         oftenfun.SafeToString(row["sqlwhere"]),
 			ImpAutoRemove:    oftenfun.SafeToBool(row["impautoremove"]),
-			SqlRunAtImport:   oftenfun.SafeToString(row["sqlrunatimport"]),
+			RunAtImport:      oftenfun.SafeToString(row["sqlrunatimport"]),
 			ImpRefreshStruct: oftenfun.SafeToBool(row["imprefreshstruct"]),
 			CheckVersion:     oftenfun.SafeToBool(row["checkversion"]),
 		}
@@ -679,9 +679,21 @@ func (p *project) ImportData(impPathName string) (err error) {
 		return
 	}
 	defer func() {
+		if v := recover(); v != nil {
+			switch tv := v.(type) {
+			case error:
+				err = tv
+			case string:
+				err = fmt.Errorf("%s", tv)
+			default:
+				err = fmt.Errorf("new error")
+			}
+
+		}
 		if err == nil {
 			err = h.Commit()
 		} else {
+			fmt.Println(err)
 			h.Rollback()
 		}
 	}()
