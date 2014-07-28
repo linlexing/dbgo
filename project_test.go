@@ -8,11 +8,7 @@ import (
 )
 
 func TestExportData(t *testing.T) {
-	p, err := NewProject("meat", "host=localhost database=postgres user=meta password=meta123 sslmode=disable", "meta")
-	if err != nil {
-		t.Error(err)
-	}
-
+	p := NewProject("meta", TranslateString{}, "postgres host=localhost database=postgres user=meta password=meta123 sslmode=disable", "meta")
 	expFile, err := os.Create(filepath.Join(os.TempDir(), "export_test.zip"))
 	if err != nil {
 		t.Error(err)

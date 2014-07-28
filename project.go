@@ -4,11 +4,11 @@ import (
 	"archive/zip"
 	"bytes"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"github.com/linlexing/dbgo/grade"
 	"github.com/linlexing/dbgo/log"
 	"github.com/linlexing/dbgo/oftenfun"
-	"github.com/linlexing/pghelper"
 	"github.com/robertkrimen/otto"
 	"html/template"
 	"io"
@@ -32,18 +32,13 @@ const (
 	NotFoundAction = "NotFoundAction"
 )
 
-type Intercept struct {
-	ID            string
-	InterceptWhen int64
-	Script        string
-	Grade         string
-}
+type TranslateString map[string]string
 
 type Project interface {
 	Name() string
-	DisplayLabel() pghelper.JSON
+	DisplayLabel() TranslateString
+	NewDBHelper() *grade.DBHelper
 
-	DBHelper() *grade.PGHelper
 	DefaultAction() (string, string)
 	ReverseUrl(args ...string) string
 	ClearCache()
@@ -52,8 +47,8 @@ type Project interface {
 	Require(rm *otto.Otto, fileName, currentModuleDir string, gradestr grade.Grade) (*otto.Script, string, error)
 
 	Version(grade grade.Grade) (int64, bool, error)
-	Model(mname string, gradestr grade.Grade) *grade.DBTable
-	Table(mname string, gradestr grade.Grade) *grade.DBTable
+	Model(mname string, gradestr grade.Grade) *grade.DataTable
+	DBModel(mname string, gradestr grade.Grade) *grade.DBTable
 	ExportData(dumpName string, expFile *os.File, gradestr grade.Grade) error
 	ImportData(impPath string) error
 	Checks(tablename string, gradestr grade.Grade) ([]*Check, error)
@@ -62,12 +57,10 @@ type Project interface {
 }
 
 type project struct {
-	name         string
-	displayLabel pghelper.JSON
-	dbHelper     *grade.PGHelper
-	metaProject  string
-	repository   string
-
+	name             string
+	displayLabel     TranslateString
+	repository       string
+	dburl            string
 	lockTableDefine  *sync.Mutex
 	lockVersion      *sync.Mutex
 	lockTemplateSet  *sync.Mutex
@@ -89,6 +82,7 @@ type project struct {
 	}][]string
 }
 
+/*
 func lx_dump() *grade.DataTable {
 	table := grade.NewDataTable("lx_dump", grade.GRADE_ROOT)
 	table.AddColumn(grade.NewColumn("name", grade.GRADE_ROOT, pghelper.TypeString, true))
@@ -132,20 +126,22 @@ func lx_check() *grade.DataTable {
 	table.AddColumn(grade.NewColumnT("grade", grade.GRADE_ROOT, pghelper.NewPGType(pghelper.TypeString, 0, true), ""))
 	table.SetPK("tablename", "id")
 	return table
-}
+}*/
 func RepositoryPath(repo string) string {
 	return filepath.Join(AppPath, "repository", repo, "_pd")
 }
+
+/*
 func publicTables() []*grade.DataTable {
 	return []*grade.DataTable{lx_dump(), lx_checkaddition(), lx_check()}
 
-}
-func NewProject(name string, label pghelper.JSON, dburl, repository string) (Project, error) {
+}*/
+func NewProject(name string, label TranslateString, dburl, repository string) Project {
 
-	p := &project{
+	return &project{
 		name:         name,
 		displayLabel: label,
-		dbHelper:     grade.NewPGHelper(dburl),
+		dburl:        dburl,
 		repository:   repository,
 
 		lockTableDefine:  &sync.Mutex{},
@@ -168,21 +164,28 @@ func NewProject(name string, label pghelper.JSON, dburl, repository string) (Pro
 			Grade    grade.Grade
 		}][]string{},
 	}
-
-	//先确保有公共的表
-	for _, v := range publicTables() {
-		if err := p.dbHelper.UpdateStruct(v); err != nil {
-			return nil, err
+	/*
+		//先确保有公共的表
+		for _, v := range publicTables() {
+			if err := p.dbHelper.UpdateStruct(v); err != nil {
+				return nil, err
+			}
 		}
-	}
-	return p, nil
+		return p, nil*/
 }
-func (p *project) Model(mname string, gradestr grade.Grade) *grade.DBTable {
-	return p.Table(mname, gradestr)
+func (p *project) Model(mname string, gradestr grade.Grade) *grade.DataTable {
+	return p.table(mname, gradestr)
 }
-
+func (p *project) DBModel(mname string, gradestr grade.Grade) *grade.DBTable {
+	return p.dbTable(mname, gradestr)
+}
 func (p *project) loadVersion() (map[grade.Grade]int64, error) {
-	tab, err := p.dbHelper.GetDataTable(SQL_GerVersion)
+	AHelp := p.NewDBHelper()
+	if err := AHelp.Open(); err != nil {
+		return nil, err
+	}
+	defer AHelp.Close()
+	tab, err := AHelp.GetData("select grade,max(verno) as verno from lx_version group by grade")
 	if err != nil {
 		return nil, err
 	}
@@ -243,7 +246,12 @@ func (p *project) loadTemplate(f template.FuncMap) (*template.Template, error) {
 	})
 	rev.Funcs(f)
 	//get template
-	tab, err := p.dbHelper.GetDataTable(SQL_GetView)
+	AHelp := p.NewDBHelper()
+	if err := AHelp.Open(); err != nil {
+		return nil, err
+	}
+	defer AHelp.Close()
+	tab, err := AHelp.GetData("select name,content,grade from lx_view order by name")
 	if err != nil {
 		return nil, err
 	}
@@ -279,9 +287,6 @@ func (p *project) Version(gradestr grade.Grade) (int64, bool, error) {
 	return v, ok, nil
 }
 
-func (p *project) DBHelper() *grade.PGHelper {
-	return p.dbHelper
-}
 func (p *project) DefaultAction() (string, string) {
 	return "login", "show"
 }
@@ -333,11 +338,14 @@ func (p *project) Object() map[string]interface{} {
 		"ReverseUrl":       p.jsReverseUrl,
 		"Name":             p.Name(),
 		"ClearCache":       p.jsClearCache,
-		"DBHelper":         p.DBHelper().Object(),
+		"NewDBHelper":      p.jsNewDBHelper,
 		"Model":            p.jsModel,
 		"Checks":           p.jsChecks,
 		"ReloadRepository": p.jsReloadRepository,
 	}
+}
+func (p *project) jsNewDBHelper(call otto.FunctionCall) otto.Value {
+	return oftenfun.JSToValue(call.Otto, p.NewDBHelper().Object())
 }
 func (p *project) jsClearCache(call otto.FunctionCall) otto.Value {
 	p.ClearCache()
@@ -400,17 +408,22 @@ func (p *project) getTableDefine(tablename string) (result *grade.DataTable, err
 	defer p.lockTableDefine.Unlock()
 	var ok bool
 	if result, ok = p.cacheTableDefine[tablename]; !ok {
-		var tab *grade.DBTable
-		tab, err = p.DBHelper().Table(tablename)
+		var tab *grade.DataTable
+		help := p.NewDBHelper()
+		if err := help.Open(); err != nil {
+			return nil, err
+		}
+		defer help.Close()
+		tab, err = help.Table(tablename)
 		if err != nil {
 			return
 		}
-		result = tab.DataTable
+		result = tab
 		p.cacheTableDefine[tablename] = result
 	}
 	return
 }
-func (p *project) Table(mname string, gradestr grade.Grade) *grade.DBTable {
+func (p *project) table(mname string, gradestr grade.Grade) *grade.DataTable {
 	tab, err := p.getTableDefine(mname)
 	if err != nil {
 		panic(err)
@@ -419,7 +432,18 @@ func (p *project) Table(mname string, gradestr grade.Grade) *grade.DBTable {
 	if !ok {
 		panic(fmt.Errorf("the table %q not exits at grade:%q", mname, gradestr))
 	}
-	return grade.NewDBTable(p.DBHelper(), result)
+	return result
+}
+func (p *project) dbTable(mname string, gradestr grade.Grade) *grade.DBTable {
+	tab, err := p.getTableDefine(mname)
+	if err != nil {
+		panic(err)
+	}
+	result, ok := tab.Reduced(gradestr)
+	if !ok {
+		panic(fmt.Errorf("the table %q not exits at grade:%q", mname, gradestr))
+	}
+	return grade.NewDBTable(p.NewDBHelper(), result)
 }
 func termCat(str1, str2 string) string {
 	if len(str1) == 0 {
@@ -432,52 +456,75 @@ func termCat(str1, str2 string) string {
 }
 func (p *project) loadCheck(tablename string) ([]*Check, error) {
 	rev := []*Check{}
-	err := p.DBHelper().Query(func(rows *sql.Rows) error {
-		for rows.Next() {
-			var id, level int64
-			var displaylabel, grade string
-			var runAtServer pghelper.NullBool
-			var script, sqlWhere pghelper.NullString
-			var fields pghelper.NullStringSlice
-			//a.id,
-			//a.displaylabel,
-			//a.level,
-			//a.fields||b.fields as fields,
-			//a.runatserver or b.runatserver as runatserver,
-			//array_to_string(array['('||b.script||')','('||a.script||')'],'&&') as script,
-			//array_to_string(array['('||b.sqlwhere||')','('||a.sqlwhere||')'],' AND ') as sqlwhere,
-			//a.grade
-			if err := rows.Scan(&id, &displaylabel, &level, &fields, &runAtServer, &script, &sqlWhere, &grade); err != nil {
-				return err
-			}
-			c := &Check{
-				ID:           id,
-				DisplayLabel: displaylabel,
-				Level:        level,
-				Fields:       []string{},
-				RunAtServer:  false,
-				Script:       "",
-				SqlWhere:     "",
-				Grade:        grade,
-			}
-			if fields.Valid {
-				c.Fields = fields.Slice
-			}
-			if runAtServer.Valid {
-				c.RunAtServer = runAtServer.Bool
-			}
-			if script.Valid {
-				c.Script = script.String
-			}
-			if sqlWhere.Valid {
-				c.SqlWhere = sqlWhere.String
-			}
-			rev = append(rev, c)
-		}
-		return nil
-	}, SQL_GetCheck, tablename)
+	h := p.NewDBHelper()
+	if err := h.Open(); err != nil {
+		return nil, err
+	}
+	defer h.Close()
+	rows, err := h.Query(`
+		select
+			a.id,
+			a.displaylabel_en,
+			a.displaylabel_zh_cn,
+			a.level,
+			a.fields,
+			b.fields as fields_add,
+			a.runatserver,
+			b.runatserver as runatserver_add,
+			a.script,
+			b.script as script_add,
+			a.sqlwhere,
+			b.sqlwhere as sqlwhere_add,
+			a.grade
+		from lx_check a left join lx_checkaddition b on a.tablename=b.tablename and a.addition=b.addition
+		where a.tablename={{ph}}`, tablename)
 	if err != nil {
 		return nil, err
+	}
+	for rows.Next() {
+		var id, level int64
+		var displaylabel_en, displaylabel_zh_cn, grade string
+		var runAtServer, runAtServer_add sql.NullBool
+		var script, script_add, sqlWhere, sqlWhere_add, fields, fields_add sql.NullString
+		if err := rows.Scan(
+			&id,
+			&displaylabel_en,
+			&displaylabel_zh_cn,
+			&level,
+			&fields,
+			&fields_add,
+			&runAtServer,
+			&runAtServer_add,
+			&script,
+			&script_add,
+			&sqlWhere,
+			&sqlWhere_add,
+			&grade); err != nil {
+			return nil, err
+		}
+		c := &Check{
+			ID:           id,
+			DisplayLabel: TranslateString{"en": displaylabel_en, "zh_CN": displaylabel_zh_cn},
+			Level:        level,
+			Fields:       []string{},
+			RunAtServer:  false,
+			Script:       "",
+			SqlWhere:     "",
+			Grade:        grade,
+		}
+		if fields.Valid {
+			c.Fields = strings.Split(fields.String, ",")
+		}
+		if runAtServer.Valid {
+			c.RunAtServer = runAtServer.Bool
+		}
+		if script.Valid {
+			c.Script = script.String
+		}
+		if sqlWhere.Valid {
+			c.SqlWhere = sqlWhere.String
+		}
+		rev = append(rev, c)
 	}
 	return rev, nil
 }
@@ -500,8 +547,13 @@ func (p *project) Checks(tablename string, gradestr grade.Grade) ([]*Check, erro
 	return rev, nil
 }
 func (p *project) ExportData(dumpName string, expFile *os.File, gradestr grade.Grade) error {
-	dumpData := p.Model("lx_dump", gradestr)
-	if err := dumpData.FillWhere("name=$1", dumpName); err != nil {
+	dumpData := p.DBModel("lx_dump", gradestr)
+	if err := dumpData.DBHelper().Open(); err != nil {
+		return err
+	}
+	defer dumpData.DBHelper().Close()
+
+	if err := dumpData.FillWhere("name={{ph}}", dumpName); err != nil {
 		return err
 	}
 	if dumpData.RowCount() == 0 {
@@ -517,8 +569,10 @@ func (p *project) ExportData(dumpName string, expFile *os.File, gradestr grade.G
 	for i := 0; i < dumpData.RowCount(); i++ {
 		row := dumpData.Row(i)
 		fileColumns := map[string]string{}
-		for k, v := range row["filecolumns"].(pghelper.JSON) {
-			fileColumns[k] = oftenfun.SafeToString(v)
+		if row["filecolumns"] != nil {
+			if err := json.Unmarshal([]byte(row["filecolumns"].(string)), &fileColumns); err != nil {
+				return err
+			}
 		}
 		param := &grade.ExportParam{
 			TableName:        row["tablename"].(string),
@@ -531,7 +585,7 @@ func (p *project) ExportData(dumpName string, expFile *os.File, gradestr grade.G
 			ImpRefreshStruct: oftenfun.SafeToBool(row["imprefreshstruct"]),
 			CheckVersion:     oftenfun.SafeToBool(row["checkversion"]),
 		}
-		if err := p.DBHelper().Export(param); err != nil {
+		if err := dumpData.DBHelper().Export(param); err != nil {
 			return err
 		}
 	}
@@ -610,25 +664,72 @@ func unzip(src, dest string) error {
 	}
 	return nil
 }
-func (p *project) ImportData(impPathName string) error {
+func (p *project) ImportData(impPathName string) (err error) {
 	//sub directory is table
 	dirs, err := ioutil.ReadDir(impPathName)
 	if err != nil {
 		return err
 	}
-	return grade.RunAtTrans(p.DBHelper().DbUrl(), func(helper *grade.PGHelper) error {
-		for _, file := range dirs {
-			if file.IsDir() {
-				err := helper.Import(filepath.Join(impPathName, file.Name()))
-				if err != nil {
-					return err
-				}
+	h := p.NewDBHelper()
+	if err = h.Open(); err != nil {
+		return
+	}
+	defer h.Close()
+	if err = h.Begin(); err != nil {
+		return
+	}
+	defer func() {
+		if err == nil {
+			err = h.Commit()
+		} else {
+			h.Rollback()
+		}
+	}()
+	for _, file := range dirs {
+		if file.IsDir() {
+			err = h.Import(filepath.Join(impPathName, file.Name()))
+			if err != nil {
+				return
 			}
 		}
-		return nil
-	})
+	}
+	return nil
 }
-
+func (p *project) dumpStaticFile() error {
+	h := p.NewDBHelper()
+	if err := h.Open(); err != nil {
+		return err
+	}
+	defer h.Close()
+	rows, err := h.Query("select filename,content,lasttime from lx_static order by filename")
+	if err != nil {
+		return err
+	}
+	var filename string
+	var filetime time.Time
+	var content sql.RawBytes
+	for rows.Next() {
+		if err := rows.Scan(&filename, &content, &filetime); err != nil {
+			return err
+		}
+		trueFileName := filepath.Join(AppPath, "static", p.Name(), filename)
+		if err := os.MkdirAll(filepath.Dir(trueFileName), os.ModePerm); err != nil {
+			return err
+		}
+		info, err := os.Stat(trueFileName)
+		if os.IsNotExist(err) || (err == nil && filetime.After(info.ModTime())) {
+			if err := ioutil.WriteFile(trueFileName, []byte(content), os.ModePerm); err != nil {
+				return err
+			}
+			if err := os.Chtimes(trueFileName, filetime, filetime); err != nil {
+				return err
+			}
+		} else if err != nil {
+			return err
+		}
+	}
+	return nil
+}
 func (p *project) ReloadRepository() error {
 	repositoryPath := RepositoryPath(p.repository)
 	log.TRACE.Printf("ReloadRepository,%q", repositoryPath)
@@ -641,46 +742,30 @@ func (p *project) ReloadRepository() error {
 		return err
 	}
 	//fetch the static file to disk
-	return p.DBHelper().Query(func(rows *sql.Rows) error {
-		var filename string
-		var filetime time.Time
-		var content sql.RawBytes
-		for rows.Next() {
-			if err := rows.Scan(&filename, &content, &filetime); err != nil {
-				return err
-			}
-			trueFileName := filepath.Join(AppPath, "static", p.Name(), filename)
-			if err := os.MkdirAll(filepath.Dir(trueFileName), os.ModePerm); err != nil {
-				return err
-			}
-			info, err := os.Stat(trueFileName)
-			if os.IsNotExist(err) || (err == nil && filetime.After(info.ModTime())) {
-				if err := ioutil.WriteFile(trueFileName, []byte(content), os.ModePerm); err != nil {
-					return err
-				}
-				if err := os.Chtimes(trueFileName, filetime, filetime); err != nil {
-					return err
-				}
-			} else if err != nil {
-				return err
-			}
-		}
-		return nil
-	}, SQL_GetStatic)
+	if err := p.dumpStaticFile(); err != nil {
+		return err
+	}
+	return nil
 }
 func (p *project) loadPackage(rm *otto.Otto, fileName string, gradestr grade.Grade) (*otto.Script, error) {
 	strTmp := []string{}
-	if err := p.DBHelper().Query(func(rows *sql.Rows) error {
-		var script string
-		for rows.Next() {
-			if err := rows.Scan(&script); err != nil {
-				return err
-			}
-			strTmp = append(strTmp, script)
-		}
-		return nil
-	}, SQL_GetPackage, fileName, gradestr.String()); err != nil {
+	h := p.NewDBHelper()
+	if err := h.Open(); err != nil {
 		return nil, err
+	}
+	defer h.Close()
+	rows, err := h.Query(
+		`select script from lx_package where filename like concat({{ph}},'%') and {{reglike (printf "right(filename,length(filename)-length(%s))" ph) str "^[^/]*$"}} and grade_canuse({{ph}},grade) order by filename`,
+		fileName, gradestr.String())
+	if err != nil {
+		return nil, err
+	}
+	var script string
+	for rows.Next() {
+		if err := rows.Scan(&script); err != nil {
+			return nil, err
+		}
+		strTmp = append(strTmp, script)
 	}
 	str := strings.Join(strTmp, "\n")
 	if len(strTmp) == 0 {
@@ -733,23 +818,32 @@ func (p *project) GetPackageNames(dirNameStr string, gradestr grade.Grade) ([]st
 		return rev, nil
 	} else {
 		rev := []string{}
-		if err := p.DBHelper().Query(func(rows *sql.Rows) error {
-			var name string
-			for rows.Next() {
-				if err := rows.Scan(&name); err != nil {
-					return err
-				}
-				rev = append(rev, name)
-			}
-			return nil
-		}, SQL_GetPackageNames, dirNameStr, string(gradestr)); err != nil {
+		h := p.NewDBHelper()
+		if err := h.Open(); err != nil {
 			return nil, err
+		}
+		defer h.Close()
+		rows, err := h.Query(
+			`select filename from lx_package where filename like concat({{ph}},'%') and {{reglike (printf "right(filename,length(filename)-length(%s))" ph) str "^/?[^/]+\.js$"}} and grade_canuse({{ph}},grade) order by filename`,
+			dirNameStr, gradestr.String())
+		if err != nil {
+			return nil, err
+		}
+		for rows.Next() {
+			var name string
+			if err := rows.Scan(&name); err != nil {
+				return nil, err
+			}
+			rev = append(rev, name)
 		}
 		p.cachePackageNames[dirName] = rev
 		return rev, nil
 	}
 
 }
-func (p *project) DisplayLabel() pghelper.JSON {
+func (p *project) DisplayLabel() TranslateString {
 	return p.displayLabel
+}
+func (p *project) NewDBHelper() *grade.DBHelper {
+	return grade.NewDBHelper(p.dburl)
 }

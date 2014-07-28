@@ -1,7 +1,6 @@
 package grade
 
 import (
-	"bytes"
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
@@ -16,7 +15,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"text/template"
 	"time"
 )
 
@@ -24,10 +22,11 @@ type DBHelper struct {
 	*dbhelper.DBHelper
 }
 
-func NewDBHelper(dbDriver, dburl string) *DBHelper {
-	return NewDBHelperT(dbhelper.NewDBHelper(dbDriver, dburl))
+func NewDBHelper(dburl string) *DBHelper {
+	urls := strings.SplitN(dburl, " ", 2)
+	return newDBHelperT(dbhelper.NewDBHelper(urls[0], urls[1]))
 }
-func NewDBHelperT(ahelp *dbhelper.DBHelper) *DBHelper {
+func newDBHelperT(ahelp *dbhelper.DBHelper) *DBHelper {
 	return &DBHelper{ahelp}
 }
 func (p *DBHelper) GetData(strSql string, params ...interface{}) (*DataTable, error) {
@@ -38,7 +37,14 @@ func (p *DBHelper) GetData(strSql string, params ...interface{}) (*DataTable, er
 	return NewDataTableT(tab), nil
 
 }
-func (p *DBHelper) Table(tablename string) (*DBTable, error) {
+func (p *DBHelper) Table(tablename string) (*DataTable, error) {
+	tab, err := p.DBHelper.Table(tablename)
+	if err != nil {
+		return nil, err
+	}
+	return NewDataTableT(tab), nil
+}
+func (p *DBHelper) DBTable(tablename string) (*DBTable, error) {
 	tab, err := p.DBHelper.Table(tablename)
 	if err != nil {
 		return nil, err
@@ -47,7 +53,7 @@ func (p *DBHelper) Table(tablename string) (*DBTable, error) {
 	return t, nil
 }
 func (p *DBHelper) UpdateStruct(newStruct *DataTable) error {
-	var oldStruct *DBTable
+	var oldStruct *DataTable
 	if exists, err := p.TableExists(newStruct.TableName); err != nil {
 		return err
 	} else {
@@ -63,7 +69,7 @@ func (p *DBHelper) UpdateStruct(newStruct *DataTable) error {
 	}
 	trueOld, ok := oldStruct.Reduced(newStruct.Grade())
 	if !ok {
-		return fmt.Errorf("the oldStruct's grade is %q,newStruct can't use it", oldStruct.DataTable.Grade())
+		return fmt.Errorf("the oldStruct's grade is %q,newStruct can't use it", oldStruct.Grade())
 	}
 
 	return p.DBHelper.UpdateStruct(trueOld.DataTable, newStruct.DataTable)
@@ -95,6 +101,7 @@ func (p *DBHelper) jsGetData(call otto.FunctionCall) otto.Value {
 	}
 	return oftenfun.JSToValue(call.Otto, result.Object())
 }
+
 func (p *DBHelper) Object() map[string]interface{} {
 	return map[string]interface{}{
 		"GetData": p.jsGetData,
@@ -148,14 +155,6 @@ func (ahelp *DBHelper) Import(pathName string) error {
 	tmpTableName := "import_tmp_lx"
 	trueTableName := tmptable.TableName
 
-	runAtImportSql, err = ahelp.tmplExecute(runAtImportSql, map[string]interface{}{
-		"TempTableName": tmpTableName,
-		"ExportGrade":   string(config.CurrentGrade),
-		"SqlWhere":      config.SqlWhere,
-	})
-	if err != nil {
-		return err
-	}
 	table := NewDBTable(ahelp, tmptable)
 	table.TableName = tmpTableName
 	table.Temporary = true
@@ -190,7 +189,11 @@ func (ahelp *DBHelper) Import(pathName string) error {
 	}
 	//run import sql
 	if runAtImportSql != "" {
-		if _, err := ahelp.Exec(runAtImportSql); err != nil {
+		if _, err := ahelp.ExecT(runAtImportSql, map[string]interface{}{
+			"TempTableName": tmpTableName,
+			"ExportGrade":   string(config.CurrentGrade),
+			"SqlWhere":      config.SqlWhere,
+		}); err != nil {
 			return err
 		}
 	}
@@ -401,53 +404,14 @@ type dumpConfig struct {
 	CheckVersion     bool
 }
 
-func (d *DBHelper) tmplExecute(tmplSrc string, param interface{}) (string, error) {
-	tmpl := template.New("expimp_template")
-	tmpl.Delims("<#", "#>")
-	tmpl.Funcs(template.FuncMap{
-		"StringExpress": d.StringExpress,
-	})
-
-	tmpl, err := tmpl.Parse(tmplSrc)
-	if err != nil {
-		return "", err
-	}
-	buf := &bytes.Buffer{}
-	if err = tmpl.Execute(buf, param); err != nil {
-		return "", err
-	}
-	return buf.String(), nil
-}
 func (p *DBHelper) Export(param *ExportParam) error {
-	const Import_Desc = "/*************************************************************/\n" +
-		"/*When the data imported temporary table, run the import SQL,*/\n" +
-		"/*finally merge data into actual table from temporary table. */\n" +
-		"/*The sql can use  following macro:                          */\n" +
-		"/*                                                           */\n" +
-		"/*<#.TempTableName#>  The temp table name                    */\n" +
-		"/*<#.Grade#>          The export table's grade               */\n" +
-		"/*************************************************************/\n"
-	const Struct_Desc = "/*************************************************************/\n" +
-		"/*The DataType can use following value:                      */\n" +
-		"/*                                                           */\n" +
-		"/* 0  TypeString                                             */\n" +
-		"/* 1  TypeBool                                               */\n" +
-		"/* 2  TypeInt64                                              */\n" +
-		"/* 3  TypeFloat64                                            */\n" +
-		"/* 4  TypeTime                                               */\n" +
-		"/* 5  TypeBytea                                              */\n" +
-		"/* 6  TypeStringSlice                                        */\n" +
-		"/* 7  TypeBoolSlice                                          */\n" +
-		"/* 8  TypeInt64Slice                                         */\n" +
-		"/* 9  TypeFloat64Slice                                       */\n" +
-		"/* 10 TypeTimeSlice                                          */\n" +
-		"/* 11 TypeJSON                                               */\n" +
-		"/* 12 TypeJSONSlice                                          */\n" +
-		"/*************************************************************/\n"
-	t, err := p.Table(param.TableName)
-	if err != nil {
+	var t *DBTable
+	if tab, err := p.Table(param.TableName); err != nil {
 		return err
+	} else {
+		t = NewDBTable(p, tab)
 	}
+
 	for c, _ := range param.FileColumns {
 		if t.ColumnIndex(c) < 0 {
 			return fmt.Errorf("the filecolumns has invalid column:%q", c)
@@ -472,10 +436,7 @@ func (p *DBHelper) Export(param *ExportParam) error {
 			return err
 		}
 	}
-	sqlWhere, err := p.tmplExecute(param.SqlWhere, map[string]interface{}{"CurrentGrade": string(param.CurrentGrade)})
-	if err != nil {
-		return err
-	}
+	sqlWhere := p.ConvertSql(param.SqlWhere, map[string]interface{}{"CurrentGrade": string(param.CurrentGrade)})
 	//write the config.json
 	count, err := t.Count(sqlWhere)
 	if err != nil {

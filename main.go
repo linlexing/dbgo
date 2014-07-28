@@ -16,7 +16,7 @@ import (
 
 var (
 	// Loggers
-	Projects       *DBGo
+	Meta           MetaProject
 	DefaultProject string
 	Filters        []Filter
 	AppPath        string
@@ -37,7 +37,8 @@ func loadConfig() *Config {
 	}
 	return &c
 }
-func writeConfig(c *Config) error {
+
+/*func writeConfig(c *Config) error {
 	file, e := os.Create("./cnfg.json")
 	defer file.Close()
 	if e != nil {
@@ -50,7 +51,7 @@ func writeConfig(c *Config) error {
 	}
 	return nil
 }
-func initiDBGo(c *Config) error {
+func initiMeta(c *Config) error {
 	Projects = NewDBGo(c.DBUrl)
 	if c.MetaDBUrl == "" {
 		metaUrl, err := Projects.CreateProject("meta", "meta123")
@@ -64,7 +65,7 @@ func initiDBGo(c *Config) error {
 	}
 	Projects.ReadyMetaProject(c.MetaDBUrl)
 	return nil
-}
+}*/
 func main() {
 	var err error
 	if AppPath, err = filepath.Abs("."); err != nil {
@@ -72,9 +73,7 @@ func main() {
 	}
 	c := loadConfig()
 	DefaultProject = c.DefaultProject
-	if err = initiDBGo(c); err != nil {
-		log.INFO.Fatal(err)
-	}
+	Meta = NewMetaProject(c.MetaDBUrl)
 	SDB = NewSessionManager(path.Join(AppPath, "sdb"), c.SessionTimeout)
 	defer SDB.Close()
 	JSP = NewJSPool(10)

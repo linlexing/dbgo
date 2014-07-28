@@ -1,5 +1,6 @@
 package main
 
+/*
 import (
 	"github.com/linlexing/pghelper"
 	"sync"
@@ -52,3 +53,4 @@ func (c *DBGo) Project(name string) (result Project, err error) {
 	return
 
 }
+*/

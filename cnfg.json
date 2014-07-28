@@ -1,6 +1,5 @@
 {
-	"DBUrl":"host=localhost database=postgres user=admin password=llx123 sslmode=disable",
-	"MetaDBUrl":"host=localhost database=postgres user=meta password=meta123 sslmode=disable",
+	"MetaDBUrl":"postgres host=localhost database=postgres user=meta password=meta123 sslmode=disable",
 	"DefaultProject":"root",
 	"Port":9001,
 	"SessionTimeout":20

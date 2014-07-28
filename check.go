@@ -1,8 +1,6 @@
 package main
 
-import (
-	"time"
-)
+import ()
 
 const (
 	CHECK_LEVEL_DISABLE int64 = iota //禁用
@@ -13,7 +11,7 @@ const (
 
 type Check struct {
 	ID           int64
-	DisplayLabel string
+	DisplayLabel TranslateString
 	Level        int64
 	Fields       []string
 	RunAtServer  bool
@@ -21,7 +19,8 @@ type Check struct {
 	SqlWhere     string
 	Grade        string
 }
-type ClientCheck struct {
+
+/*type ClientCheck struct {
 	ID           int64
 	DisplayLabel string
 	Level        int64
@@ -36,3 +35,4 @@ type CheckResult struct {
 	RefreshTime time.Time
 	RefreshBy   string
 }
+*/

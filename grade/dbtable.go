@@ -19,25 +19,36 @@ func NewDBTable(ahelp *DBHelper, table *DataTable) *DBTable {
 	return &DBTable{table, ahelp}
 }
 func (t *DBTable) Fill(strSql string, params ...interface{}) (result_err error) {
-	return t.dbHelper.FillTable(t.DataTable.DataTable, strSql, params...)
+	return t.FillT(strSql, nil, params...)
+}
+func (t *DBTable) FillT(strSql string, templateParam map[string]interface{}, params ...interface{}) (result_err error) {
+	return t.dbHelper.FillTableT(t.DataTable.DataTable, strSql, templateParam, params...)
 }
 func (t *DBTable) FillByID(ids ...interface{}) (err error) {
 	return t.dbHelper.FillTable(t.DataTable.DataTable, t.SelectAllByID(), ids...)
 }
 func (t *DBTable) FillWhere(strWhere string, params ...interface{}) (err error) {
+	return t.FillWhereT(strWhere, nil, params...)
+}
+func (t *DBTable) FillWhereT(strWhere string, templateParam map[string]interface{}, params ...interface{}) (err error) {
 	return t.dbHelper.FillTable(t.DataTable.DataTable, t.SelectAllByWhere(strWhere), params...)
 }
 func (t *DBTable) Save() (rcount int64, result_err error) {
 	return t.dbHelper.SaveChange(t.DataTable.DataTable)
 }
 func (t *DBTable) Count(strWhere string, params ...interface{}) (count int64, err error) {
+	return t.CountT(strWhere, nil, params...)
+}
+func (t *DBTable) CountT(strWhere string, templateParam map[string]interface{}, params ...interface{}) (count int64, err error) {
 	if strWhere != "" {
 		strWhere = "\nwhere\n" + strWhere
 	}
 	v, err := t.dbHelper.QueryOne("select count(*) from "+t.TableName+strWhere, params...)
 	return v.(int64), nil
 }
-
+func (t *DBTable) DBHelper() *DBHelper {
+	return t.dbHelper
+}
 func (t *DBTable) jsFill(call otto.FunctionCall) otto.Value {
 	sql := oftenfun.AssertString(call.Argument(0))
 	vals := oftenfun.AssertValue(call.ArgumentList[1:]...)

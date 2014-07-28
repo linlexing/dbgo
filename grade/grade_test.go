@@ -6,7 +6,7 @@ import (
 )
 
 func TestExport(t *testing.T) {
-	p := NewDBHelper("postgres", "host=localhost database=postgres user=root password=meta123 sslmode=disable")
+	p := NewDBHelper("postgres host=localhost database=postgres user=root password=meta123 sslmode=disable")
 	if err := p.Open(); err != nil {
 		t.Error(err)
 	}
@@ -25,7 +25,7 @@ func TestExport(t *testing.T) {
 	}
 }
 func TestImport(t *testing.T) {
-	p := NewDBHelper("postgres", "host=localhost database=postgres user=root password=meta123 sslmode=disable")
+	p := NewDBHelper("postgres host=localhost database=postgres user=root password=meta123 sslmode=disable")
 	if err := p.Open(); err != nil {
 		t.Error(err)
 	}
@@ -49,7 +49,11 @@ func TestImport(t *testing.T) {
 	}
 }
 func TestVersion(t *testing.T) {
-	p := NewDBHelper("postgres", "host=localhost database=postgres user=meta password=meta123 sslmode=disable")
+	p := NewDBHelper("postgres host=localhost database=postgres user=meta password=meta123 sslmode=disable")
+	if err := p.Open(); err != nil {
+		t.Error(err)
+	}
+	defer p.Close()
 	spew.Dump(p.Version("root/tjj"))
 }
 func TestGradeVersion(t *testing.T) {
