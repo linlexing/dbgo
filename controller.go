@@ -264,9 +264,17 @@ func (c *ControllerAgent) jsUrlAuthed(call otto.FunctionCall) otto.Value {
 	v, _ := otto.ToValue(c.UrlAuthed())
 	return v
 }
-func (c *ControllerAgent) jsModel(call otto.FunctionCall) otto.Value {
-	mname := oftenfun.AssertString(call.Argument(0))
-	return oftenfun.JSToValue(call.Otto, c.Project.Model(mname, c.CurrentGrade).Object())
+func (c *ControllerAgent) jsDBModel(call otto.FunctionCall) otto.Value {
+	gradestr := c.CurrentGrade
+	tnames := make([]string, len(call.ArgumentList))
+	for i, v := range call.ArgumentList {
+		tnames[i] = oftenfun.AssertString(v)
+	}
+	rev := map[string]interface{}{}
+	for _, v := range c.Project.DBModel(gradestr, tnames...) {
+		rev[v.TableName] = v.Object()
+	}
+	return oftenfun.JSToValue(call.Otto, rev)
 }
 func (c *ControllerAgent) jsGradeCanUse(call otto.FunctionCall) otto.Value {
 	byUseGrade := grade.Grade(oftenfun.AssertString(call.Argument(0)))
@@ -306,9 +314,10 @@ func (c *ControllerAgent) object() map[string]interface{} {
 		"Session":          c.Session.Object(),
 		"Project":          c.Project.Object(),
 		"Method":           c.Request.Method,
-		"Model":            c.jsModel,
-		"ModelChecks":      c.jsModelChecks,
-		"TemplateFunc":     c.jsTemplateFunc,
+		//"Model":            c.jsModel,
+		"DBModel":      c.jsDBModel,
+		"ModelChecks":  c.jsModelChecks,
+		"TemplateFunc": c.jsTemplateFunc,
 	}
 
 }

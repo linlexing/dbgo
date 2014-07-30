@@ -1,7 +1,8 @@
 function(dbHelper,tmpTable,exportGrade,sqlWhere){
 	tab = dbHelper.GetData("select script from "+ tmpTable);
-	for(row in tab.Rows()){
-		dbHelper.ExecT(row.script,{
+	for(i=0;i < tab.RowCount();i++){
+		row = tab.Row(i);
+		dbHelper.GoExecT(row.script,{
 			TmpTableName:tmpTable,
 			ExportGrade:exportGrade,
 			SqlWhere:sqlWhere

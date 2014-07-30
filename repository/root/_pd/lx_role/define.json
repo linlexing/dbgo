@@ -1,6 +1,5 @@
 {
 	"TableName": "lx_role",
-	"PKConstraintName": "lx_role_pkey",
 	"PK": [
 		"name"
 	],
@@ -10,36 +9,36 @@
 	"Columns": [
 		{
 			"Name": "name",
-			"PGType": {
-				"Type": 0,
-				"MaxSize": 0,
-				"NotNull": true
-			},
-			"Default": "",
+			"DataType": "string",
+			"MaxSize": 255,
+			"NotNull": true,
 			"Desc": {
 				"Grade": "root"
 			}
 		},
 		{
-			"Name": "label",
-			"PGType": {
-				"Type": 11,
-				"MaxSize": 0,
-				"NotNull": false
-			},
-			"Default": "",
+			"Name": "label_en",
+			"DataType": "string",
+			"MaxSize": 255,
+			"NotNull": false,
+			"Desc": {
+				"Grade": "root"
+			}
+		},
+		{
+			"Name": "label_zh_cn",
+			"DataType": "string",
+			"MaxSize": 255,
+			"NotNull": false,
 			"Desc": {
 				"Grade": "root"
 			}
 		},
 		{
 			"Name": "grade",
-			"PGType": {
-				"Type": 0,
-				"MaxSize": 0,
-				"NotNull": true
-			},
-			"Default": "",
+			"DataType": "string",
+			"MaxSize": 255,
+			"NotNull": true,
 			"Desc": {
 				"Grade": "root"
 			}

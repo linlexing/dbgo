@@ -4,8 +4,8 @@
 	],
 	"CurrentGrade": "root",
 	"RowCount": 0,
-	"SqlWhere": "false",
-	"ImpAutoRemove": false,
+	"SqlWhere": "grade_canuse('root',grade)",
+	"ImpAutoRemove": true,
 	"ImpRefreshStruct": true,
 	"CheckVersion": true
 }

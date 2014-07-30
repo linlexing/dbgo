@@ -9,3 +9,4 @@ filename,grade
 /controller/home.js,root
 /controller/manager.js,root
 /controller/static.js,root
+/model/user.js,root

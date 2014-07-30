@@ -6,6 +6,7 @@ import (
 	"github.com/linlexing/dbgo/jsmvcerror"
 	"github.com/robertkrimen/otto"
 	"os"
+	"runtime/debug"
 	"strconv"
 )
 
@@ -218,6 +219,27 @@ func AssertArray(v otto.Value) []interface{} {
 	}
 	return nv.([]interface{})
 }
+func AssertStringArray(v otto.Value) []string {
+	if v.Class() != "Array" {
+		panic(jsmvcerror.JSNotIsArray)
+	}
+	nv, err := v.Export()
+
+	if err != nil {
+		panic(err)
+	}
+	array := nv.([]interface{})
+	rev := make([]string, len(array))
+	for i, v := range array {
+		switch tv := v.(type) {
+		case string:
+			rev[i] = tv
+		default:
+			panic(jsmvcerror.JSNotIsString)
+		}
+	}
+	return rev
+}
 func AssertByteArray(value otto.Value) []byte {
 	switch value.Class() {
 	case "GoArray", "Array":
@@ -250,7 +272,7 @@ func AssertString(v interface{}) string {
 	switch t := v.(type) {
 	case otto.Value:
 		if !t.IsString() {
-			panic(fmt.Errorf("the value %v not is string", v))
+			panic(fmt.Errorf("the value %v not is string\n%s", v, string(debug.Stack())))
 		}
 		nv, err := t.ToString()
 		if err != nil {

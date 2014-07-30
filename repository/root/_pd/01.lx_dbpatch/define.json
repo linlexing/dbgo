@@ -1,6 +1,5 @@
 {
 	"TableName": "lx_dbpatch",
-	"PKConstraintName": "lx_dbpatch_pkey",
 	"PK": [
 		"name"
 	],
@@ -11,7 +10,7 @@
 		{
 			"Name": "name",
 			"DataType": "string",
-			"MaxSize": 300,
+			"MaxSize": 255,
 			"NotNull": true,
 			"Desc": {
 				"Grade": "root"
@@ -20,7 +19,7 @@
 		{
 			"Name": "grade",
 			"DataType": "string",
-			"MaxSize": 500,
+			"MaxSize": 255,
 			"NotNull": true,
 			"Desc": {
 				"Grade": "root"

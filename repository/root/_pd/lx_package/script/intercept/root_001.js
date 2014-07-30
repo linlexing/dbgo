@@ -1,6 +1,6 @@
-var pc = require("/const.js");
 var fmt= require("/fmt.js");
-exports.When =pc.BFORE;
+var cnst = require("/const.js");
+exports.When =cnst.BFORE;
 exports.Intercept = function(c,filter){
   //render table,get table's data,checks,checkresult etc.
   c.RenderNGPage=function(args){
@@ -8,7 +8,7 @@ exports.Intercept = function(c,filter){
 	args.tmplName = fmt.Sprintf("%s/%s",c.ControllerName,c.ActionName);
 	c.RenderTemplate("ngpage",args);
   };
-  c.RenderModelOperate=function(optName,keys,args){
+  /*c.RenderModelOperate=function(optName,keys,args){
     args=args||{};
     opt = c.Model("rt_modeloperate");
     opt.FillByID(optName);
@@ -60,7 +60,7 @@ exports.Intercept = function(c,filter){
     });
     args.Fields = columns;
     c.RenderTemplate("table",args);
-  };
+  };*/
 
   if(!c.HasResult() && filter.length>0){
     filter[0](c,filter.slice(1));

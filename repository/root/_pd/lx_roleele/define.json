@@ -1,14 +1,15 @@
 {
-	"TableName": "lx_view",
+	"TableName": "lx_roleele",
 	"PK": [
-		"name"
+		"rolename",
+		"elename"
 	],
 	"Desc": {
 		"Grade": "root"
 	},
 	"Columns": [
 		{
-			"Name": "name",
+			"Name": "rolename",
 			"DataType": "string",
 			"MaxSize": 255,
 			"NotNull": true,
@@ -17,19 +18,10 @@
 			}
 		},
 		{
-			"Name": "grade",
+			"Name": "elename",
 			"DataType": "string",
 			"MaxSize": 255,
 			"NotNull": true,
-			"Desc": {
-				"Grade": "root"
-			}
-		},
-		{
-			"Name": "content",
-			"DataType": "string",
-			"MaxSize": 0,
-			"NotNull": false,
 			"Desc": {
 				"Grade": "root"
 			}

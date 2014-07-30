@@ -30,6 +30,8 @@ func JSGradeCanUse(call otto.FunctionCall) otto.Value {
 func package_grade() map[string]interface{} {
 	return map[string]interface{}{
 		"GradeCanUse": JSGradeCanUse,
+		"GRADE_ROOT":  grade.GRADE_ROOT.String(),
+		"GRADE_TAG":   grade.GRADE_TAG.String(),
 	}
 }
 func package_convert() map[string]interface{} {

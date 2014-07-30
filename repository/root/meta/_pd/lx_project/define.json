@@ -38,7 +38,7 @@
 		{
 			"Name": "dburl",
 			"DataType": "string",
-			"MaxSize": 300,
+			"MaxSize": 255,
 			"NotNull": true,
 			"Desc": {
 				"Grade": "root/meta"
@@ -47,7 +47,7 @@
 		{
 			"Name": "owner",
 			"DataType": "string",
-			"MaxSize": 300,
+			"MaxSize": 64,
 			"NotNull": true,
 			"Desc": {
 				"Grade": "root/meta"
@@ -56,7 +56,7 @@
 		{
 			"Name": "repository",
 			"DataType": "string",
-			"MaxSize": 300,
+			"MaxSize": 255,
 			"NotNull": true,
 			"Desc": {
 				"Grade": "root/meta"

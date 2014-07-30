@@ -76,6 +76,21 @@ func (p *DBHelper) UpdateStruct(newStruct *DataTable) error {
 	return p.DBHelper.UpdateStruct(trueOld.DataTable, newStruct.DataTable)
 
 }
+func (p *DBHelper) jsOpen(call otto.FunctionCall) otto.Value {
+	return oftenfun.JSToValue(call.Otto, p.Open())
+}
+func (p *DBHelper) jsClose(call otto.FunctionCall) otto.Value {
+	return oftenfun.JSToValue(call.Otto, p.Close())
+}
+func (p *DBHelper) jsBegin(call otto.FunctionCall) otto.Value {
+	return oftenfun.JSToValue(call.Otto, p.Begin())
+}
+func (p *DBHelper) jsCommit(call otto.FunctionCall) otto.Value {
+	return oftenfun.JSToValue(call.Otto, p.Commit())
+}
+func (p *DBHelper) jsRollback(call otto.FunctionCall) otto.Value {
+	return oftenfun.JSToValue(call.Otto, p.Rollback())
+}
 
 func (p *DBHelper) jsExecT(call otto.FunctionCall) otto.Value {
 	sql := oftenfun.AssertString(call.Argument(0))
@@ -127,10 +142,15 @@ func (p *DBHelper) jsGetData(call otto.FunctionCall) otto.Value {
 
 func (p *DBHelper) Object() map[string]interface{} {
 	return map[string]interface{}{
-		"GetData": p.jsGetData,
-		"Table":   p.jsTable,
-		"ExecT":   p.jsExecT,
-		"GoExecT": p.jsGoExecT,
+		"GetData":  p.jsGetData,
+		"Table":    p.jsTable,
+		"ExecT":    p.jsExecT,
+		"GoExecT":  p.jsGoExecT,
+		"Open":     p.jsOpen,
+		"Close":    p.jsClose,
+		"Begin":    p.jsBegin,
+		"Commit":   p.jsCommit,
+		"Rollback": p.jsRollback,
 	}
 }
 
@@ -238,6 +258,7 @@ func (ahelp *DBHelper) Import(pathName string) error {
 			return err
 		}
 	}
+	fmt.Println("merge table", trueTableName, tmpTableName)
 	if err := ahelp.Merge(trueTableName, tmpTableName, table.ColumnNames(), table.PK, config.ImpAutoRemove, config.SqlWhere); err != nil {
 		return err
 	}
@@ -354,7 +375,7 @@ func importFromCsv(pathName string, rCSV *csv.Reader, table *DBTable, config *du
 			table.Clear()
 		}
 		if err != nil && err != io.EOF {
-			return err
+			return fmt.Errorf("file %s line:%#v\n%s", pathName, line, err)
 		}
 	}
 	return nil
@@ -581,18 +602,23 @@ func (p *DBHelper) Export(param *ExportParam) error {
 }
 func (p *DBHelper) Version(gradestr Grade) (GradeVersion, error) {
 	var tab *DataTable
-	var err error
-	if gradestr == GRADE_TAG {
-		tab, err = p.GetData("select verno from lx_version")
-	} else {
-		tab, err = p.GetData("select verno from lx_version where {{ph}} like concat(grade,'%')", gradestr.String())
-	}
-	if err != nil {
+	if exists, err := p.TableExists("lx_version"); err != nil {
 		return nil, err
+	} else if exists {
+		if gradestr == GRADE_TAG {
+			tab, err = p.GetData("select verno from lx_version")
+		} else {
+			tab, err = p.GetData("select verno from lx_version where {{ph}} like concat(grade,'%')", gradestr.String())
+		}
+		if err != nil {
+			return nil, err
+		}
+		rev := make([]string, tab.RowCount())
+		for i, v := range tab.GetColumnValues(0) {
+			rev[i] = fmt.Sprintf("%d", v)
+		}
+		return ParseGradeVersion(strings.Join(rev, "."))
+	} else {
+		return GradeVersion{}, nil
 	}
-	rev := make([]string, tab.RowCount())
-	for i, v := range tab.GetColumnValues(0) {
-		rev[i] = fmt.Sprintf("%d", v)
-	}
-	return ParseGradeVersion(strings.Join(rev, "."))
 }

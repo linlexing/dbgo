@@ -68,11 +68,15 @@ func (t *DBTable) jsFillWhere(call otto.FunctionCall) otto.Value {
 	vals := oftenfun.AssertValue(call.ArgumentList[1:]...)
 	return oftenfun.JSToValue(call.Otto, t.FillWhere(sql, vals...))
 }
+func (t *DBTable) jsDBHelper(call otto.FunctionCall) otto.Value {
+	return oftenfun.JSToValue(call.Otto, t.DBHelper().Object())
+}
 func (t *DBTable) Object() map[string]interface{} {
 	m := t.DataTable.Object()
 	m["Fill"] = t.jsFill
 	m["FillByID"] = t.jsFillByID
 	m["FillWhere"] = t.jsFillWhere
+	m["DBHelper"] = t.jsDBHelper
 	return m
 }
 func (t *DBTable) UpdateStruct() error {

@@ -1,35 +1,27 @@
 {
-	"TableName": "lx_view",
+	"TableName": "lx_userrole",
 	"PK": [
-		"name"
+		"username",
+		"rolename"
 	],
 	"Desc": {
 		"Grade": "root"
 	},
 	"Columns": [
 		{
-			"Name": "name",
+			"Name": "username",
 			"DataType": "string",
-			"MaxSize": 255,
+			"MaxSize": 64,
 			"NotNull": true,
 			"Desc": {
 				"Grade": "root"
 			}
 		},
 		{
-			"Name": "grade",
+			"Name": "rolename",
 			"DataType": "string",
 			"MaxSize": 255,
 			"NotNull": true,
-			"Desc": {
-				"Grade": "root"
-			}
-		},
-		{
-			"Name": "content",
-			"DataType": "string",
-			"MaxSize": 0,
-			"NotNull": false,
 			"Desc": {
 				"Grade": "root"
 			}

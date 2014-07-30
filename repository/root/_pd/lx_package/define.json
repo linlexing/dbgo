@@ -1,6 +1,5 @@
 {
 	"TableName": "lx_package",
-	"PKConstraintName": "lx_package_pkey",
 	"PK": [
 		"filename"
 	],
@@ -10,36 +9,27 @@
 	"Columns": [
 		{
 			"Name": "filename",
-			"PGType": {
-				"Type": 0,
-				"MaxSize": 0,
-				"NotNull": true
-			},
-			"Default": "",
+			"DataType": "string",
+			"MaxSize": 255,
+			"NotNull": true,
 			"Desc": {
 				"Grade": "root"
 			}
 		},
 		{
 			"Name": "grade",
-			"PGType": {
-				"Type": 0,
-				"MaxSize": 0,
-				"NotNull": true
-			},
-			"Default": "",
+			"DataType": "string",
+			"MaxSize": 255,
+			"NotNull": true,
 			"Desc": {
 				"Grade": "root"
 			}
 		},
 		{
 			"Name": "script",
-			"PGType": {
-				"Type": 0,
-				"MaxSize": 0,
-				"NotNull": true
-			},
-			"Default": "",
+			"DataType": "string",
+			"MaxSize": 0,
+			"NotNull": true,
 			"Desc": {
 				"Grade": "root"
 			}

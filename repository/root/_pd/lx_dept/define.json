@@ -1,5 +1,5 @@
 {
-	"TableName": "lx_user",
+	"TableName": "lx_dept",
 	"PK": [
 		"name"
 	],
@@ -10,32 +10,14 @@
 		{
 			"Name": "name",
 			"DataType": "string",
-			"MaxSize": 64,
+			"MaxSize": 255,
 			"NotNull": true,
 			"Desc": {
 				"Grade": "root"
 			}
 		},
 		{
-			"Name": "pwd",
-			"DataType": "bytea",
-			"MaxSize": 0,
-			"NotNull": true,
-			"Desc": {
-				"Grade": "root"
-			}
-		},
-		{
-			"Name": "salt",
-			"DataType": "bytea",
-			"MaxSize": 0,
-			"NotNull": true,
-			"Desc": {
-				"Grade": "root"
-			}
-		},
-		{
-			"Name": "email",
+			"Name": "label_en",
 			"DataType": "string",
 			"MaxSize": 255,
 			"NotNull": false,
@@ -44,10 +26,19 @@
 			}
 		},
 		{
-			"Name": "deptname",
+			"Name": "label_zh_cn",
 			"DataType": "string",
 			"MaxSize": 255,
 			"NotNull": false,
+			"Desc": {
+				"Grade": "root"
+			}
+		},
+		{
+			"Name": "grade",
+			"DataType": "string",
+			"MaxSize": 255,
+			"NotNull": true,
 			"Desc": {
 				"Grade": "root"
 			}

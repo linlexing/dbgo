@@ -28,7 +28,7 @@ func NewMetaProject(dburl string) (result MetaProject) {
 }
 
 func (p *metaProject) loadProject(name string) (result Project, err error) {
-	table := p.DBModel("lx_project", grade.GRADE_ROOT.Child("meta"))
+	table := p.DBModel(grade.GRADE_ROOT.Child("meta"), "lx_project")[0]
 	if err := table.DBHelper().Open(); err != nil {
 		return nil, err
 	}

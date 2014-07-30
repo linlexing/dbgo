@@ -47,8 +47,8 @@ type Project interface {
 	Require(rm *otto.Otto, fileName, currentModuleDir string, gradestr grade.Grade) (*otto.Script, string, error)
 
 	Version(grade grade.Grade) (int64, bool, error)
-	Model(mname string, gradestr grade.Grade) *grade.DataTable
-	DBModel(mname string, gradestr grade.Grade) *grade.DBTable
+	//Model(mname string, gradestr grade.Grade) *grade.DataTable
+	DBModel(gradestr grade.Grade, mnames ...string) []*grade.DBTable
 	ExportData(dumpName string, expFile *os.File, gradestr grade.Grade) error
 	ImportData(impPath string) error
 	Checks(tablename string, gradestr grade.Grade) ([]*Check, error)
@@ -176,8 +176,8 @@ func NewProject(name string, label TranslateString, dburl, repository string) Pr
 func (p *project) Model(mname string, gradestr grade.Grade) *grade.DataTable {
 	return p.table(mname, gradestr)
 }
-func (p *project) DBModel(mname string, gradestr grade.Grade) *grade.DBTable {
-	return p.dbTable(mname, gradestr)
+func (p *project) DBModel(gradestr grade.Grade, mnames ...string) []*grade.DBTable {
+	return p.dbTable(gradestr, mnames...)
 }
 func (p *project) loadVersion() (map[grade.Grade]int64, error) {
 	AHelp := p.NewDBHelper()
@@ -315,10 +315,23 @@ func (p *project) jsReverseUrl(call otto.FunctionCall) otto.Value {
 	v, _ := otto.ToValue(p.ReverseUrl(params...))
 	return v
 }
-func (p *project) jsModel(call otto.FunctionCall) otto.Value {
+
+/*func (p *project) jsModel(call otto.FunctionCall) otto.Value {
 	tablename := oftenfun.AssertString(call.Argument(0))
 	gradestr := grade.Grade(oftenfun.AssertString(call.Argument(1)))
 	return oftenfun.JSToValue(call.Otto, p.Model(tablename, gradestr).Object())
+}*/
+func (p *project) jsDBModel(call otto.FunctionCall) otto.Value {
+	gradestr := grade.Grade(oftenfun.AssertString(call.Argument(0)))
+	tnames := make([]string, len(call.ArgumentList)-1)
+	for i, v := range call.ArgumentList[1:] {
+		tnames[i] = oftenfun.AssertString(v)
+	}
+	rev := map[string]interface{}{}
+	for _, v := range p.DBModel(gradestr, tnames...) {
+		rev[v.TableName] = v.Object()
+	}
+	return oftenfun.JSToValue(call.Otto, rev)
 }
 func (p *project) jsChecks(call otto.FunctionCall) otto.Value {
 	tablename := oftenfun.AssertString(call.Argument(0))
@@ -339,7 +352,7 @@ func (p *project) Object() map[string]interface{} {
 		"Name":             p.Name(),
 		"ClearCache":       p.jsClearCache,
 		"NewDBHelper":      p.jsNewDBHelper,
-		"Model":            p.jsModel,
+		"DBModel":          p.jsDBModel,
 		"Checks":           p.jsChecks,
 		"ReloadRepository": p.jsReloadRepository,
 	}
@@ -434,16 +447,21 @@ func (p *project) table(mname string, gradestr grade.Grade) *grade.DataTable {
 	}
 	return result
 }
-func (p *project) dbTable(mname string, gradestr grade.Grade) *grade.DBTable {
-	tab, err := p.getTableDefine(mname)
-	if err != nil {
-		panic(err)
+func (p *project) dbTable(gradestr grade.Grade, mnames ...string) []*grade.DBTable {
+	rev := make([]*grade.DBTable, len(mnames))
+	ahelp := p.NewDBHelper()
+	for i, v := range mnames {
+		tab, err := p.getTableDefine(v)
+		if err != nil {
+			panic(err)
+		}
+		tab1, ok := tab.Reduced(gradestr)
+		if !ok {
+			panic(fmt.Errorf("the table %q not exits at grade:%q", v, gradestr))
+		}
+		rev[i] = grade.NewDBTable(ahelp, tab1)
 	}
-	result, ok := tab.Reduced(gradestr)
-	if !ok {
-		panic(fmt.Errorf("the table %q not exits at grade:%q", mname, gradestr))
-	}
-	return grade.NewDBTable(p.NewDBHelper(), result)
+	return rev
 }
 func termCat(str1, str2 string) string {
 	if len(str1) == 0 {
@@ -547,7 +565,7 @@ func (p *project) Checks(tablename string, gradestr grade.Grade) ([]*Check, erro
 	return rev, nil
 }
 func (p *project) ExportData(dumpName string, expFile *os.File, gradestr grade.Grade) error {
-	dumpData := p.DBModel("lx_dump", gradestr)
+	dumpData := p.DBModel(gradestr, "lx_dump")[0]
 	if err := dumpData.DBHelper().Open(); err != nil {
 		return err
 	}
@@ -693,7 +711,6 @@ func (p *project) ImportData(impPathName string) (err error) {
 		if err == nil {
 			err = h.Commit()
 		} else {
-			fmt.Println(err)
 			h.Rollback()
 		}
 	}()
@@ -713,38 +730,42 @@ func (p *project) dumpStaticFile() error {
 		return err
 	}
 	defer h.Close()
-	rows, err := h.Query("select filename,content,lasttime from lx_static order by filename")
-	if err != nil {
+	if exists, err := h.TableExists("lx_static"); err != nil {
 		return err
-	}
-	var filename string
-	var filetime time.Time
-	var content sql.RawBytes
-	for rows.Next() {
-		if err := rows.Scan(&filename, &content, &filetime); err != nil {
+	} else if exists {
+		rows, err := h.Query("select filename,content,lasttime from lx_static order by filename")
+		if err != nil {
 			return err
 		}
-		trueFileName := filepath.Join(AppPath, "static", p.Name(), filename)
-		if err := os.MkdirAll(filepath.Dir(trueFileName), os.ModePerm); err != nil {
-			return err
-		}
-		info, err := os.Stat(trueFileName)
-		if os.IsNotExist(err) || (err == nil && filetime.After(info.ModTime())) {
-			if err := ioutil.WriteFile(trueFileName, []byte(content), os.ModePerm); err != nil {
+		var filename string
+		var filetime time.Time
+		var content sql.RawBytes
+		for rows.Next() {
+			if err := rows.Scan(&filename, &content, &filetime); err != nil {
 				return err
 			}
-			if err := os.Chtimes(trueFileName, filetime, filetime); err != nil {
+			trueFileName := filepath.Join(AppPath, "static", p.Name(), filename)
+			if err := os.MkdirAll(filepath.Dir(trueFileName), os.ModePerm); err != nil {
 				return err
 			}
-		} else if err != nil {
-			return err
+			info, err := os.Stat(trueFileName)
+			if os.IsNotExist(err) || (err == nil && filetime.After(info.ModTime())) {
+				if err := ioutil.WriteFile(trueFileName, []byte(content), os.ModePerm); err != nil {
+					return err
+				}
+				if err := os.Chtimes(trueFileName, filetime, filetime); err != nil {
+					return err
+				}
+			} else if err != nil {
+				return err
+			}
 		}
 	}
 	return nil
 }
 func (p *project) ReloadRepository() error {
 	repositoryPath := RepositoryPath(p.repository)
-	log.TRACE.Printf("ReloadRepository,%q", repositoryPath)
+	log.TRACE.Printf("ReloadRepository,%s,db:%s", repositoryPath, p.dburl)
 	if _, err := os.Stat(repositoryPath); err == os.ErrExist {
 		return nil
 	} else if err != nil {
@@ -767,8 +788,8 @@ func (p *project) loadPackage(rm *otto.Otto, fileName string, gradestr grade.Gra
 	}
 	defer h.Close()
 	rows, err := h.Query(
-		`select script from lx_package where filename like concat({{ph}},'%') and {{reglike (printf "right(filename,length(filename)-length(%s))" ph) str "^[^/]*$"}} and grade_canuse({{ph}},grade) order by filename`,
-		fileName, gradestr.String())
+		`select script from lx_package where filename like {{strcat ph "'%'"}} and {{reglike (printf "right(filename,length(filename)-length(%s))" ph) (str "^[^/]*$")}} and grade_canuse({{ph}},grade) order by filename`,
+		fileName, fileName, gradestr.String())
 	if err != nil {
 		return nil, err
 	}
@@ -835,9 +856,18 @@ func (p *project) GetPackageNames(dirNameStr string, gradestr grade.Grade) ([]st
 			return nil, err
 		}
 		defer h.Close()
-		rows, err := h.Query(
-			`select filename from lx_package where filename like concat({{ph}},'%') and {{reglike (printf "right(filename,length(filename)-length(%s))" ph) str "^/?[^/]+\.js$"}} and grade_canuse({{ph}},grade) order by filename`,
-			dirNameStr, gradestr.String())
+		rows, err := h.Query(`
+			select filename
+			from lx_package
+			where filename like {{"'%'"|strcat ph}} and
+				{{with $A:=(ph|printf "right(filename,length(filename)-length(%s))")}}
+				{{with $B:=("^/?[^/]+\\.js$"|str)}}
+					{{reglike $A $B}} and
+				{{end}}
+				{{end}}
+				grade_canuse({{ph}},grade)
+			order by filename`,
+			dirNameStr, dirNameStr, gradestr.String())
 		if err != nil {
 			return nil, err
 		}
