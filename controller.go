@@ -169,11 +169,11 @@ func (c *ControllerAgent) RenderStaticFile(filename string) Result {
 	}
 	return c.Result
 }
-func (c *ControllerAgent) RenderUserStaticFile(filename string) Result {
+func (c *ControllerAgent) RenderUserFile(filename string) Result {
 	if c.UserName == "" {
 		panic(fmt.Errorf("not logged"))
 	}
-	c.Result = &RenderUserStaticFileResult{
+	c.Result = &RenderUserFileResult{
 		ProjectName: c.Project.Name(),
 		UserName:    c.UserName,
 		FileName:    filename,
@@ -195,6 +195,10 @@ func (c *ControllerAgent) AuthUrl(args ...string) string {
 	}
 	return url
 }
+func (c *ControllerAgent) CurrentUserName() string {
+	return c.Session.Get("_user.name")
+}
+
 func (c *ControllerAgent) Url(args ...string) string {
 	v := []string{}
 	if len(args) > 0 && strings.Contains(args[0], ".") {
@@ -238,6 +242,7 @@ func (c *ControllerAgent) jsRender(call otto.FunctionCall) otto.Value {
 	c.Render(params)
 	return otto.NullValue()
 }
+
 func (c *ControllerAgent) jsRenderTemplate(call otto.FunctionCall) otto.Value {
 	templateName := oftenfun.AssertString(call.Argument(0))
 	params := map[string]interface{}{}
@@ -255,6 +260,10 @@ func (c *ControllerAgent) jsRenderStaticFile(call otto.FunctionCall) otto.Value 
 	c.RenderStaticFile(call.Argument(0).String())
 	return otto.NullValue()
 }
+func (c *ControllerAgent) jsRenderUserFile(call otto.FunctionCall) otto.Value {
+	c.RenderUserFile(call.Argument(0).String())
+	return otto.NullValue()
+}
 func (c *ControllerAgent) jsRenderJson(call otto.FunctionCall) otto.Value {
 	v := oftenfun.AssertObject(call.Argument(0))
 	c.RenderJson(v)
@@ -270,9 +279,9 @@ func (c *ControllerAgent) jsDBModel(call otto.FunctionCall) otto.Value {
 	for i, v := range call.ArgumentList {
 		tnames[i] = oftenfun.AssertString(v)
 	}
-	rev := map[string]interface{}{}
-	for _, v := range c.Project.DBModel(gradestr, tnames...) {
-		rev[v.TableName] = v.Object()
+	rev := make([]interface{}, len(tnames))
+	for i, v := range c.Project.DBModel(gradestr, tnames...) {
+		rev[i] = v.Object()
 	}
 	return oftenfun.JSToValue(call.Otto, rev)
 }
@@ -295,6 +304,39 @@ func (c *ControllerAgent) jsAuthUrl(call otto.FunctionCall) otto.Value {
 	}
 	return oftenfun.JSToValue(call.Otto, c.AuthUrl(strs...))
 }
+func (c *ControllerAgent) package_UserFile() map[string]interface{} {
+	return map[string]interface{}{
+		"FileExists": func(call otto.FunctionCall) otto.Value {
+			fileName := oftenfun.AssertString(call.Argument(0))
+			_, err := os.Stat(filepath.Join(AppPath, "userfile", c.Project.Name(), c.CurrentUserName(), fileName))
+			rev := err == nil
+			return oftenfun.JSToValue(call.Otto, rev)
+		},
+		"ReadFile": func(call otto.FunctionCall) otto.Value {
+			fileName := oftenfun.AssertString(call.Argument(0))
+			bys, err := ioutil.ReadFile(filepath.Join(AppPath, "userfile", c.Project.Name(), c.CurrentUserName(), fileName))
+			if err != nil {
+				panic(err)
+			}
+			return oftenfun.JSToValue(call.Otto, bys)
+		},
+		"WriteFile": func(call otto.FunctionCall) otto.Value {
+			fileName := oftenfun.AssertString(call.Argument(0))
+			bys := oftenfun.AssertByteArray(call.Argument(1))
+			fileName = filepath.Join(AppPath, "userfile", c.Project.Name(), c.CurrentUserName(), fileName)
+			err := os.MkdirAll(filepath.Dir(fileName), os.ModePerm)
+			if err != nil {
+				panic(err)
+			}
+			err = ioutil.WriteFile(fileName, bys, os.ModePerm)
+			if err != nil {
+				panic(err)
+			}
+			return otto.UndefinedValue()
+		},
+	}
+}
+
 func (c *ControllerAgent) object() map[string]interface{} {
 
 	return map[string]interface{}{
@@ -303,6 +345,7 @@ func (c *ControllerAgent) object() map[string]interface{} {
 		"AuthUrl":          c.jsAuthUrl,
 		"GradeCanUse":      c.jsGradeCanUse,
 		"CurrentGrade":     c.CurrentGrade.String(),
+		"CurrentUserName":  c.CurrentUserName(),
 		"ControllerName":   c.ControllerName,
 		"JsonBody":         c.JsonBody,
 		"TagPath":          c.TagPath,
@@ -310,6 +353,7 @@ func (c *ControllerAgent) object() map[string]interface{} {
 		"RenderTemplate":   c.jsRenderTemplate,
 		"RenderStaticFile": c.jsRenderStaticFile,
 		"RenderJson":       c.jsRenderJson,
+		"RenderUserFile":   c.jsRenderUserFile,
 		"HasResult":        c.jsHasResult,
 		"Session":          c.Session.Object(),
 		"Project":          c.Project.Object(),
@@ -318,6 +362,7 @@ func (c *ControllerAgent) object() map[string]interface{} {
 		"DBModel":      c.jsDBModel,
 		"ModelChecks":  c.jsModelChecks,
 		"TemplateFunc": c.jsTemplateFunc,
+		"UserFile":     c.package_UserFile(),
 	}
 
 }

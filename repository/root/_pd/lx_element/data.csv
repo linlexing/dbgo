@@ -1,2 +1,3 @@
 name,grade,label_en,label_zh_cn,category_en,category_zh_cn
 changepwd,root,01.Change Password,01.修改密码,90.System/10.Rights,90.系统管理/10.权限管理
+rolemanager,root,01.Role Manager,01.角色管理,80.Define/10.Core,80.系统定制/10.核心模块

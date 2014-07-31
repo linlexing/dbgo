@@ -2,24 +2,26 @@ var sha256 = require("/sha256.js");
 var convert =require("/convert.js");
 exports.model=function(c,userName){
 	var m = c.DBModel("lx_user","lx_userrole");
-	var db= m.lx_user.DBHelper();
+	var db= m[0].DBHelper();
+	var lx_user = m[0];
+	var lx_userrole = m[1];
 	db.Open();
 	try{
-		m.lx_user.FillByID(userName);
-		if( m.lx_user.RowCount()==0){
+		lx_user.FillByID(userName);
+		if( m[0].RowCount()==0){
 			this._exists = false;
 		}else{
 			this._exists = true;
-			row = m.lx_user.Row(0);
+			row = lx_user.Row(0);
 			this.Name = row.name;
 			this.Password = row.pwd;
 			this.Salt= row.salt;
 			this.Email = row.email;
 			this.DeptName = row.deptname;
-			m.lx_userrole.FillWhere("username={{ph}}",userName);
+			lx_userrole.FillWhere("username={{ph}}",userName);
 			this.Roles = [];
-			if(m.lx_userrole.RowCount() > 0 ){
-				this.Roles.push(m.lx_userrole.Row(0).rolename)
+			if(lx_userrole.RowCount() > 0 ){
+				this.Roles.push(lx_userrole.Row(0).rolename)
 			}
 		}
 	}
@@ -34,7 +36,7 @@ exports.model=function(c,userName){
 	}
 };
 exports.GetUserElement=function(c,userName){
-	var ele =c.DBModel("lx_element").lx_element;
+	var ele =c.DBModel("lx_element")[0];
 	var db =ele.DBHelper();
 	db.Open();
 	try{
@@ -49,5 +51,5 @@ exports.GetUserElement=function(c,userName){
 	finally{
 		db.Close();
 	}
-	return ele.Rows();
+	return ele.DataTable;
 };

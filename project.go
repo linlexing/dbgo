@@ -327,9 +327,9 @@ func (p *project) jsDBModel(call otto.FunctionCall) otto.Value {
 	for i, v := range call.ArgumentList[1:] {
 		tnames[i] = oftenfun.AssertString(v)
 	}
-	rev := map[string]interface{}{}
-	for _, v := range p.DBModel(gradestr, tnames...) {
-		rev[v.TableName] = v.Object()
+	rev := make([]interface{}, len(tnames))
+	for i, v := range p.DBModel(gradestr, tnames...) {
+		rev[i] = v.Object()
 	}
 	return oftenfun.JSToValue(call.Otto, rev)
 }

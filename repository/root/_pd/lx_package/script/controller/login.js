@@ -8,7 +8,7 @@ exports.show=function(c){
 exports.auth=function(c){
 	var user = new userModel.model(c,c.JsonBody.userName);
 	if(user.Exists() &&user.Auth(c.JsonBody.password)){
-		dept = c.DBModel("lx_dept").lx_dept;
+		dept = c.DBModel("lx_dept")[0];
 		db = dept.DBHelper();
 		db.Open();
 		try{

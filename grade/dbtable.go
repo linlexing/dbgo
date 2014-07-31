@@ -76,6 +76,7 @@ func (t *DBTable) Object() map[string]interface{} {
 	m["Fill"] = t.jsFill
 	m["FillByID"] = t.jsFillByID
 	m["FillWhere"] = t.jsFillWhere
+	m["DataTable"] = t.DataTable.Object()
 	m["DBHelper"] = t.jsDBHelper
 	return m
 }

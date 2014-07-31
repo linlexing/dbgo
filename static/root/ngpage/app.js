@@ -28,7 +28,31 @@ var BILL_BROWSE = i++;
 function regexp_like(value,regstr){
 	return new RegExp(regstr,"m").test(value);
 }
-var app = angular.module('app',['ngAnimate','mgcrea.ngStrap','pascalprecht.translate']);
+var app = angular.module('app',['ngAnimate','pascalprecht.translate','mgcrea.ngStrap','ui.bootstrap']);
+app.run(['$rootScope','$log','$window', function ($rootScope, $log, $window) {
+	$rootScope.$log = $log;
+	$rootScope.viewport ='';
+	$rootScope.mediaquery = function(){
+		$rootScope.$apply(function(){
+			if ($(".bitdb-view-xs").css("display") == "block" ){
+				$rootScope.viewport = 'xs';
+			}
+			else if ($(".bitdb-view-sm").css("display") == "block" ){
+				$rootScope.viewport = 'sm';
+			}
+			else if ($(".bitdb-view-md").css("display") == "block" ){
+				$rootScope.viewport = 'md';
+			}
+			else if ($(".bitdb-view-lg").css("display") == "block" ){
+				$rootScope.viewport = 'lg';
+			}
+			console.log('$rootScope.viewport: ',$rootScope.viewport);
+		});
+		return $rootScope.viewport;
+	}
+	$rootScope.mediaquery();
+	angular.element($window).bind('resize',$rootScope.mediaquery);
+}]);
 app.directive('lxField', ['$compile',function ($compile) {
   return {
     restrict: 'A',

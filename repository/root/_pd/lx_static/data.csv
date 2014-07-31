@@ -1,4 +1,5 @@
 filename,grade
-js/app.js,root
+ngpage/app.js,root
+ngpage/page.css,root
 img/flags/en.png,root
 img/flags/zhcn.png,root

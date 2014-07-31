@@ -1,0 +1,16 @@
+.bitdb-view-xs {display: none}
+.bitdb-view-sm {display: none}
+.bitdb-view-md {display: none}
+.bitdb-view-lg {display: none}
+@media (max-width: 767px) {
+	.bitdb-view-xs { display: block }
+}
+@media (min-width: 768px) and (max-width: 991px) {
+	.bitdb-view-sm { display: block }
+}
+@media (min-width: 992px) and (max-width: 1199px) {
+	.bitdb-view-md { display: block }
+}
+@media (min-width: 1200px) {
+	.bitdb-view-lg { display: block }
+}

@@ -101,6 +101,7 @@ func (d *DataTable) Reduced(gradestr Grade) (*DataTable, bool) {
 }
 func (d *DataTable) Object() map[string]interface{} {
 	return map[string]interface{}{
+		"AsCsv":         d.jsAsCsv,
 		"AddColumn":     d.jsAddColumn,
 		"AddRow":        d.jsAddRow,
 		"AddValues":     d.jsAddValues,
@@ -129,6 +130,13 @@ func (d *DataTable) Object() map[string]interface{} {
 		"TableName":     d.TableName,
 		"Indexes":       d.Indexes,
 	}
+}
+func (d *DataTable) jsAsCsv(call otto.FunctionCall) otto.Value {
+	columns := make([]string, len(call.ArgumentList))
+	for i, v := range call.ArgumentList {
+		columns[i] = oftenfun.AssertString(v)
+	}
+	return oftenfun.JSToValue(call.Otto, d.AsCsv(columns...))
 }
 func (d *DataTable) jsRows(call otto.FunctionCall) otto.Value {
 	return oftenfun.JSToValue(call.Otto, d.Rows())

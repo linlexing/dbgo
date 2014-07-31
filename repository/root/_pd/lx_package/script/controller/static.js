@@ -3,5 +3,5 @@ exports.file=function(c){
   c.RenderStaticFile(c.TagPath);
 }
 exports.userfile=function(c){
-  c.RenderUserStaticFile(c.TagPath);
+  c.RenderUserFile(c.TagPath);
 }
