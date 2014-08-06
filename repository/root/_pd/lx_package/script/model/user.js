@@ -53,3 +53,19 @@ exports.GetUserElement=function(c,userName){
 	}
 	return ele.DataTable;
 };
+exports.GetUserDept=function(c,userName){
+	dept = c.DBModel("lx_dept")[0];
+	db = dept.DBHelper();
+	rev = null;
+	db.Open();
+	try{
+		dept.FillWhere("name = (select deptname from lx_user where lx_user.name={{ph}})",userName);
+		if(dept.RowCount()>0){
+			rev = dept.Row(0);
+		}
+	}
+	finally{
+		db.Close();
+	}
+	return rev
+}

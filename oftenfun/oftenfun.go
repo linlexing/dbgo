@@ -220,7 +220,7 @@ func AssertArray(v otto.Value) []interface{} {
 	return nv.([]interface{})
 }
 func AssertStringArray(v otto.Value) []string {
-	if v.Class() != "Array" {
+	if v.Class() != "Array" && v.Class() != "GoArray" {
 		panic(jsmvcerror.JSNotIsArray)
 	}
 	nv, err := v.Export()
@@ -228,17 +228,23 @@ func AssertStringArray(v otto.Value) []string {
 	if err != nil {
 		panic(err)
 	}
-	array := nv.([]interface{})
-	rev := make([]string, len(array))
-	for i, v := range array {
-		switch tv := v.(type) {
-		case string:
-			rev[i] = tv
-		default:
-			panic(jsmvcerror.JSNotIsString)
+	switch array := nv.(type) {
+	case []string:
+		return array
+	case []interface{}:
+		rev := make([]string, len(array))
+		for i, v := range array {
+			switch tv := v.(type) {
+			case string:
+				rev[i] = tv
+			default:
+				panic(jsmvcerror.JSNotIsString)
+			}
 		}
+		return rev
+	default:
+		panic(fmt.Errorf("value type %T not is string array", nv))
 	}
-	return rev
 }
 func AssertByteArray(value otto.Value) []byte {
 	switch value.Class() {

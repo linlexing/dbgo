@@ -483,7 +483,7 @@ func (p *project) loadCheck(tablename string) ([]*Check, error) {
 		select
 			a.id,
 			a.displaylabel_en,
-			a.displaylabel_zh_cn,
+			a.displaylabel_cn,
 			a.level,
 			a.fields,
 			b.fields as fields_add,
@@ -501,13 +501,13 @@ func (p *project) loadCheck(tablename string) ([]*Check, error) {
 	}
 	for rows.Next() {
 		var id, level int64
-		var displaylabel_en, displaylabel_zh_cn, grade string
+		var displaylabel_en, displaylabel_cn, grade string
 		var runAtServer, runAtServer_add sql.NullBool
 		var script, script_add, sqlWhere, sqlWhere_add, fields, fields_add sql.NullString
 		if err := rows.Scan(
 			&id,
 			&displaylabel_en,
-			&displaylabel_zh_cn,
+			&displaylabel_cn,
 			&level,
 			&fields,
 			&fields_add,
@@ -522,7 +522,7 @@ func (p *project) loadCheck(tablename string) ([]*Check, error) {
 		}
 		c := &Check{
 			ID:           id,
-			DisplayLabel: TranslateString{"en": displaylabel_en, "zh_CN": displaylabel_zh_cn},
+			DisplayLabel: TranslateString{"en": displaylabel_en, "cn": displaylabel_cn},
 			Level:        level,
 			Fields:       []string{},
 			RunAtServer:  false,
@@ -811,7 +811,7 @@ func (p *project) loadPackage(rm *otto.Otto, fileName string, gradestr grade.Gra
 		for i, v := range strings.Split(str, "\n") {
 			src = append(src, fmt.Sprintf("%d\t%s", i+1, v))
 		}
-		return nil, fmt.Errorf("error:%s\nsource:\n%s", err, strings.Join(src, "\n"))
+		return nil, fmt.Errorf("error:%s\nfile:%s\nsource:\n%s", err, fileName, strings.Join(src, "\n"))
 	}
 	return src, nil
 }

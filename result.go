@@ -32,6 +32,14 @@ func (e *ErrorResult) Apply(r *http.Request, w http.ResponseWriter) {
 
 }
 
+type RedirectionResult struct {
+	url string
+}
+
+func (rt *RedirectionResult) Apply(r *http.Request, w http.ResponseWriter) {
+	http.Redirect(w, r, rt.url, 302)
+}
+
 /*
 type RenderBill struct {
 	Title       string

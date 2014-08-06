@@ -2,11 +2,13 @@ package main
 
 import (
 	"bytes"
+	"encoding/gob"
+	"encoding/json"
 	"github.com/linlexing/dbgo/log"
+	"github.com/linlexing/dbgo/oftenfun"
 	"github.com/robertkrimen/otto"
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/util"
-
 	"time"
 )
 
@@ -19,6 +21,11 @@ type SessionManager struct {
 	db      *leveldb.DB
 }
 
+func init() {
+	gob.Register(map[string]interface{}{})
+	gob.Register(json.Number(""))
+	gob.Register(time.Now())
+}
 func NewSessionManager(dbpath string, timeout int) *SessionManager {
 	db, err := leveldb.OpenFile(dbpath, nil)
 	if err != nil {
@@ -29,21 +36,36 @@ func NewSessionManager(dbpath string, timeout int) *SessionManager {
 func (s *SessionManager) Close() error {
 	return s.db.Close()
 }
-func (s *SessionManager) Put(pname, sid, key, value string) error {
+func (s *SessionManager) Put(pname, sid, key string, value interface{}) error {
+	buf := bytes.Buffer{}
+	enc := gob.NewEncoder(&buf) // Will write to network.
+	if err := enc.Encode(&value); err != nil {
+		return err
+	}
+
 	if err := s.db.Put([]byte(SessionLWTPrex+pname+sid), time2Bytes(time.Now()), nil); err != nil {
 		return err
 	}
-	return s.db.Put([]byte(pname+sid+key), []byte(value), nil)
+
+	return s.db.Put([]byte(pname+sid+key), buf.Bytes(), nil)
 }
-func (s *SessionManager) Get(pname, sid, key string) string {
+func (s *SessionManager) Get(pname, sid, key string) interface{} {
 	if err := s.db.Put([]byte(SessionLWTPrex+pname+sid), time2Bytes(time.Now()), nil); err != nil {
 		panic(err)
 	}
 	buf, err := s.db.Get([]byte(pname+sid+key), nil)
 	if err != nil && err != leveldb.ErrNotFound {
 		panic(err)
+	}
+	if len(buf) > 0 {
+		dec := gob.NewDecoder(bytes.NewBuffer(buf))
+		var rev interface{}
+		if err := dec.Decode(&rev); err != nil {
+			panic(err)
+		}
+		return rev
 	} else {
-		return string(buf)
+		return nil
 	}
 }
 func (s *SessionManager) All() (map[string]string, error) {
@@ -126,26 +148,22 @@ type Session struct {
 func NewSession(id, pname string) *Session {
 	return &Session{id, pname}
 }
-func (s *Session) Set(key, value string) (err error) {
+func (s *Session) Set(key string, value interface{}) (err error) {
 	return SDB.Put(s.ProjectName, s.SessionID, key, value)
 }
-func (s *Session) Get(key string) string {
+func (s *Session) Get(key string) interface{} {
 	return SDB.Get(s.ProjectName, s.SessionID, key)
 }
 func (s *Session) All() (map[string]string, error) {
 	return SDB.All()
 }
 func (s *Session) jsGet(call otto.FunctionCall) otto.Value {
-	r, _ := otto.ToValue(s.Get(call.Argument(0).String()))
-	return r
+	return oftenfun.JSToValue(call.Otto, s.Get(call.Argument(0).String()))
 }
 func (s *Session) jsSet(call otto.FunctionCall) otto.Value {
-	err := s.Set(call.Argument(0).String(), call.Argument(1).String())
-	if err != nil {
-		v, _ := otto.ToValue(err.Error())
-		return v
-	}
-	return otto.NullValue()
+	key := oftenfun.AssertString(call.Argument(0))
+	value := oftenfun.AssertValue(call.Argument(1))[0]
+	return oftenfun.JSToValue(call.Otto, s.Set(key, value))
 }
 func (s *Session) Object() map[string]interface{} {
 	return map[string]interface{}{

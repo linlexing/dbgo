@@ -28,7 +28,7 @@ var BILL_BROWSE = i++;
 function regexp_like(value,regstr){
 	return new RegExp(regstr,"m").test(value);
 }
-var app = angular.module('app',['ngAnimate','pascalprecht.translate','mgcrea.ngStrap','ui.bootstrap']);
+var app = angular.module('app',appDependencys);
 app.run(['$rootScope','$log','$window', function ($rootScope, $log, $window) {
 	$rootScope.$log = $log;
 	$rootScope.viewport ='';
@@ -46,7 +46,6 @@ app.run(['$rootScope','$log','$window', function ($rootScope, $log, $window) {
 			else if ($(".bitdb-view-lg").css("display") == "block" ){
 				$rootScope.viewport = 'lg';
 			}
-			console.log('$rootScope.viewport: ',$rootScope.viewport);
 		});
 		return $rootScope.viewport;
 	}

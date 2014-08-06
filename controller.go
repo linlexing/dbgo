@@ -88,9 +88,16 @@ func NewAgent(w http.ResponseWriter, r *http.Request) *ControllerAgent {
 	c.TemplateFun = template.FuncMap{
 		"url":     c.Url,
 		"authurl": c.AuthUrl,
+		"userfile": func(filename string) string {
+			return c.AuthUrl("userfile.file", filename)
+		},
 	}
 
 	return c
+}
+func (c *ControllerAgent) RenderRedirection(url string) Result {
+	c.Result = &RedirectionResult{url}
+	return c.Result
 }
 func (c *ControllerAgent) RenderError(err error) Result {
 	if err == jsmvcerror.ForbiddenError {
@@ -195,10 +202,6 @@ func (c *ControllerAgent) AuthUrl(args ...string) string {
 	}
 	return url
 }
-func (c *ControllerAgent) CurrentUserName() string {
-	return c.Session.Get("_user.name")
-}
-
 func (c *ControllerAgent) Url(args ...string) string {
 	v := []string{}
 	if len(args) > 0 && strings.Contains(args[0], ".") {
@@ -308,27 +311,49 @@ func (c *ControllerAgent) package_UserFile() map[string]interface{} {
 	return map[string]interface{}{
 		"FileExists": func(call otto.FunctionCall) otto.Value {
 			fileName := oftenfun.AssertString(call.Argument(0))
-			_, err := os.Stat(filepath.Join(AppPath, "userfile", c.Project.Name(), c.CurrentUserName(), fileName))
+			_, err := os.Stat(filepath.Join(AppPath, "userfile", c.Project.Name(), c.UserName, fileName))
 			rev := err == nil
 			return oftenfun.JSToValue(call.Otto, rev)
 		},
 		"ReadFile": func(call otto.FunctionCall) otto.Value {
 			fileName := oftenfun.AssertString(call.Argument(0))
-			bys, err := ioutil.ReadFile(filepath.Join(AppPath, "userfile", c.Project.Name(), c.CurrentUserName(), fileName))
+			bys, err := ioutil.ReadFile(filepath.Join(AppPath, "userfile", c.Project.Name(), c.UserName, fileName))
 			if err != nil {
 				panic(err)
 			}
 			return oftenfun.JSToValue(call.Otto, bys)
 		},
+		"ReadFileStr": func(call otto.FunctionCall) otto.Value {
+			fileName := oftenfun.AssertString(call.Argument(0))
+			bys, err := ioutil.ReadFile(filepath.Join(AppPath, "userfile", c.Project.Name(), c.UserName, fileName))
+			if err != nil {
+				panic(err)
+			}
+			return oftenfun.JSToValue(call.Otto, string(bys))
+		},
 		"WriteFile": func(call otto.FunctionCall) otto.Value {
 			fileName := oftenfun.AssertString(call.Argument(0))
 			bys := oftenfun.AssertByteArray(call.Argument(1))
-			fileName = filepath.Join(AppPath, "userfile", c.Project.Name(), c.CurrentUserName(), fileName)
+			fileName = filepath.Join(AppPath, "userfile", c.Project.Name(), c.UserName, fileName)
 			err := os.MkdirAll(filepath.Dir(fileName), os.ModePerm)
 			if err != nil {
 				panic(err)
 			}
 			err = ioutil.WriteFile(fileName, bys, os.ModePerm)
+			if err != nil {
+				panic(err)
+			}
+			return otto.UndefinedValue()
+		},
+		"WriteFileStr": func(call otto.FunctionCall) otto.Value {
+			fileName := oftenfun.AssertString(call.Argument(0))
+			bys := oftenfun.AssertString(call.Argument(1))
+			fileName = filepath.Join(AppPath, "userfile", c.Project.Name(), c.UserName, fileName)
+			err := os.MkdirAll(filepath.Dir(fileName), os.ModePerm)
+			if err != nil {
+				panic(err)
+			}
+			err = ioutil.WriteFile(fileName, []byte(bys), os.ModePerm)
 			if err != nil {
 				panic(err)
 			}
@@ -345,7 +370,6 @@ func (c *ControllerAgent) object() map[string]interface{} {
 		"AuthUrl":          c.jsAuthUrl,
 		"GradeCanUse":      c.jsGradeCanUse,
 		"CurrentGrade":     c.CurrentGrade.String(),
-		"CurrentUserName":  c.CurrentUserName(),
 		"ControllerName":   c.ControllerName,
 		"JsonBody":         c.JsonBody,
 		"TagPath":          c.TagPath,
@@ -363,6 +387,7 @@ func (c *ControllerAgent) object() map[string]interface{} {
 		"ModelChecks":  c.jsModelChecks,
 		"TemplateFunc": c.jsTemplateFunc,
 		"UserFile":     c.package_UserFile(),
+		"UserName":     c.UserName,
 	}
 
 }

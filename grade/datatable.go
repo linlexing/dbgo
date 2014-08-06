@@ -1,6 +1,7 @@
 package grade
 
 import (
+	//"github.com/davecgh/go-spew/spew"
 	"encoding/json"
 	"github.com/linlexing/datatable.go"
 	"github.com/linlexing/dbgo/oftenfun"
@@ -102,6 +103,7 @@ func (d *DataTable) Reduced(gradestr Grade) (*DataTable, bool) {
 func (d *DataTable) Object() map[string]interface{} {
 	return map[string]interface{}{
 		"AsCsv":         d.jsAsCsv,
+		"AsJSONP":       d.jsAsJSONP,
 		"AddColumn":     d.jsAddColumn,
 		"AddRow":        d.jsAddRow,
 		"AddValues":     d.jsAddValues,
@@ -137,6 +139,11 @@ func (d *DataTable) jsAsCsv(call otto.FunctionCall) otto.Value {
 		columns[i] = oftenfun.AssertString(v)
 	}
 	return oftenfun.JSToValue(call.Otto, d.AsCsv(columns...))
+}
+func (d *DataTable) jsAsJSONP(call otto.FunctionCall) otto.Value {
+	callback := oftenfun.AssertString(call.Argument(0))
+	columns := oftenfun.AssertStringArray(call.Argument(1))
+	return oftenfun.JSToValue(call.Otto, d.AsJSONP(callback, columns...))
 }
 func (d *DataTable) jsRows(call otto.FunctionCall) otto.Value {
 	return oftenfun.JSToValue(call.Otto, d.Rows())

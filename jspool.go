@@ -59,6 +59,17 @@ func package_sha256() map[string]interface{} {
 }
 func package_fmt() map[string]interface{} {
 	return map[string]interface{}{
+		"Print": func(call otto.FunctionCall) otto.Value {
+			vs := oftenfun.AssertValue(call.ArgumentList...)
+			fmt.Print(vs...)
+			return otto.UndefinedValue()
+		},
+		"Printf": func(call otto.FunctionCall) otto.Value {
+			formatstr := oftenfun.AssertString(call.Argument(0))
+			vs := oftenfun.AssertValue(call.ArgumentList[1:]...)
+			fmt.Sprintf(formatstr, vs...)
+			return otto.UndefinedValue()
+		},
 		"Sprint": func(call otto.FunctionCall) otto.Value {
 			vs := oftenfun.AssertValue(call.ArgumentList...)
 			return oftenfun.JSToValue(call.Otto, fmt.Sprint(vs...))

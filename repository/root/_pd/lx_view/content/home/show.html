@@ -1,141 +1,147 @@
-<style type="text/css">
+<#append . "OtherJSFiles" (static "home/abn_tree_directive.js")#>
 
-.navbar-header button{
-	float:left;
-}
-.dropdown-menu > li > a > img {
-	margin-right: 8px;
-	vertical-align: -35%;
-	width: 24px;
-	padding-right: 0;
-	margin-top: 0;
-}
-body
-{
-    padding-top: 50px;
-}
-/* Hide for mobile, show later */
-.sidebar {
-	display: none;
-}
-@media (min-width: 768px) {
-  .sidebar {
-    position: fixed;
-    top: 51px;
-    bottom: 0;
-    left: 0;
-    z-index: 1000;
-    display: block;
-    padding: 20px;
-    overflow-x: hidden;
-    overflow-y: auto; /* Scrollable contents if viewport is shorter than content. */
-    background-color: #f5f5f5;
-    border-right: 1px solid #eee;
-  }
-}
-.leftContent{
-	margin-top: -20px;
-	margin-right: -20px;
-	margin-left: -20px;
-}
-</style>
+<#append . "OtherCSSFiles" (static "home/abn_tree.css")#>
+<#append . "OtherCSSFiles" (static "home/home.css")#>
+
+<#append . "OtherDependencys" "angularBootstrapNavTree"#>
+<#template "ngheader" .#>
+<script src='<#userfile "sys/curele.js" #>'></script>
+<script src='<#static "home/home.js" #>'></script>
 <script>
-	function clearText(str){
-		return str.replace(/[0-9]+\./g,"");
-	}
-	var Elements=<#.CurrentUserElement#>;
-	var TopCategorys=[];
-	var TopCategorysEn={};
-	var TopCategorysZh_cn={};
-	var i =0;
-	for(item in Elements){
-		i++;
-		en = Elements[item].category_en.split("/")[0];
-		cn = Elements[item].category_zh_cn.split("/")[0];
-		var name ;
-		if(en == ""){
-			name =clearText(cn) ;
-		}else{
-			name = clearText(en) ;
-		}
-		TopCategorys.push({
-			name:name,
-			category_en:en,
-			category_zh_cn:cn
-		});
-		TopCategorys = _.sortBy(TopCategorys,"category_en");
-		TopCategorysEn[name] = clearText(en);
-		TopCategorysZh_cn[name] = clearText(cn);
-	}
-	app.config(['$translateProvider', function ($translateProvider) {
-		$translateProvider.translations('en', {
-			"DEPT_LABEL":<#.c.Session.Get "_dept.label_en"#>,
-			"PROJECT_LABEL": <#.c.Project.DisplayLabel.en#>,
-			"LANGUAGE":"Language",
-			"EN":"English",
-			"ZH_CN":"Simplified Chinese",
-			"TOP_CATEGORY":TopCategorysEn
-		});
-
-		$translateProvider.translations('zh_CN', {
-			"DEPT_LABEL":<#.c.Session.Get "_dept.label_zh_cn"#>,
-			"PROJECT_LABEL": <#.c.Project.DisplayLabel.zh_CN#>,
-			"LANGUAGE":"语言",
-			"EN":"英语",
-			"ZH_CN":"简体中文",
-			"TOP_CATEGORY":TopCategorysZh_cn
-		});
-		$translateProvider.determinePreferredLanguage();
-	}]);
-	app.controller('mainCtrl', ['$translate', '$scope','$rootScope','$location','$aside', function ($translate, $scope,$rootScope,$location,$aside) {
-		var SetTitle=function (label) {
-			document.title='<#.c.Project.Name#> - <#.c.Session.Get "_user.name"#> [<#.c.Session.Get "_dept.name"#> - ' + label +']';
-		};
-		$translate('DEPT_LABEL').then(SetTitle);
-		$rootScope.$on('$translateChangeSuccess', function () {
-			$translate('DEPT_LABEL').then(SetTitle);
-		});
-		$scope.changeLanguage = function (langKey) {
-			$translate.use(langKey);
-		};
-		$scope.topMenus= TopCategorys;
-		$scope.isTopActive = function (viewLocation) {
-	        return _.str.startsWith($location.path(),viewLocation);
-	    };
-		$scope.navCollapsed = true;
-		$scope.aside = {
-  "title": "Title",
-  "content": "Hello Aside<br />This is a multiline message!"
-};
-		var myOtherAside = $aside({
-			scope: $scope,
-			title:"select menu",
-			animation:"am-slide-left",
-			show:false,
-			placement:"left",
-			contentTemplate: 'left-sample.html'
-		});
-		$scope.topClick=function(category){
-			if($rootScope.viewport=="xs"){
-				$scope.navCollapsed = true;
-				myOtherAside.$promise.then(function() {
-    				myOtherAside.show();
-  				})
-			}
-			$location.path("/"+category);
-		};
-	}]);
-	app.run(function ($rootScope,$location) {
-	    $rootScope.$on('$locationChangeSuccess', function () {
-	        console.log('$locationChangeSuccess changed!', new Date(),$location.path());
-	    });
-		if($location.path()==""){
-			$location.path("/"+ TopCategorys[0].name);
-		}
+app.config(['$translateProvider', function ($translateProvider) {
+	$translateProvider.translations('en', {
+		"PROJECT_LABEL": <#.c.Project.DisplayLabel.en#>,
+		"LANGUAGE":"Language",
+		"EN":"English",
+		"CN":"Simplified Chinese",
+		"Close":"Close"
+	}).translations('cn', {
+		"PROJECT_LABEL": <#.c.Project.DisplayLabel.cn#>,
+		"LANGUAGE":"语言",
+		"EN":"英语",
+		"CN":"简体中文",
+		"Close":"关闭"
+	}).registerAvailableLanguageKeys(['en', 'cn'], {
+		'en_US': 'en',
+		'en_UK': 'en',
+		'zh_CN': 'cn',
+		'zh_cn': 'cn'
+	}).determinePreferredLanguage();
+}]);
+app.controller('mainCtrl', ['$translate', '$scope','$rootScope','$location','$aside','$alert','$http',function ($translate, $scope,$rootScope,$location,$aside,$alert,$http) {
+	$scope.$watch("dept",function () {
+		document.title='<#.c.Project.Name#> - <#.c.Session.Get "user.name"#> [' +$scope.dept.label + ']';
 	});
+	var leftAside = $aside({
+		scope: $scope,
+		title:"select menu",
+		animation:"am-slide-left",
+		show:false,
+		placement:"left",
+		template:"aside-template.html",
+		contentTemplate: "left.html"
+	});
+	$scope.elementTrees = toTree(CurrentUserElement());
+	console.log($scope.elementTrees);
+	$scope.dept = <#(.c.Session.Get "user.dept")#>;
+	$scope.deptMenuNodes =toDeptMenus(<#.deptData#>,$scope.dept);
+	$scope.navCollapsed = true;
+
+	swithDeptLag([$scope.dept],$translate.preferredLanguage());
+	swith_lag($scope.elementTrees,$translate.preferredLanguage());
+	swithDeptLag($scope.deptMenuNodes,$translate.preferredLanguage());
+
+	if($location.path()==""){
+		$location.path($scope.elementTrees.children[0].path);
+	}
+	$scope.changeLanguage = function (langKey) {
+		$translate.use(langKey);
+		swith_lag($scope.elementTrees,langKey);
+		swithDeptLag($scope.deptMenuNodes,langKey);
+	};
+
+    $scope.$on('$locationChangeSuccess', function () {
+		if($location.path().length > 0){
+			$scope.activeTopItem= $scope.elementTrees.findById($location.path().split("/").slice(1,2));
+		}
+    });
+	$scope.topClick=function(item){
+		$location.path(item.path);
+		if($rootScope.viewport=="xs"){
+			$scope.navCollapsed = true;
+			if(item){
+				$scope.asideTitle = item.label;
+				leftAside.$promise.then(function() {
+	   				leftAside.show();
+				});
+			}
+		}
+	};
+	$scope.my_tree_handler=function(item){
+		if(item.data){
+			if($rootScope.viewport=="xs"){
+				leftAside.$promise.then(function() {
+		  			leftAside.hide();
+				});
+			}
+			$location.path(item.path);
+		}
+		clearOtherSelect($scope.elementTrees,item);
+	}
+
+	$scope.selectDept=function(item){
+		$http.post(<#authurl "home.switch_dept"#>,{dept:item,userName:<#.c.Session.Get "user.name"#>})
+			.success(function(data,status,headers,config,statusText){
+				if(data.ok){
+					$scope.dept = item;
+					$scope.deptMenuNodes =toDeptMenus(data.deptData,item);
+					swithDeptLag($scope.deptMenuNodes,$translate.preferredLanguage());
+				}else{
+					$alert({title: 'error', content:data.error, placement: 'top-right', type: 'danger', show: true});
+				}
+			})
+			.error(function(data,status,headers,config,statusText){
+				$alert({title: 'error1', content:data + "status:" + status+",statusText:" + statusText, placement: 'top-right', type: 'danger', show: true});
+			});
+	}
+
+}]);
 </script>
-<div ng-controller="mainCtrl">
-<div class="navbar navbar-inverse navbar-fixed-top" role="navigation">
+<script type="text/ng-template" id="aside-template.html">
+<div class="aside" tabindex="-1" role="dialog">
+  <div class="aside-dialog">
+    <div class="aside-content">
+      <div class="aside-header" ng-show="title">
+        <button type="button" class="close" ng-click="$hide()">&times;</button>
+        <h4 class="aside-title">{{asideTitle}}</h4>
+      </div>
+      <div class="aside-body" ng-bind="content"></div>
+      <div class="aside-footer">
+        <button type="button" class="btn btn-default" ng-click="$hide()" translate >Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+</script>
+<script type="text/ng-template" id="language-list.html">
+<ul class="dropdown-menu">
+	<li><a href="" ng-click="changeLanguage('en')"><img src=<#static "img/flags/en.png"#>></img>&nbsp;<span translate>EN</span></a></li>
+	<li><a href="" ng-click="changeLanguage('cn')"><img src=<#static "img/flags/zhcn.png"#>></img>&nbsp;<span translate>CN</span></a></li>
+</ul>
+</script>
+<script type="text/ng-template" id="dept-list.html">
+<ul class="dropdown-menu">
+	<li ng-repeat="item in deptMenuNodes" ng-class="{divider:item.divider}"><a href="" ng-click="selectDept(item)" ng-if="!item.divider") >{{item.label}}</a></li>
+</ul>
+</script>
+<script type="text/ng-template" id="left.html">
+<div class="leftContent">
+	<abn-tree tree-data="activeTopItem.children" icon-leaf="fa fa-angle-right" on-select="my_tree_handler(branch)"></abn-tree>
+</div>
+</script>
+
+<div ng-controller="mainCtrl" style="height:100%">
+<div class="navbar navbar-inverse ng-class:{'navbar-fixed-top':viewport!='xs','navbar-static-top':viewport=='xs'}" role="navigation">
 	<div class="container-fluid">
 		<div class="navbar-header">
 			<button type="button" class="navbar-toggle" ng-click="navCollapsed = !navCollapsed">
@@ -144,97 +150,39 @@ body
 				<span class="icon-bar"></span>
 				<span class="icon-bar"></span>
 			</button>
-			<div class="navbar-brand navbar-left" ><i class="icon-home"></i> <span class="hidden-xs" translate>PROJECT_LABEL</span><span class="visible-xs-inline"><#.c.Project.Name#></span></div>
+			<div class="navbar-brand navbar-left" ><i class="fa fa-home"></i> <span translate>PROJECT_LABEL</span></div>
 		</div>
 		<div class="navbar-collapse collapse" ng-class="{'in':!navCollapsed}">
 			<ul class="nav navbar-nav navbar-left">
-				<li ng-repeat="item in topMenus" ng-class="{ active: isTopActive('/'+item.name)}" ng-click="topClick(item.name)">
-					<a href="" translate>TOP_CATEGORY.{{item.name}}</a>
+				<li ng-repeat="item in elementTrees.children" ng-class="{ active: activeTopItem==item}" ng-click="topClick(item)">
+					<a href="">{{item.label}}</a>
 				</li>
 			</ul>
 			<ul class="nav navbar-nav navbar-right">
+				<li>
+					<a href="" data-animation="am-flip-x" bs-dropdown data-template="dept-list.html" data-placement="bottom-left" data-container="body"><i class="fa fa-user"></i> <span><#.c.Session.Get "user.name"#> {{dept.label}}</span></a>
+				</li>
 				<li class="hidden-xs">
-					<a href="" data-animation="am-flip-x" bs-dropdown data-placement="bottom-right" data-template="language-list.html" data-container="body"><i class="icon-align-justify"></i> <span translate>LANGUAGE</span></a>
+					<a href="" data-animation="am-flip-x" bs-dropdown data-placement="bottom-right" data-template="language-list.html" data-container="body"><i class="fa fa-align-justify"></i> <span translate>LANGUAGE</span></a>
 				</li>
 				<li class="visible-xs">
-					<a href="" data-animation="am-flip-x" bs-dropdown data-placement="bottom-left" data-template="language-list.html" data-container="body"><i class="icon-align-justify"></i> <span translate>LANGUAGE</span></a>
+					<a href="" data-animation="am-flip-x" bs-dropdown data-placement="bottom-left" data-template="language-list.html" data-container="body"><i class="fa fa-align-justify"></i> <span translate>LANGUAGE</span></a>
 				</li>
 			</ul>
 		</div>
 	</div>
 </div>
-<script type="text/ng-template" id="language-list.html">
-	<ul class="dropdown-menu">
-		<li><a href="" ng-click="changeLanguage('en')"><img src=<#static "img/flags/en.png"#>></img>&nbsp;<span translate>EN</span></a></li>
-		<li><a href="" ng-click="changeLanguage('zh_CN')"><img src=<#static "img/flags/zhcn.png"#>></img>&nbsp;<span translate>ZH_CN</span></a></li>
-	</ul>
-</script>
-<script type="text/ng-template" id="left-sample.html">
-<div style="height:100%;overflow-y:auto">
-<ul>
-<li>111212</li>
-<li>111212</li>
-<li>111212</li>
-<li>111212</li>
-<li>111212</li>
-<li>111212</li>
-<li>111212</li>
-<li>111212</li>
-<li>111212</li>
-<li>111212</li>
-<li>111212</li>
-<li>111212</li>
-<li>111212</li>
-<li>111212</li>
-<li>111212</li>
-<li>111212</li>
-<li>111212</li>
-<li>111212</li>
-<li>111212</li>
-<li>111212</li>
-</ul>
-</div>
-</script>
-
-<div class="container">
-	<div class="row">
-		<div class="col-sm-3 col-md-2 sidebar slide-animate" >
-			<div class="leftContent" ng-include="'left-sample.html'">
+<div class="container-fluid ng-class:{padtop:viewport!='xs'}" style="height:100%">
+	<div class="row" style="height:100%">
+		<div class="col-sm-3 col-md-2 sidebar slide-animate">
+			<div  ng-include="'left.html'">
 			</div>
 		</div>
-		<div id="main" class="col-sm-9 col-sm-offset-3 col-md-10 col-md-offset-2 main">
-<button type="button" class="btn btn-lg btn-primary" bs-aside data-content-template="left-sample.html" data-placement="left" data-animation="am-slide-left" data-container="body">Click to toggle aside
-  <br>
-  <small>(using an object)</small>
-</button>
-
-		right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right
-		right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right
-		right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right
-		right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right
-		right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right
-		right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right
-		right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right
-		right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right
-		right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right
-		right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right
-		right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right
-		right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right
-		right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right
-		right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right
-		right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right
-		right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right
-		right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right
-		right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right
-		right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right
-		right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right
-		right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right
-		right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right
-		right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right
-		right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right
-		right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right	right
+		<div id="main" class="col-sm-9 col-sm-offset-3 col-md-10 col-md-offset-2 main" style="height:100%">
+		 <iframe srcdoc="<html><body style='background-color:red'><div style='height:2000px'>test ateadfadf aksldjf aldjf alkdjf lakjsdflk ajdf; lkajdf;kla j;ldfkja </div></body></html>" frameborder="0" style="overflow:hidden;height:100%;width:100%" height="100%" width="100%"></iframe>
 		</div>
 	</div>
 
 </div><!-- /.container -->
 </div>
+<#template "ngfooter" .#>

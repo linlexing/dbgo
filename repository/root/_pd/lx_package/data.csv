@@ -9,4 +9,7 @@ filename,grade
 /controller/home.js,root
 /controller/manager.js,root
 /controller/static.js,root
+/controller/userfile.js,root
+/controller/changepwd.js,root
 /model/user.js,root
+/model/dept.js,root

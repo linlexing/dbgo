@@ -19,7 +19,7 @@ type metaProject struct {
 
 func NewMetaProject(dburl string) (result MetaProject) {
 	var err error
-	p := NewProject("meta", TranslateString{"en": "meta project", "zh_CN": "元数据库"}, dburl, grade.GRADE_ROOT.Child("meta").String())
+	p := NewProject("meta", TranslateString{"en": "meta project", "cn": "元数据库"}, dburl, grade.GRADE_ROOT.Child("meta").String())
 	result = &metaProject{p.(*project), &sync.Mutex{}, map[string]Project{}}
 	if err = result.ReloadRepository(); err != nil {
 		panic(err)
@@ -46,8 +46,8 @@ func (p *metaProject) loadProject(name string) (result Project, err error) {
 	if row["label_en"] != nil {
 		label["en"] = row["label_en"].(string)
 	}
-	if row["label_zh_cn"] != nil {
-		label["zh_CN"] = row["label_zh_cn"].(string)
+	if row["label_cn"] != nil {
+		label["cn"] = row["label_cn"].(string)
 	}
 	result = NewProject(name, label, row["dburl"].(string), oftenfun.SafeToString(row["repository"]))
 	err = result.ReloadRepository()

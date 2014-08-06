@@ -35,7 +35,7 @@
 			}
 		},
 		{
-			"Name": "label_zh_cn",
+			"Name": "label_cn",
 			"DataType": "string",
 			"MaxSize": 255,
 			"NotNull": false,
@@ -53,7 +53,16 @@
 			}
 		},
 		{
-			"Name": "category_zh_cn",
+			"Name": "category_cn",
+			"DataType": "string",
+			"MaxSize": 0,
+			"NotNull": false,
+			"Desc": {
+				"Grade": "root"
+			}
+		},
+		{
+			"Name": "url",
 			"DataType": "string",
 			"MaxSize": 0,
 			"NotNull": false,

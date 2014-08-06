@@ -1,2 +1,8 @@
-name,label_en,label_zh_cn,grade
-system,system,系统,root
+name,label_en,label_cn,grade,gradelevel
+system,system,系统,root,1
+00,stats,国家,root/tjj,2
+33,,浙江省,root/tjj/33,3
+3301,,杭州市,root/tjj/33/01,4
+330102,,上城区,root/tjj/33/01/02,5
+330103,,下城区,root/tjj/33/01/03,5
+3302,,宁波市,root/tjj/33/02,4

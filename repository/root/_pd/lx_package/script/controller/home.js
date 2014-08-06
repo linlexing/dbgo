@@ -1,13 +1,36 @@
 userModel = require("/model/user.js");
-convert = require("/convert.js")
+convert = require("/convert.js");
+deptModel = require("/model/dept.js");
+grade = require("/grade.js");
 exports.show=function(c){
-	eles = userModel.GetUserElement(c,c.Session.Get("_user.name"));
-	fileName = "sys/curele.csv";
-	csv = eles.AsCsv();
-	if(!c.UserFile.FileExists(fileName) ||
-		convert.Bytes2Str(c.UserFile.ReadFile(fileName)) != csv){
-		c.UserFile.WriteFile(fileName,convert.Str2Bytes(csv))
+	eles = userModel.GetUserElement(c,c.UserName);
+	for(var i =0;i < eles.RowCount();i++){
+		row = eles.Row(i);
+		if(row.url){
+			c.AuthUrl(row.url);
+		}
+		eles.UpdateRow(i,row);
 	}
-
-	c.RenderNGPage({CurrentUserElement:eles});
+	fileName = "sys/curele.js";
+	jsonp = eles.AsJSONP("CurrentUserElement",eles.ColumnNames());
+	if(!c.UserFile.FileExists(fileName) ||
+		c.UserFile.ReadFileStr(fileName) != jsonp){
+		c.UserFile.WriteFileStr(fileName,jsonp);
+	}
+	sdept = c.Session.Get("user.dept");
+	c.Render({deptData:deptModel.GetDeptMenuNodes(c,sdept.grade,sdept.gradelevel)});
+}
+exports.switch_dept=function(c){
+	var newDept =c.JsonBody.dept;
+	var originGrade = userModel.GetUserDept(c,c.Session.Get("user.name")).grade;
+	rev = {};
+	if(newDept.grade.indexOf(originGrade)==0){
+		rev.ok = true;
+		c.Session.Set("user.dept" ,newDept);
+		rev.deptData =deptModel.GetDeptMenuNodes(c,newDept.grade,newDept.gradelevel);
+	}else{
+		rev.ok = false;
+		rev.error = "old:" + originGrade + ",new:" + newGrade;
+	}
+	c.RenderJson(rev);
 }

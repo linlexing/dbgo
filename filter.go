@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/linlexing/dbgo/grade"
-	"github.com/linlexing/dbgo/jsmvcerror"
 	"github.com/linlexing/dbgo/log"
 	"github.com/robertkrimen/otto"
 	"net/http"
@@ -55,6 +54,7 @@ func ParseJsonFilter(c *ControllerAgent, f []Filter) {
 	if strings.Contains(c.Request.Header.Get("Content-Type"), "application/json") {
 		decoder := json.NewDecoder(c.Request.Body)
 		t := map[string]interface{}{}
+		decoder.UseNumber()
 		err := decoder.Decode(&t)
 		if err != nil {
 			c.RenderError(err)
@@ -84,12 +84,13 @@ func SessionFilter(c *ControllerAgent, f []Filter) {
 
 	//取出特殊的Grade属性，该属性用于确定后续的所有拦截器、控制器的可见范围
 	//对于未登录用户，赋予特殊GRADE_TAG
-	c.CurrentGrade = grade.Grade(c.Session.Get("Grade"))
+	svalue := c.Session.Get("user.dept")
+	if svalue != nil {
+		dept := svalue.(map[string]interface{})
+		c.CurrentGrade = grade.Grade(dept["grade"].(string))
+	}
 	if c.CurrentGrade == "" {
 		c.CurrentGrade = grade.GRADE_TAG
-		if err := c.Session.Set("Grade", string(c.CurrentGrade)); err != nil {
-			c.RenderError(err)
-		}
 	}
 	if len(f) > 0 && c.Result == nil {
 		f[0](c, f[1:])
@@ -173,15 +174,17 @@ end:
 func UrlAuthFilter(c *ControllerAgent, f []Filter) {
 	if !c.UrlAuthed() {
 		log.WARN.Printf("Forbidden url:%s,sid:%s", c.Request.URL.String(), c.Session.SessionID)
-		c.RenderError(jsmvcerror.ForbiddenError)
+		c.RenderRedirection(c.Project.ReverseUrl(c.Project.DefaultAction()))
 	}
 	if len(f) > 0 && c.Result == nil {
 		f[0](c, f[1:])
 	}
 }
 func UserFilter(c *ControllerAgent, f []Filter) {
-	uName := c.Session.Get("_username")
-	c.UserName = uName
+	uName := c.Session.Get("user.name")
+	if uName != nil {
+		c.UserName = uName.(string)
+	}
 
 	if len(f) > 0 && c.Result == nil {
 		f[0](c, f[1:])

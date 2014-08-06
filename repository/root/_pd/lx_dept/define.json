@@ -26,7 +26,7 @@
 			}
 		},
 		{
-			"Name": "label_zh_cn",
+			"Name": "label_cn",
 			"DataType": "string",
 			"MaxSize": 255,
 			"NotNull": false,
@@ -38,6 +38,15 @@
 			"Name": "grade",
 			"DataType": "string",
 			"MaxSize": 255,
+			"NotNull": true,
+			"Desc": {
+				"Grade": "root"
+			}
+		},
+		{
+			"Name": "gradelevel",
+			"DataType": "int64",
+			"MaxSize": 0,
 			"NotNull": true,
 			"Desc": {
 				"Grade": "root"

@@ -26,7 +26,7 @@
 			}
 		},
 		{
-			"Name": "label_zh_cn",
+			"Name": "label_cn",
 			"DataType": "string",
 			"MaxSize": 255,
 			"NotNull": false,

@@ -35,6 +35,7 @@
 
 </style>
 <script>
+
 	app.config(['$translateProvider', function ($translateProvider) {
 		$translateProvider.translations('en', {
 			"TITLE": "login",
@@ -43,19 +44,23 @@
 			"PWD_HINT":"Password",
 			"SIGN_IN_BUTTON":"Sign in",
 			"ERROR":"The user name or password invalid"
-		});
-
-		$translateProvider.translations('zh_CN', {
+		}).translations('cn', {
 	    	"TITLE": "登录",
 			"FORM_TITLE":"请登录",
 			"USER_NAME_HINT":"用户名",
 			"PWD_HINT":"密码",
 			"SIGN_IN_BUTTON":"登录",
 			"ERROR":"用户名或者密码无效"
-		});
-		$translateProvider.determinePreferredLanguage();
+		}).registerAvailableLanguageKeys(['en', 'cn'], {
+			'en_US': 'en',
+			'en_UK': 'en',
+			'zh_CN': 'cn',
+			'zh_cn': 'cn'
+		}).determinePreferredLanguage();
+
 	}]);
 	app.controller('MainCtrl', ['$scope', '$http','$window','$translate',function($scope,$http,$window,$translate) {
+		$scope.test =$translate.preferredLanguage();
 		$scope.userName = '';
 		$scope.password = '';
 		$scope.error = null;
@@ -83,11 +88,11 @@
 	<form name="frmLogin" class="form-signin" role="form" novalidate>
 		<h2 class="form-signin-heading" translate>FORM_TITLE</h2>
 		<div class="input-group">
-			<div class="input-group-addon"><i class="icon-user"></i></div>
+			<div class="input-group-addon"><i class="fa fa-user"></i></div>
 			<input type="text" class="form-control" placeholder="{{ 'USER_NAME_HINT' | translate }}" required autofocus ng-model="userName" ng-change="error=null"></input>
 		</div>
 		<div class="input-group">
-			<div class="input-group-addon" ><i class="icon-key"></i></div>
+			<div class="input-group-addon" ><i class="fa fa-key"></i></div>
 			<input type="password" class="form-control" placeholder="{{ 'PWD_HINT' | translate }}" required ng-model="password" ng-change="error=null"></input>
 		</div>
 		<p class="text-danger" ng-show="error">{{error}}</p>
