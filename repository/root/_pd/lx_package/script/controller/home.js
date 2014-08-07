@@ -2,6 +2,7 @@ userModel = require("/model/user.js");
 convert = require("/convert.js");
 deptModel = require("/model/dept.js");
 grade = require("/grade.js");
+opt = require("/model/option.js");
 exports.show=function(c){
 	eles = userModel.GetUserElement(c,c.UserName);
 	for(var i =0;i < eles.RowCount();i++){
@@ -18,7 +19,11 @@ exports.show=function(c){
 		c.UserFile.WriteFileStr(fileName,jsonp);
 	}
 	sdept = c.Session.Get("user.dept");
-	c.Render({deptData:deptModel.GetDeptMenuNodes(c,sdept.grade,sdept.gradelevel)});
+	var defaultUrl = opt.Get(c,"home_default")||"home/default";
+	c.Render({
+		deptData:deptModel.GetDeptMenuNodes(c,sdept.grade,sdept.gradelevel),
+		defaultUrl:defaultUrl
+	});
 }
 exports.switch_dept=function(c){
 	var newDept =c.JsonBody.dept;
@@ -33,4 +38,7 @@ exports.switch_dept=function(c){
 		rev.error = "old:" + originGrade + ",new:" + newGrade;
 	}
 	c.RenderJson(rev);
+}
+exports.default=function(c){
+	c.RenderMDPage();
 }

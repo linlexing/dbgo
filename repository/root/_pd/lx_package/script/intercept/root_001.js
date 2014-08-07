@@ -2,12 +2,17 @@ var fmt= require("/fmt.js");
 var cnst = require("/const.js");
 exports.When =cnst.BFORE;
 exports.Intercept = function(c,filter){
-  //render table,get table's data,checks,checkresult etc.
-  c.RenderNGPage=function(args){
-    args=args||{};
-	args.tmplName = fmt.Sprintf("%s/%s",c.ControllerName,c.ActionName);
-	c.RenderTemplate("ngpage",args);
-  };
+	//render table,get table's data,checks,checkresult etc.
+	c.RenderNGPage=function(args){
+		args=args||{};
+		args.tmplName = fmt.Sprintf("%s/%s.html",c.ControllerName,c.ActionName);
+		c.RenderTemplate("ngpage.html",args);
+	};
+	c.RenderMDPage=function(args){
+		args=args||{};
+		args.tmplName = fmt.Sprintf("%s/%s.md",c.ControllerName,c.ActionName);
+		c.RenderTemplate("mdpage.html",args);
+	};
   /*c.RenderModelOperate=function(optName,keys,args){
     args=args||{};
     opt = c.Model("rt_modeloperate");

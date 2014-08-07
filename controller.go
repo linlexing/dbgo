@@ -95,6 +95,11 @@ func NewAgent(w http.ResponseWriter, r *http.Request) *ControllerAgent {
 
 	return c
 }
+func (c *ControllerAgent) RenderForbidden() Result {
+	c.Result = &ForbiddenResult{}
+	return c.Result
+}
+
 func (c *ControllerAgent) RenderRedirection(url string) Result {
 	c.Result = &RedirectionResult{url}
 	return c.Result
@@ -190,7 +195,7 @@ func (c *ControllerAgent) RenderUserFile(filename string) Result {
 
 //Rendering template corresponding to the current action
 func (c *ControllerAgent) Render(args map[string]interface{}) Result {
-	return c.RenderTemplate(fmt.Sprintf("%s/%s", c.ControllerName, c.ActionName), args)
+	return c.RenderTemplate(fmt.Sprintf("%s/%s.html", c.ControllerName, c.ActionName), args)
 }
 
 //Combination of URL and authentication

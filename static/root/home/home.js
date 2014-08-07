@@ -53,8 +53,7 @@ function firstLag(value){
 		}
 	}
 }
-function node(parent,pathName,data){
-	this.prt = parent;
+function node(pathName,data){
 	this.uid=_.uniqueId("n");
 	this.pathName=pathName;
 	this.data = data;
@@ -108,7 +107,7 @@ node.prototype.makePath=function(pathName){
 		}
 	}
 	if(!rev){
-		this.children.splice(foundIdx,0,new node(this,firstName,null));
+		this.children.splice(foundIdx,0,new node(firstName,null));
 		if(!_.isEmpty(subName)){
 			rev = this.children[foundIdx].makePath(subName);
 		}else{
@@ -127,7 +126,7 @@ node.prototype.add=function(data){
 			break;
 		}
 	}
-	this.children.splice(foundIdx,0,new node(this,null,data));
+	this.children.splice(foundIdx,0,new node(null,data));
 }
 node.prototype.findById = function(ids){
 	if( ids.length == 0) {
@@ -142,6 +141,35 @@ node.prototype.findById = function(ids){
 	}
 	throw "not find " + ids.join("/");
 }
+//生成各个node的path属性
+node.prototype.buildPath= function(parentPath){
+	var p  = parentPath.concat(this.id());
+	this.path = p.join("/");
+	for(var i in this.children){
+		this.children[i].buildPath(p);
+	}
+}
+node.prototype.findByPath= function(path){
+	return this.each(function(v){
+		if(v.path == path){
+			return v;
+		}
+	});
+}
+node.prototype.selectNode= function(selectNode){
+	if(this == selectNode){
+		this.selected=true;
+		this.expanded = true;
+		return true;
+	}
+	for(var i in this.children){
+		var v = this.children[i].selectNode(selectNode);
+		if(v){
+			this.expanded = true;
+			return v;
+		}
+	}
+}
 node.prototype.each= function(cb){
 	var v = cb(this);
 	if(v){
@@ -155,24 +183,22 @@ node.prototype.each= function(cb){
 	}
 }
 function toTree(eles){
-	var rootNode = new node(null,{en:"root"},null);
+	var rootNode = new node({en:""},null);
 	for(var i in eles){
 		a = rootNode.makePath(getPathName(eles[i]));
 		a.add(eles[i]);
 	}
-	return rootNode
+	rootNode.buildPath([]);
+	for(var i in rootNode.children){
+		if(rootNode.children[i].children.length>0)
+			rootNode.children[i].children[0].expanded=true;
+	}
+	return rootNode;
 }
 function swith_lag(anode,lag){
 	if(lag.toLowerCase() == "zh_cn")
 		lag = "cn";
 	anode.each(function(v){
-		var path=[];
-		//can't include root
-		for(var p = v;p.prt;p=p.prt){
-			path.unshift(p.id())
-		}
-		//v.path = path.join("/");
-
 		v.label = clearText( v.displayLabel()[lag.toLowerCase()]);
 		if(!v.label || v.label==""){
 			v.label = clearText(firstLag(v.displayLabel()));
@@ -208,9 +234,9 @@ function swithDeptLag(deptNodes,lag){
 		lag = "cn";
 	for(i in deptNodes){
 		if(!deptNodes[i].divider){
-			if(lag == "en"){
+			if(lag == "en" && deptNodes[i].label_en){
 				deptNodes[i].label = deptNodes[i].name + "." + deptNodes[i].label_en;
-			}else if(lag == "cn"){
+			}else if(lag == "cn" && deptNodes[i].label_cn){
 				deptNodes[i].label = deptNodes[i].name + "." + deptNodes[i].label_cn;
 			}
 			if(!deptNodes[i].label){

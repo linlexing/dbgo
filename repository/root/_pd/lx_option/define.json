@@ -1,0 +1,39 @@
+{
+	"TableName": "lx_option",
+	"PK": [
+		"name"
+	],
+	"Desc": {
+		"Grade": "root"
+	},
+	"Columns": [
+		{
+			"Name": "name",
+			"DataType": "string",
+			"MaxSize": 255,
+			"NotNull": true,
+			"Desc": {
+				"Grade": "root"
+			}
+		},
+		{
+			"Name": "grade",
+			"DataType": "string",
+			"MaxSize": 255,
+			"NotNull": true,
+			"Desc": {
+				"Grade": "root"
+			}
+		},
+		{
+			"Name": "value",
+			"DataType": "string",
+			"MaxSize": 0,
+			"NotNull": false,
+			"Desc": {
+				"Grade": "root"
+			}
+		}
+	],
+	"Indexes": {}
+}

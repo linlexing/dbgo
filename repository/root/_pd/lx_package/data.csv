@@ -13,3 +13,4 @@ filename,grade
 /controller/changepwd.js,root
 /model/user.js,root
 /model/dept.js,root
+/model/option.js,root

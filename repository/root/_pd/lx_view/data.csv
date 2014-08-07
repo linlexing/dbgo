@@ -1,7 +1,9 @@
 name,grade
-table,root
-ngheader,root
-ngfooter,root
-ngpage,root
-login/show,root
-home/show,root
+table.html,root
+ngheader.html,root
+ngfooter.html,root
+ngpage.html,root
+mdpage.html,root
+login/show.html,root
+home/show.html,root
+home/default.md,root

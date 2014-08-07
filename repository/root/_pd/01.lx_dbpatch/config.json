@@ -8,6 +8,7 @@
 		"script": ".sql"
 	},
 	"SqlWhere": "grade_canuse('root',grade)",
+	"ImpAutoUpdate":true,
 	"ImpAutoRemove": true,
 	"ImpRefreshStruct": true,
 	"CheckVersion": true

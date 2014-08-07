@@ -5,6 +5,7 @@
 	"CurrentGrade": "root",
 	"RowCount": 0,
 	"SqlWhere": "exists(select 1 from lx_role b where b.name=dest.rolename and grade_canuse('root',b.grade))",
+	"ImpAutoUpdate":true,
 	"ImpAutoRemove": true,
 	"ImpRefreshStruct": true,
 	"CheckVersion": true

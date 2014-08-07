@@ -4,7 +4,7 @@
 <#append . "OtherCSSFiles" (static "home/home.css")#>
 
 <#append . "OtherDependencys" "angularBootstrapNavTree"#>
-<#template "ngheader" .#>
+<#template "ngheader.html" .#>
 <script src='<#userfile "sys/curele.js" #>'></script>
 <script src='<#static "home/home.js" #>'></script>
 <script>
@@ -29,9 +29,7 @@ app.config(['$translateProvider', function ($translateProvider) {
 	}).determinePreferredLanguage();
 }]);
 app.controller('mainCtrl', ['$translate', '$scope','$rootScope','$location','$aside','$alert','$http',function ($translate, $scope,$rootScope,$location,$aside,$alert,$http) {
-	$scope.$watch("dept",function () {
-		document.title='<#.c.Project.Name#> - <#.c.Session.Get "user.name"#> [' +$scope.dept.label + ']';
-	});
+	document.title=<#.c.Project.Name#>;
 	var leftAside = $aside({
 		scope: $scope,
 		title:"select menu",
@@ -42,14 +40,13 @@ app.controller('mainCtrl', ['$translate', '$scope','$rootScope','$location','$as
 		contentTemplate: "left.html"
 	});
 	$scope.elementTrees = toTree(CurrentUserElement());
-	console.log($scope.elementTrees);
 	$scope.dept = <#(.c.Session.Get "user.dept")#>;
 	$scope.deptMenuNodes =toDeptMenus(<#.deptData#>,$scope.dept);
 	$scope.navCollapsed = true;
 
-	swithDeptLag([$scope.dept],$translate.preferredLanguage());
-	swith_lag($scope.elementTrees,$translate.preferredLanguage());
-	swithDeptLag($scope.deptMenuNodes,$translate.preferredLanguage());
+	swithDeptLag([$scope.dept],$translate.use());
+	swith_lag($scope.elementTrees,$translate.use());
+	swithDeptLag($scope.deptMenuNodes,$translate.use());
 
 	if($location.path()==""){
 		$location.path($scope.elementTrees.children[0].path);
@@ -57,12 +54,23 @@ app.controller('mainCtrl', ['$translate', '$scope','$rootScope','$location','$as
 	$scope.changeLanguage = function (langKey) {
 		$translate.use(langKey);
 		swith_lag($scope.elementTrees,langKey);
+		swithDeptLag([$scope.dept],langKey);
 		swithDeptLag($scope.deptMenuNodes,langKey);
 	};
-
+	$scope.onMenuSelectChange=function(){
+		if($scope.activeMenu&&$scope.activeMenu.data &&$scope.activeMenu.data.url ){
+			var url = "/"+<#.c.Project.Name#>+"/" + $scope.activeMenu.data.url;
+			console.log(url);
+			$("#frmContent").attr("src",url);
+		}
+	}
     $scope.$on('$locationChangeSuccess', function () {
 		if($location.path().length > 0){
 			$scope.activeTopItem= $scope.elementTrees.findById($location.path().split("/").slice(1,2));
+			$scope.activeMenu = $scope.elementTrees.findByPath($location.path());
+			$scope.activeTopItem.selectNode($scope.activeMenu);
+			clearOtherSelect($scope.elementTrees,$scope.activeMenu);
+			$scope.onMenuSelectChange();
 		}
     });
 	$scope.topClick=function(item){
@@ -84,9 +92,15 @@ app.controller('mainCtrl', ['$translate', '$scope','$rootScope','$location','$as
 		  			leftAside.hide();
 				});
 			}
-			$location.path(item.path);
+			if(item.path == $location.path()){
+				$scope.onMenuSelectChange();
+			}else{
+				$location.path(item.path);
+			}
+		}else{
+			$scope.activeTopItem.selectNode($scope.activeMenu);
+			clearOtherSelect($scope.elementTrees,$scope.activeMenu);
 		}
-		clearOtherSelect($scope.elementTrees,item);
 	}
 
 	$scope.selectDept=function(item){
@@ -95,7 +109,8 @@ app.controller('mainCtrl', ['$translate', '$scope','$rootScope','$location','$as
 				if(data.ok){
 					$scope.dept = item;
 					$scope.deptMenuNodes =toDeptMenus(data.deptData,item);
-					swithDeptLag($scope.deptMenuNodes,$translate.preferredLanguage());
+					swithDeptLag([$scope.dept],$translate.use());
+					swithDeptLag($scope.deptMenuNodes,$translate.use());
 				}else{
 					$alert({title: 'error', content:data.error, placement: 'top-right', type: 'danger', show: true});
 				}
@@ -179,10 +194,10 @@ app.controller('mainCtrl', ['$translate', '$scope','$rootScope','$location','$as
 			</div>
 		</div>
 		<div id="main" class="col-sm-9 col-sm-offset-3 col-md-10 col-md-offset-2 main" style="height:100%">
-		 <iframe srcdoc="<html><body style='background-color:red'><div style='height:2000px'>test ateadfadf aksldjf aldjf alkdjf lakjsdflk ajdf; lkajdf;kla j;ldfkja </div></body></html>" frameborder="0" style="overflow:hidden;height:100%;width:100%" height="100%" width="100%"></iframe>
+		<iframe id="frmContent" src="<#authurl .defaultUrl#>" frameborder="0" style="overflow:hidden;height:100%;width:100%" height="100%" width="100%"></iframe>
 		</div>
 	</div>
 
 </div><!-- /.container -->
 </div>
-<#template "ngfooter" .#>
+<#template "ngfooter.html" .#>

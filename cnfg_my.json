@@ -1,6 +1,0 @@
-{
-	"MetaDBUrl":"mysql meta:llx123@/meta?parseTime=true&SQL_SAFE_UPDATES=0",
-	"DefaultProject":"root",
-	"Port":9001,
-	"SessionTimeout":20
-}

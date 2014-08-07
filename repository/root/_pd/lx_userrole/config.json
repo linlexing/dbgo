@@ -5,6 +5,7 @@
 	"CurrentGrade": "root",
 	"RowCount": 0,
 	"SqlWhere": "false",
+	"ImpAutoUpdate":true,
 	"ImpAutoRemove": false,
 	"ImpRefreshStruct": true,
 	"CheckVersion": true

@@ -10,6 +10,7 @@ import (
 	"github.com/linlexing/dbgo/log"
 	"github.com/linlexing/dbgo/oftenfun"
 	"github.com/robertkrimen/otto"
+	"github.com/russross/blackfriday"
 	"html/template"
 	"io"
 	"io/ioutil"
@@ -205,6 +206,19 @@ func (p *project) loadTemplate(f template.FuncMap) (*template.Template, error) {
 	rev := template.New("")
 	rev.Delims("<#", "#>")
 	rev.Funcs(template.FuncMap{
+		"markdown": func(value interface{}) template.HTML {
+			str := ""
+			switch tv := value.(type) {
+			case string:
+				str = tv
+			case template.HTML:
+				str = string(tv)
+			default:
+				str = fmt.Sprintf("the value:%v(%T) invalid", value, value)
+			}
+			rev := string(blackfriday.MarkdownCommon([]byte(str)))
+			return template.HTML(rev)
+		},
 		"static": func(filename string) string {
 			return p.ReverseUrl("static", "file", filename)
 		},
@@ -598,6 +612,7 @@ func (p *project) ExportData(dumpName string, expFile *os.File, gradestr grade.G
 			PathName:         filepath.Join(tmpDir, row["tablename"].(string)),
 			FileColumns:      fileColumns,
 			SqlWhere:         oftenfun.SafeToString(row["sqlwhere"]),
+			ImpAutoUpdate:    oftenfun.SafeToBool(row["impautoupdate"]),
 			ImpAutoRemove:    oftenfun.SafeToBool(row["impautoremove"]),
 			RunAtImport:      oftenfun.SafeToString(row["sqlrunatimport"]),
 			ImpRefreshStruct: oftenfun.SafeToBool(row["imprefreshstruct"]),
@@ -771,6 +786,18 @@ func (p *project) ReloadRepository() error {
 	} else if err != nil {
 		return err
 	}
+	p.lockCheck.Lock()
+	defer p.lockCheck.Unlock()
+	p.lockPackage.Lock()
+	defer p.lockPackage.Unlock()
+	p.lockPackageNames.Lock()
+	defer p.lockPackageNames.Unlock()
+	p.lockTableDefine.Lock()
+	defer p.lockTableDefine.Unlock()
+	p.lockTemplateSet.Lock()
+	defer p.lockTemplateSet.Unlock()
+	p.lockVersion.Lock()
+	defer p.lockVersion.Unlock()
 	if err := p.ImportData(repositoryPath); err != nil {
 		return err
 	}

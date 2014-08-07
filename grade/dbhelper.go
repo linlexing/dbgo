@@ -125,27 +125,29 @@ func (p *DBHelper) jsTable(call otto.FunctionCall) otto.Value {
 func (p *DBHelper) jsGetData(call otto.FunctionCall) otto.Value {
 
 	strSql := oftenfun.AssertString(call.Argument(0))
-	params := make([]interface{}, len(call.ArgumentList)-1)
-	for i := 1; i < len(call.ArgumentList); i++ {
-		var err error
-		params[i-1], err = call.ArgumentList[i].Export()
-		if err != nil {
-			panic(err)
-		}
-	}
+	params := oftenfun.AssertValue(call.ArgumentList[1:]...)
 	result, err := p.GetData(strSql, params...)
 	if err != nil {
 		panic(err)
 	}
 	return oftenfun.JSToValue(call.Otto, result.Object())
 }
-
+func (p *DBHelper) jsQueryOne(call otto.FunctionCall) otto.Value {
+	strSql := oftenfun.AssertString(call.Argument(0))
+	params := oftenfun.AssertValue(call.ArgumentList[1:]...)
+	rev, err := p.QueryOne(strSql, params...)
+	if err != nil {
+		panic(err)
+	}
+	return oftenfun.JSToValue(call.Otto, rev)
+}
 func (p *DBHelper) Object() map[string]interface{} {
 	return map[string]interface{}{
 		"GetData":  p.jsGetData,
 		"Table":    p.jsTable,
 		"ExecT":    p.jsExecT,
 		"GoExecT":  p.jsGoExecT,
+		"QueryOne": p.jsQueryOne,
 		"Open":     p.jsOpen,
 		"Close":    p.jsClose,
 		"Begin":    p.jsBegin,
@@ -259,7 +261,7 @@ func (ahelp *DBHelper) Import(pathName string) error {
 		}
 	}
 	fmt.Println("merge table", trueTableName, tmpTableName)
-	if err := ahelp.Merge(trueTableName, tmpTableName, table.ColumnNames(), table.PK, config.ImpAutoRemove, config.SqlWhere); err != nil {
+	if err := ahelp.Merge(trueTableName, tmpTableName, table.ColumnNames(), table.PK, config.ImpAutoUpdate, config.ImpAutoRemove, config.SqlWhere); err != nil {
 		return err
 	}
 	return nil
@@ -449,6 +451,7 @@ type ExportParam struct {
 	FileColumns      map[string]string
 	FileTimeColumns  map[string]string
 	SqlWhere         string
+	ImpAutoUpdate    bool
 	ImpAutoRemove    bool
 	RunAtImport      string
 	ImpRefreshStruct bool
@@ -461,6 +464,7 @@ type dumpConfig struct {
 	FileColumns      map[string]string
 	FileTimeColumns  map[string]string
 	SqlWhere         string
+	ImpAutoUpdate    bool
 	ImpAutoRemove    bool
 	ImpRefreshStruct bool
 	CheckVersion     bool
@@ -515,6 +519,7 @@ func (p *DBHelper) Export(param *ExportParam) error {
 		FileColumns:      param.FileColumns,
 		FileTimeColumns:  param.FileTimeColumns,
 		SqlWhere:         sqlWhere,
+		ImpAutoUpdate:    param.ImpAutoUpdate,
 		ImpAutoRemove:    param.ImpAutoRemove,
 		ImpRefreshStruct: param.ImpRefreshStruct,
 		CheckVersion:     param.CheckVersion,

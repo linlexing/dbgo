@@ -7,6 +7,7 @@
 	"FileColumns": {
 	},
 	"SqlWhere": "",
+	"ImpAutoUpdate":true,
 	"ImpAutoRemove": false,
 	"ImpRefreshStruct": true,
 	"CheckVersion": true

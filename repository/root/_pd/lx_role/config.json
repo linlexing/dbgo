@@ -5,6 +5,7 @@
 	"CurrentGrade": "root",
 	"RowCount": 0,
 	"SqlWhere": "grade_canuse('root',grade)",
+	"ImpAutoUpdate":true,
 	"ImpAutoRemove": true,
 	"ImpRefreshStruct": true,
 	"CheckVersion": true

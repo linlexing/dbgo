@@ -4,9 +4,9 @@ exports.GetDeptMenuNodes=function(c,grade,level){
 	db.Open();
 	try{
 		dept.FillWhere(
-			'grade like {{strcat ph "\'%\'"}} and gradelevel={{ph}}+1 or\
-			{{ph}} like {{strcat "grade" "\'%\'"}} and gradelevel<{{ph}}\
-			',grade,level,grade,level);
+			"grade like strcat({{ph}},'%') and gradelevel={{ph}}+1 or\
+			{{ph}} like strcat(grade,'%') and gradelevel<{{ph}}\
+			",grade,level,grade,level);
 	}
 	finally{
 		db.Close();

@@ -1,4 +1,5 @@
 name,label_en,label_cn,dburl,owner,repository
-meta1,meta project,元数据库,mysql meta:llx123@/meta?parseTime=true&SQL_SAFE_UPDATES=0,admin,root/meta
-meta,meta project,元数据库,postgres host=localhost database=postgres user=meta password=meta123 sslmode=disable,admin,root/meta
-root,the root project,根项目,postgres host=localhost database=postgres user=root password=llx123 sslmode=disable,admin,root
+meta,meta project,元数据库,mysql meta:llx123@/meta?parseTime=true&SQL_SAFE_UPDATES=0,admin,root/meta
+meta1,meta project,元数据库,postgres host=localhost database=postgres user=meta password=meta123 sslmode=disable,admin,root/meta
+root,the root project,根项目,mysql root:llx123@/root?parseTime=true&SQL_SAFE_UPDATES=0,admin,root
+root1,the root project,根项目11,postgres host=localhost database=postgres user=root password=llx123 sslmode=disable,admin,root

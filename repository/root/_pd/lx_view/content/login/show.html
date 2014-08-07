@@ -35,7 +35,9 @@
 
 </style>
 <script>
-
+	if(top.location.href!=document.location.href){
+	  top.location.href = document.location.href;
+	}
 	app.config(['$translateProvider', function ($translateProvider) {
 		$translateProvider.translations('en', {
 			"TITLE": "login",
