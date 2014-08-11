@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/rand"
 	"crypto/sha256"
 	"fmt"
 	"github.com/linlexing/dbgo/grade"
@@ -46,14 +47,31 @@ func package_convert() map[string]interface{} {
 			rev := string(bys)
 			return oftenfun.JSToValue(call.Otto, rev)
 		},
+		"NewBytes": func(call otto.FunctionCall) otto.Value {
+			l := oftenfun.AssertInteger(call.Argument(0))
+			rev := make([]byte, l)
+			return oftenfun.JSToValue(call.Otto, rev)
+		},
 	}
 }
 func package_sha256() map[string]interface{} {
 	return map[string]interface{}{
 		"Sum256": func(call otto.FunctionCall) otto.Value {
 			bys := oftenfun.AssertByteArray(call.Argument(0))
-			rev := sha256.Sum256(bys)
+			arr := sha256.Sum256(bys)
+			rev := arr[:]
 			return oftenfun.JSToValue(call.Otto, rev)
+		},
+	}
+}
+func package_crypto_rand() map[string]interface{} {
+	return map[string]interface{}{
+		"Read": func(call otto.FunctionCall) otto.Value {
+			bys := oftenfun.AssertByteArray(call.Argument(0))
+			if _, err := rand.Read(bys); err != nil {
+				panic(err)
+			}
+			return oftenfun.JSToValue(call.Otto, bys)
 		},
 	}
 }
@@ -87,10 +105,11 @@ func NewJSPool(size int) *JSPool {
 	p.pool = make(chan *otto.Otto, size)
 	first := otto.New()
 	first.Set("_go", map[string]interface{}{
-		"grade":   package_grade(),
-		"fmt":     package_fmt(),
-		"sha256":  package_sha256(),
-		"convert": package_convert(),
+		"grade":       package_grade(),
+		"fmt":         package_fmt(),
+		"sha256":      package_sha256(),
+		"convert":     package_convert(),
+		"crypto_rand": package_crypto_rand(),
 	})
 	p.pool <- first
 	for x := 1; x < size; x++ {

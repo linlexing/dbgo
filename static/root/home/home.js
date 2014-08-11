@@ -149,6 +149,13 @@ node.prototype.buildPath= function(parentPath){
 		this.children[i].buildPath(p);
 	}
 }
+node.prototype.buildPathLabel= function(parentPath){
+	var p  = parentPath.concat(this.label);
+	this.pathLabel = p.join("->");
+	for(var i in this.children){
+		this.children[i].buildPathLabel(p);
+	}
+}
 node.prototype.findByPath= function(path){
 	return this.each(function(v){
 		if(v.path == path){
@@ -204,6 +211,9 @@ function swith_lag(anode,lag){
 			v.label = clearText(firstLag(v.displayLabel()));
 		}
 	});
+	for(var i in anode.children){
+		anode.children[i].buildPathLabel([]);
+	}
 }
 function clearOtherSelect(root,anode){
 	root.each(function(v){

@@ -51,6 +51,9 @@ app.run(['$rootScope','$log','$window', function ($rootScope, $log, $window) {
 	}
 	$rootScope.mediaquery();
 	angular.element($window).bind('resize',$rootScope.mediaquery);
+	$rootScope.gotoMessage = function(mes){
+		$rootScope.finishedMessage = mes;
+	}
 }]);
 app.directive('lxField', ['$compile',function ($compile) {
   return {

@@ -97,9 +97,22 @@ func (p *DBHelper) jsExecT(call otto.FunctionCall) otto.Value {
 	templateParam := oftenfun.AssertObject(call.Argument(1))
 	args := []interface{}{}
 	if len(call.ArgumentList) > 2 {
-		args = oftenfun.AssertArray(call.Argument(2))
+		args = oftenfun.AssertValue(call.ArgumentList[2:]...)
 	}
 	_, err := p.ExecT(sql, templateParam, args...)
+	if err != nil {
+		panic(err)
+	}
+	return otto.UndefinedValue()
+}
+
+func (p *DBHelper) jsExec(call otto.FunctionCall) otto.Value {
+	sql := oftenfun.AssertString(call.Argument(0))
+	args := []interface{}{}
+	if len(call.ArgumentList) > 1 {
+		args = oftenfun.AssertValue(call.ArgumentList[1:]...)
+	}
+	_, err := p.Exec(sql, args...)
 	if err != nil {
 		panic(err)
 	}
@@ -145,6 +158,7 @@ func (p *DBHelper) Object() map[string]interface{} {
 	return map[string]interface{}{
 		"GetData":  p.jsGetData,
 		"Table":    p.jsTable,
+		"Exec":     p.jsExec,
 		"ExecT":    p.jsExecT,
 		"GoExecT":  p.jsGoExecT,
 		"QueryOne": p.jsQueryOne,

@@ -4,6 +4,7 @@ filename,grade
 /grade.js,root
 /convert.js,root
 /sha256.js,root
+/crypto_rand.js,root
 /intercept/root_001.js,root
 /controller/login.js,root
 /controller/home.js,root
@@ -11,6 +12,7 @@ filename,grade
 /controller/static.js,root
 /controller/userfile.js,root
 /controller/changepwd.js,root
+/controller/role.js,root
 /model/user.js,root
 /model/dept.js,root
 /model/option.js,root

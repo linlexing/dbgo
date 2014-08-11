@@ -11,6 +11,23 @@
     <link rel="stylesheet" type="text/css" href="/public/css/angular-motion.min.css">
     <link rel="stylesheet" type="text/css" href="/public/css/bootstrap-additions.min.css">
     <link rel="stylesheet" type="text/css" href=<# static "ngheader/page.css" #>>
+	<style type="text/css">
+	.fullpage{
+		background-color:#eee;
+		z-index:9999;
+		width:100%;
+		height:100%;
+		padding:0px;
+		margin:0px;
+		position: fixed;
+		text-align: center;
+		display: table;
+	}
+	.fullpage .message{
+		display: table-cell;
+		vertical-align: middle;
+	}
+	</style>
 <#range $index,$value:=.OtherCSSFiles#>
 	<link rel="stylesheet" type="text/css" href="<#$value#>">
 <#end#>
@@ -20,10 +37,13 @@
         <script src="/public/html5shiv.min.js"></script>
         <script src="/public/respond.min.js"></script>
     <![endif]-->
+
   </head>
   <body>
     <script src="/public/js/jquery-1.11.1.min.js" type="text/javascript" charset="utf-8"></script>
     <script src="/public/js/angular.js" type="text/javascript" charset="utf-8"></script>
+    <script src="/public/js/angular-cookies.min.js" type="text/javascript" charset="utf-8"></script>
+
     <script src="/public/js/angular-animate.min.js" type="text/javascript" charset="utf-8"></script>
 	<script src="/public/js/angular-translate.min.js" charset="utf-8"></script>
     <script src="/public/js/angular-strap.min.js" type="text/javascript" charset="utf-8"></script>
@@ -34,7 +54,7 @@
 	<script src="<#$value#>" type="text/javascript" charset="utf-8"></script>
 <#end#>
 	<script type="text/javascript">
-	var appDependencys = ['ngAnimate','pascalprecht.translate','mgcrea.ngStrap'];
+	var appDependencys = ['ngCookies','ngAnimate','pascalprecht.translate','mgcrea.ngStrap'];
 	<#if .OtherDependencys#>
 		appDependencys =_.union(appDependencys,<#.OtherDependencys#>);
 	<#end#>
@@ -46,3 +66,4 @@
 		<div class="bitdb-view-sm"></div>
 		<div class="bitdb-view-xs"></div>
 	</div>
+	<div ng-show="finishedMessage" class="fullpage text-info"><p class="message">{{finishedMessage}}</p></div>

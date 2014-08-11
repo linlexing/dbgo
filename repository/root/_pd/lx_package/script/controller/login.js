@@ -13,7 +13,6 @@ exports.auth=function(c){
 		if(userDept){
 			c.AuthUrl("home.show");
 			c.Session.Set("user.name",c.JsonBody.userName);
-			fmt.Printf("userDept:%#v",userDept);
 			c.Session.Set("user.dept" ,userDept);
 			c.RenderJson({ok:true});
 		}else{

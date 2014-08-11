@@ -1,0 +1,105 @@
+<style type="text/css">
+	body {
+		background-color: #eee;
+	}
+	.container{
+		padding:0px;
+		margin:0px;
+	}
+	.panel-default{
+		max-width: 330px;
+		margin: 0 auto;
+	}
+	button {
+		margin-top: 10px;
+	}
+</style>
+<script>
+	app.config(['$translateProvider', function ($translateProvider) {
+		$translateProvider.translations('en', {
+			"FINISHED_MESSAGE":"Success change the password",
+			"TITLE": "Change Password",
+			"USER_HINT":"User Name",
+			"FORM_TITLE":"Please input old and new password",
+			"OLD_PWD_HINT":"Old Password",
+			"NEW_PWD_HINT":"New Password",
+			"CONFIRM_PWD_HINT":"Confirm Password",
+			"OK":"OK",
+			"ERROR_PWD":"The old password invalid",
+			"ERROR_SAME":"The new password and confirm password must same"
+		}).translations('cn', {
+			"FINISHED_MESSAGE":"成功完成密码修改",
+			"TITLE": "修改密码",
+			"USER_HINT":"用户名称",
+			"FORM_TITLE":"请输入新旧密码来更改密码",
+			"OLD_PWD_HINT":"旧密码",
+			"NEW_PWD_HINT":"新密码",
+			"CONFIRM_PWD_HINT":"确认新密码",
+			"OK":"确定",
+			"ERROR_PWD":"旧密码无效",
+			"ERROR_SAME":"新密码与确认密码必须一致"
+		}).registerAvailableLanguageKeys(['en', 'cn'], {
+			'en_US': 'en',
+			'en_UK': 'en',
+			'zh_CN': 'cn',
+			'zh_cn': 'cn'
+		}).determinePreferredLanguage()
+		.useLocalStorage();
+
+	}]);
+	app.controller('MainCtrl', ['$scope', '$http','$window','$translate','$alert',function($scope,$http,$window,$translate,$alert) {
+		$scope.test =$translate.preferredLanguage();
+		$scope.userName = <#.c.UserName#>;
+		$scope.oldPwd = '';
+		$scope.newPwd = '';
+		$scope.confirmPwd = '';
+		$scope.error = {old_pwd:false,new_pwd:false};
+		$translate('TITLE').then(function (title) {
+			document.title=title;
+		});
+		$scope.doChangePwd = function(){
+			$http.post(<#authurl "changepwd.changepwd"#>,{oldPwd:$scope.oldPwd,newPwd:$scope.newPwd})
+				.success(function(data,status,headers,config,statusText){
+					if(data.ok){
+						$translate('FINISHED_MESSAGE').then(function (message) {
+							$scope.gotoMessage(message);
+						});
+					}else{
+						$scope.frmMain.oldPwd.$setValidity("valid",false);
+					}
+				})
+				.error(function(data,status,headers,config,statusText){
+					$alert({title: 'error', content:data.error, placement: 'top-right', type: 'danger', show: true});
+				});
+		}
+		$scope.newPwdChange=function(){
+			$scope.frmMain.newPwd.$setValidity("same",$scope.newPwd==$scope.confirmPwd);
+		}
+	}]);
+</script>
+<div class="container" ng-controller="MainCtrl" >
+ 	<div class="panel panel-default form-signin">
+		<div class="panel-heading">{{'FORM_TITLE'|translate}}<br/></div>
+		<div class="panel-body">
+			<p class="text-info"><i class="fa fa-user"></i> {{'USER_HINT'|translate}}:{{userName}}</p>
+			<form name="frmMain" role="form" novalidate>
+				<p class="text-info"></p>
+				<div class="form-group">
+					<label class="control-label" for="oldPwd" translate>OLD_PWD_HINT</label>
+					<input type="password" name="oldPwd" class="form-control"  required autofocus ng-model="oldPwd" ng-change="frmMain.oldPwd.$setValidity('valid',true)" ></input>
+				</div>
+				<div class="form-group">
+					<label class="control-label" for="newPwd" translate>NEW_PWD_HINT</label>
+					<input type="password" name="newPwd" class="form-control" required ng-model="newPwd" ng-change="newPwdChange()"></input>
+				</div>
+				<div class="form-group">
+					<label class="control-label" for="confirmPwd" translate>CONFIRM_PWD_HINT</label>
+					<input type="password" name="confirmPwd" class="form-control" required ng-model="confirmPwd" ng-change="newPwdChange()"></input>
+				</div>
+				<p class="text-danger" ng-show="frmMain.oldPwd.$error.valid" translate>ERROR_PWD</p>
+				<p class="text-danger" ng-show="frmMain.newPwd.$error.same" translate>ERROR_SAME</p>
+				<button class="btn btn-lg btn-primary btn-block" type="submit" ng-disabled="frmMain.$invalid" ng-click="doChangePwd()" translate>OK</button>
+			</form>
+		</div>
+	</div>
+</div>

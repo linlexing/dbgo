@@ -13,6 +13,10 @@ exports.Intercept = function(c,filter){
 		args.tmplName = fmt.Sprintf("%s/%s.md",c.ControllerName,c.ActionName);
 		c.RenderTemplate("mdpage.html",args);
 	};
+	c.RenderRecordView=function(args){
+		args=args||{};
+		c.RenderTemplate("recordview.html",args);
+	};
   /*c.RenderModelOperate=function(optName,keys,args){
     args=args||{};
     opt = c.Model("rt_modeloperate");
