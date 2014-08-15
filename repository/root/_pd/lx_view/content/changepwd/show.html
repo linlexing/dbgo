@@ -58,7 +58,7 @@
 			document.title=title;
 		});
 		$scope.doChangePwd = function(){
-			$http.post(<#authurl "changepwd.changepwd"#>,{oldPwd:$scope.oldPwd,newPwd:$scope.newPwd})
+			$http.post(<#authUrl "changepwd.changepwd"#>,{oldPwd:$scope.oldPwd,newPwd:$scope.newPwd})
 				.success(function(data,status,headers,config,statusText){
 					if(data.ok){
 						$translate('FINISHED_MESSAGE').then(function (message) {

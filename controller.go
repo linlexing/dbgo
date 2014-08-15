@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/linlexing/dbgo/grade"
 	"github.com/linlexing/dbgo/jsmvcerror"
@@ -13,7 +14,9 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"reflect"
 	"strings"
+	"time"
 )
 
 const (
@@ -40,6 +43,27 @@ type ControllerAgent struct {
 	jsRuntime        *otto.Otto
 }
 
+func (c *ControllerAgent) MapFileName(url string) string {
+	if !strings.HasPrefix(url, "/") {
+		url = path.Join("/", url)
+	}
+	paths := strings.Split(url, "/")[1:]
+	projectName := paths[0]
+	if projectName == "public" {
+		return filepath.Join(AppPath, url)
+	} else {
+		controlName := paths[1]
+		actionName := paths[2]
+		tagPath := strings.Join(paths[3:], "/")
+		if controlName == "static" && actionName == "file" {
+			return filepath.Join(AppPath, "static", projectName, tagPath)
+		}
+		if controlName == "userfile" && actionName == "file" {
+			return filepath.Join(AppPath, "userfile", projectName, c.UserName, tagPath)
+		}
+		panic(fmt.Errorf("can't map the file:%s", url))
+	}
+}
 func (c *ControllerAgent) Require(fileName, currentModuleDir string) otto.Value {
 
 	script, moduleFileName, err := c.Project.Require(c.jsRuntime, fileName, currentModuleDir, c.CurrentGrade)
@@ -79,6 +103,11 @@ func (c *ControllerAgent) QueryValues() url.Values {
 	return c.Request.URL.Query()
 }
 
+type packConfig struct {
+	Files []string
+	Times []time.Time
+}
+
 func NewAgent(w http.ResponseWriter, r *http.Request) *ControllerAgent {
 
 	c := &ControllerAgent{
@@ -87,8 +116,65 @@ func NewAgent(w http.ResponseWriter, r *http.Request) *ControllerAgent {
 	}
 	c.TemplateFun = template.FuncMap{
 		"url":     c.Url,
-		"authurl": c.AuthUrl,
-		"userfile": func(filename string) string {
+		"authUrl": c.AuthUrl,
+		"packFiles": func(dest string, srcFiles []interface{}) string {
+
+			//read config
+			config := packConfig{}
+			configFileName := c.MapFileName(dest) + ".cfg"
+			bys, err := ioutil.ReadFile(configFileName)
+			if err != nil && !os.IsNotExist(err) {
+				panic(err)
+			} else if err == nil && len(bys) > 0 {
+
+				err = json.Unmarshal(bys, &config)
+				if err != nil {
+					panic(err)
+				}
+			}
+
+			//build the Config
+			newConfig := packConfig{}
+			newConfig.Files = make([]string, len(srcFiles))
+			newConfig.Times = make([]time.Time, len(srcFiles))
+			for i, v := range srcFiles {
+				fileInfo, err := os.Stat(c.MapFileName(v.(string)))
+				if err != nil {
+					panic(err)
+				}
+				newConfig.Files[i] = v.(string)
+				newConfig.Times[i] = fileInfo.ModTime()
+			}
+			//if modify,pack it
+			if !reflect.DeepEqual(config, newConfig) {
+				file, err := os.Create(c.MapFileName(dest))
+				if err != nil {
+					panic(err)
+				}
+				defer file.Close()
+				for _, v := range srcFiles {
+					buf, err := ioutil.ReadFile(c.MapFileName(v.(string)))
+					if err != nil {
+						panic(err)
+					}
+					_, err = file.Write(buf)
+					if err != nil {
+						panic(err)
+					}
+				}
+
+				buffer, err := json.Marshal(newConfig)
+				if err != nil {
+					panic(err)
+				}
+				err = ioutil.WriteFile(configFileName, buffer, os.ModePerm)
+				if err != nil {
+					panic(err)
+				}
+			}
+			return dest
+		},
+		"userFile": func(filename string) string {
 			return c.AuthUrl("userfile.file", filename)
 		},
 	}

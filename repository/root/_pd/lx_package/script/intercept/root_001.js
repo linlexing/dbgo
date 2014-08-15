@@ -8,6 +8,11 @@ exports.Intercept = function(c,filter){
 		args.tmplName = fmt.Sprintf("%s/%s.html",c.ControllerName,c.ActionName);
 		c.RenderTemplate("ngpage.html",args);
 	};
+	c.RenderProjectPage=function(args){
+		args=args||{};
+		args.tmplName = fmt.Sprintf("%s/%s.html",c.ControllerName,c.ActionName);
+		c.RenderTemplate("pjpage.html",args);
+	};
 	c.RenderMDPage=function(args){
 		args=args||{};
 		args.tmplName = fmt.Sprintf("%s/%s.md",c.ControllerName,c.ActionName);

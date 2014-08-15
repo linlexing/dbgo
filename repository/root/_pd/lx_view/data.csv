@@ -4,6 +4,9 @@ ngheader.html,root
 ngfooter.html,root
 ngpage.html,root
 mdpage.html,root
+pjheader.html,root
+pjfooter.html,root
+pjpage.html,root
 recordview.html,root
 login/show.html,root
 home/show.html,root

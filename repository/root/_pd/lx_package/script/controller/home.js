@@ -40,5 +40,5 @@ exports.switch_dept=function(c){
 	c.RenderJson(rev);
 }
 exports.default=function(c){
-	c.RenderMDPage();
+	c.RenderMDPage({Title_en:"welcome",Title_cn:"欢迎"});
 }

@@ -1,36 +1,59 @@
+<#if .Title_en#>
+	<#if not .Translate_en#>
+		<#set . "Translate_en" mkMap#>
+	<#end#>
+	<#set .Translate_en "Title" .Title_en#>
+<#end#>
+<#if .Title_cn#>
+	<#if not .Translate_cn#>
+		<#set . "Translate_cn" mkMap#>
+	<#end#>
+	<#set .Translate_cn "Title" .Title_cn#>
+<#end#>
+
+<#if not .PackCSSDest#>
+	<#set . "PackCSSDest" "/public/css/ngheader_pack.css"#>
+<#end#>
+<#if not .PackJSDest#>
+	<#set . "PackJSDest" "/public/css/ngheader_pack.js"#>
+<#end#>
+
+<#$Pack := mkMap#>
+<#append $Pack "Css" "/public/css/bootstrap.min.css"#>
+<#append $Pack "Css" "/public/css/bootstrap-theme.min.css"#>
+<#append $Pack "Css" "/public/css/font-awesome.min.css"#>
+<#append $Pack "Css" "/public/css/angular-motion.min.css"#>
+<#append $Pack "Css" "/public/css/bootstrap-additions.min.css"#>
+<#append $Pack "Css" (static "ngheader/page.css")#>
+<#range $index,$value:=.OtherPackCSS#>
+	<#append $Pack "Css" $value#>
+<#end#>
+
+<#append $Pack "Js" "/public/js/jquery-1.11.1.min.js"#>
+<#append $Pack "Js" "/public/js/angular.min.js"#>
+<#append $Pack "Js" "/public/js/angular-cookies.min.js"#>
+<#append $Pack "Js" "/public/js/angular-animate.min.js"#>
+<#append $Pack "Js" "/public/js/angular-translate.min.js"#>
+<#append $Pack "Js" "/public/js/angular-strap.min.js"#>
+<#append $Pack "Js" "/public/js/angular-strap.tpl.min.js"#>
+<#append $Pack "Js" "/public/js/underscore-min.js"#>
+<#append $Pack "Js" "/public/js/underscore.string.min.js"#>
+<#append $Pack "Js" (static "ngheader/app.js")#>
+<#range $index,$value:=.OtherPackJS#>
+	<#append $Pack "Js" $value#>
+<#end#>
 <!DOCTYPE html>
 <html ng-app="app">
   <head>
-    <title><#.Title#></title>
+    <title><#.Title_en#></title>
 	<meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<meta name="viewport" content="width=device-width, height=device-height, initial-scale=1.0">
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
 	<!-- Bootstrap -->
-    <link rel="stylesheet" type="text/css" href="/public/css/bootstrap.min.css">
-    <link rel="stylesheet" type="text/css" href="/public/css/font-awesome.min.css">
-    <link rel="stylesheet" type="text/css" href="/public/css/angular-motion.min.css">
-    <link rel="stylesheet" type="text/css" href="/public/css/bootstrap-additions.min.css">
-    <link rel="stylesheet" type="text/css" href=<# static "ngheader/page.css" #>>
-	<style type="text/css">
-	.fullpage{
-		background-color:#eee;
-		z-index:9999;
-		width:100%;
-		height:100%;
-		padding:0px;
-		margin:0px;
-		position: fixed;
-		text-align: center;
-		display: table;
-	}
-	.fullpage .message{
-		display: table-cell;
-		vertical-align: middle;
-	}
-	</style>
-<#range $index,$value:=.OtherCSSFiles#>
-	<link rel="stylesheet" type="text/css" href="<#$value#>">
-<#end#>
+    <link rel="stylesheet" type="text/css" href=<#packFiles .PackCSSDest $Pack.Css#>>
+	<#range $index,$value:=.OtherCSSFiles#>
+		<link rel="stylesheet" type="text/css" href="<#$value#>">
+	<#end#>
 	<!-- HTML5 Shim and Respond.js IE8 support of HTML5 elements and media queries -->
     <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
     <!--[if lt IE 9]>
@@ -40,30 +63,48 @@
 
   </head>
   <body>
-    <script src="/public/js/jquery-1.11.1.min.js" type="text/javascript" charset="utf-8"></script>
-    <script src="/public/js/angular.js" type="text/javascript" charset="utf-8"></script>
-    <script src="/public/js/angular-cookies.min.js" type="text/javascript" charset="utf-8"></script>
-
-    <script src="/public/js/angular-animate.min.js" type="text/javascript" charset="utf-8"></script>
-	<script src="/public/js/angular-translate.min.js" charset="utf-8"></script>
-    <script src="/public/js/angular-strap.min.js" type="text/javascript" charset="utf-8"></script>
-    <script src="/public/js/angular-strap.tpl.min.js" type="text/javascript" charset="utf-8"></script>
-    <script src="/public/js/underscore-min.js" type="text/javascript" charset="utf-8"></script>
-    <script src="/public/js/underscore.string.min.js" type="text/javascript" charset="utf-8"></script>
-<#range $index,$value:=.OtherJSFiles#>
-	<script src="<#$value#>" type="text/javascript" charset="utf-8"></script>
-<#end#>
-	<script type="text/javascript">
+	<script>
 	var appDependencys = ['ngCookies','ngAnimate','pascalprecht.translate','mgcrea.ngStrap'];
+	</script>
+
+	<script src="<#packFiles .PackJSDest $Pack.Js#>" type="text/javascript" charset="utf-8"></script>
+	<#range $index,$value:=.OtherJSFiles#>
+		<script src="<#$value#>" type="text/javascript" charset="utf-8"></script>
+	<#end#>
+	<script type="text/javascript">
 	<#if .OtherDependencys#>
 		appDependencys =_.union(appDependencys,<#.OtherDependencys#>);
 	<#end#>
+	app.config(['$translateProvider', function ($translateProvider) {
+		<#if .Translate_en#>
+			$translateProvider.translations('en', <#.Translate_en#>);
+		<#end#>
+		<#if .Translate_cn#>
+			$translateProvider.translations('cn', <#.Translate_cn#>);
+		<#end#>
+		$translateProvider.registerAvailableLanguageKeys(['en', 'cn'], {
+			'en_US': 'en',
+			'en_UK': 'en',
+			'zh_CN': 'cn',
+			'zh_cn': 'cn'
+		}).determinePreferredLanguage()
+		.useLocalStorage();
+	}]);
+	app.run(["$translate","$rootScope",function ($translate,$rootScope) {
+		$translate("Title").then(function(t){
+			document.title=<#.c.Project.Name#>+" - " + t;
+		});
+		$rootScope.$on('$translateChangeSuccess', function () {
+			$translate("Title").then(function(t){
+				document.title=<#.c.Project.Name#>+" - " + t;
+			});
+		});
+	}]);
 	</script>
-    <script src=<# static "ngheader/app.js" #> type="text/javascript"></script>
 	<div class="hidden">
 		<div class="bitdb-view-lg"></div>
 		<div class="bitdb-view-md"></div>
 		<div class="bitdb-view-sm"></div>
 		<div class="bitdb-view-xs"></div>
 	</div>
-	<div ng-show="finishedMessage" class="fullpage text-info"><p class="message">{{finishedMessage}}</p></div>
+

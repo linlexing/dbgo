@@ -83,6 +83,15 @@ func (r *RenderTemplateResult) Apply(req *http.Request, w http.ResponseWriter) {
 			r.TemplateName)))
 		return
 	}
+	defer func() {
+		if e := recover(); e != nil {
+			if _, err := w.Write([]byte(fmt.Sprintf("render template:%s error:%s\n",
+				r.TemplateName, e))); err != nil {
+				panic(err)
+			}
+
+		}
+	}()
 	err := r.TemplateSet.ExecuteTemplate(w, r.TemplateName, r.RenderArgs)
 	if err != nil {
 		w.Write([]byte(fmt.Sprintf("render template:%s error:%s\n",

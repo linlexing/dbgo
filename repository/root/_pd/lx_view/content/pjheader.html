@@ -1,39 +1,39 @@
-<#append . "OtherJSFiles" (static "home/abn_tree_directive.js")#>
+<#if not .PackCSSDest#>
+	<#set . "PackCSSDest" "/public/css/pjheader_pack.css"#>
+<#end#>
+<#if not .PackJSDest#>
+	<#set . "PackJSDest" "/public/css/pjheader_pack.js"#>
+<#end#>
+<#if not .Translate_en#>
+	<#set . "Translate_en" mkMap#>
+<#end#>
 
-<#append . "OtherCSSFiles" (static "home/abn_tree.css")#>
-<#append . "OtherCSSFiles" (static "home/home.css")#>
+<#set .Translate_en "PROJECT_LABEL" .c.Project.DisplayLabel.en#>
+<#set .Translate_en "LANGUAGE" "Language"#>
+<#set .Translate_en "EN" "English"#>
+<#set .Translate_en "CN" "Simplified Chinese"#>
+<#set .Translate_en "CLOSE" "Close"#>
+
+<#if not .Translate_cn#>
+	<#set . "Translate_cn" mkMap#>
+<#end#>
+<#set .Translate_cn "PROJECT_LABEL" .c.Project.DisplayLabel.cn#>
+<#set .Translate_cn "LANGUAGE" "语言"#>
+<#set .Translate_cn "EN" "英语"#>
+<#set .Translate_cn "CN" "简体中文"#>
+<#set .Translate_cn "CLOSE" "关闭"#>
+
+<#append . "OtherPackJS" "public/js/abn_tree_directive.js"#>
+<#append . "OtherPackJS" (static "pjheader/page.js")#>
+<#append . "OtherPackJS" (userFile "sys/curele.js")#>
+
+<#append . "OtherPackCSS" "/public/css/abn_tree.css"#>
+<#append . "OtherPackCSS" (static "pjheader/page.css")#>
 
 <#append . "OtherDependencys" "angularBootstrapNavTree"#>
 <#template "ngheader.html" .#>
-<script src='<#userFile "sys/curele.js" #>'></script>
-<script src='<#static "home/home.js" #>'></script>
 <script>
-app.config(['$translateProvider', function ($translateProvider) {
-	$translateProvider.translations('en', {
-		"PROJECT_LABEL": <#.c.Project.DisplayLabel.en#>,
-		"LANGUAGE":"Language",
-		"EN":"English",
-		"CN":"Simplified Chinese",
-		"Close":"Close"
-	}).translations('cn', {
-		"PROJECT_LABEL": <#.c.Project.DisplayLabel.cn#>,
-		"LANGUAGE":"语言",
-		"EN":"英语",
-		"CN":"简体中文",
-		"Close":"关闭"
-	}).registerAvailableLanguageKeys(['en', 'cn'], {
-		'en_US': 'en',
-		'en_UK': 'en',
-		'zh_CN': 'cn',
-		'zh_cn': 'cn'
-	}).determinePreferredLanguage()
-	.useLocalStorage();
-}]);
-function frameHtml(url){
-	return '<iframe id="frmContent" src="'+ url+'" frameborder="0" style="overflow:hidden;height:100%;width:100%" height="100%" width="100%"></iframe>';
-}
 app.controller('mainCtrl', ['$translate', '$scope','$rootScope','$location','$aside','$alert','$http',function ($translate, $scope,$rootScope,$location,$aside,$alert,$http) {
-	document.title=<#.c.Project.Name#>;
 	var leftAside = $aside({
 		scope: $scope,
 		title:"select menu",
@@ -47,20 +47,12 @@ app.controller('mainCtrl', ['$translate', '$scope','$rootScope','$location','$as
 	$scope.dept = <#(.c.Session.Get "user.dept")#>;
 	$scope.deptMenuNodes =toDeptMenus(<#.deptData#>,$scope.dept);
 	$scope.navCollapsed = true;
-	$scope.frameHeight = window.innerHeight-51-20 + "px";
 	swithDeptLag([$scope.dept],$translate.use());
 	swith_lag($scope.elementTrees,$translate.use());
 	swithDeptLag($scope.deptMenuNodes,$translate.use());
-	$(window).resize(function(){
-	    $scope.$apply(function(){
-			$scope.frameHeight = window.innerHeight-51-20 + "px";
-	       //do something to update current scope based on the new innerWidth and let angular update the view.
-	    });
-	});
 	if($location.path()=="" || $location.path().split("/").length<=2){
 		$scope.activeTopItem= $scope.elementTrees.children[0];
 		console.log($scope.activeTopItem);
-		$("#frameContent").html(frameHtml(<#authUrl .defaultUrl#>));
 	}
 	$scope.changeLanguage = function (langKey) {
 		$translate.use(langKey);
@@ -85,14 +77,12 @@ app.controller('mainCtrl', ['$translate', '$scope','$rootScope','$location','$as
     });
 	$scope.topClick=function(item){
 		$scope.activeTopItem= item;
-		if($rootScope.viewport=="xs"){
-			$scope.navCollapsed = true;
-			if(item){
-				$scope.asideTitle = item.label;
-				leftAside.$promise.then(function() {
-	   				leftAside.show();
-				});
-			}
+		$scope.navCollapsed = true;
+		if(item){
+			$scope.asideTitle = item.label;
+			leftAside.$promise.then(function() {
+   				leftAside.show();
+			});
 		}
 	};
 	$scope.my_tree_handler=function(item){
@@ -166,7 +156,7 @@ app.controller('mainCtrl', ['$translate', '$scope','$rootScope','$location','$as
 </script>
 
 <div ng-controller="mainCtrl" >
-	<div class="navbar navbar-inverse ng-class:{'navbar-fixed-top':viewport!='xs','navbar-static-top':viewport=='xs'}" role="navigation">
+	<div class="navbar navbar-inverse navbar-static-top" role="navigation">
 		<div class="container-fluid">
 			<div class="navbar-header">
 				<button type="button" class="navbar-toggle" ng-click="navCollapsed = !navCollapsed">
@@ -197,17 +187,6 @@ app.controller('mainCtrl', ['$translate', '$scope','$rootScope','$location','$as
 			</div>
 		</div>
 	</div>
-	<div class="container-fluid ng-class:{padtop:viewport!='xs'}">
-		<div class="row" >
-			<div class="col-sm-3 col-md-2 sidebar slide-animate">
-				<div  ng-include="'left.html'">
-				</div>
-			</div>
-			<div class="col-sm-9 col-sm-offset-3 col-md-10 col-md-offset-2 main" >
-				<div class="nav-path">{{activeMenu.pathLabel}}</div>
-				<div id="frameContent" style="height:{{frameHeight}}"></div>
-			</div>
-		</div>
-	</div><!-- /.container -->
-</div>
-<#template "ngfooter.html" .#>
+	<div class="container-fluid">
+	<div class="nav-path">{{activeMenu.pathLabel}}</div>
+	<div ng-show="finishedMessage" class="fullpage text-info"><p class="message">{{finishedMessage}}</p></div>

@@ -219,6 +219,12 @@ func (p *project) loadTemplate(f template.FuncMap) (*template.Template, error) {
 			rev := string(blackfriday.MarkdownCommon([]byte(str)))
 			return template.HTML(rev)
 		},
+		"mkSlice": func(args ...interface{}) []interface{} {
+			return args
+		},
+		"mkMap": func() map[string]interface{} {
+			return map[string]interface{}{}
+		},
 		"static": func(filename string) string {
 			return p.ReverseUrl("static", "file", filename)
 		},
@@ -228,7 +234,7 @@ func (p *project) loadTemplate(f template.FuncMap) (*template.Template, error) {
 		"JS": func(src string) template.JS {
 			return template.JS(src)
 		},
-		"PathJoin": path.Join,
+		"pathJoin": path.Join,
 		/*"GradeCanUse": func(g1, g2 string) bool {
 			return grade.Grade(g1).CanUse(grade.Grade(g2))
 		},*/
