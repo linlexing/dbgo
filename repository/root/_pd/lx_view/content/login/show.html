@@ -63,7 +63,7 @@
 			$http.post(<#url "login.auth"#>,{userName:$scope.userName,password:$scope.password})
 				.success(function(data,status,headers,config,statusText){
 					if(data.ok){
-						$window.location = <#url "home.default"#>;
+						$window.location = <#url "home.default"#>+"?_ele=home_default";
 					}else{
 						$translate('ERROR').then(function (err) {
 							$scope.error=err;

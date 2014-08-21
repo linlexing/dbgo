@@ -157,6 +157,9 @@ func (s *Session) Get(key string) interface{} {
 func (s *Session) All() (map[string]string, error) {
 	return SDB.All()
 }
+func (s *Session) Abandon() error {
+	return SDB.clearSession(s.ProjectName, s.SessionID)
+}
 func (s *Session) jsGet(call otto.FunctionCall) otto.Value {
 	return oftenfun.JSToValue(call.Otto, s.Get(call.Argument(0).String()))
 }
@@ -165,9 +168,13 @@ func (s *Session) jsSet(call otto.FunctionCall) otto.Value {
 	value := oftenfun.AssertValue(call.Argument(1))[0]
 	return oftenfun.JSToValue(call.Otto, s.Set(key, value))
 }
+func (s *Session) jsAbandon(call otto.FunctionCall) otto.Value {
+	return oftenfun.JSToValue(call.Otto, s.Abandon())
+}
 func (s *Session) Object() map[string]interface{} {
 	return map[string]interface{}{
-		"Set": s.jsSet,
-		"Get": s.jsGet,
+		"Set":     s.jsSet,
+		"Get":     s.jsGet,
+		"Abandon": s.jsAbandon,
 	}
 }

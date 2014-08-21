@@ -163,20 +163,7 @@ node.prototype.findByPath= function(path){
 		}
 	});
 }
-node.prototype.selectNode= function(selectNode){
-	if(this == selectNode){
-		this.selected=true;
-		this.expanded = true;
-		return true;
-	}
-	for(var i in this.children){
-		var v = this.children[i].selectNode(selectNode);
-		if(v){
-			this.expanded = true;
-			return v;
-		}
-	}
-}
+
 node.prototype.each= function(cb){
 	var v = cb(this);
 	if(v){
@@ -215,11 +202,9 @@ function swith_lag(anode,lag){
 		anode.children[i].buildPathLabel([]);
 	}
 }
-function clearOtherSelect(root,anode){
+function clearSelect(root){
 	root.each(function(v){
-		if(v != anode){
-			v.selected = false;
-		}
+		v.selected = false;
 	});
 }
 function toDeptMenus(deptNodes,currentDept){

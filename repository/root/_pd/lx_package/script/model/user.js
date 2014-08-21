@@ -1,6 +1,7 @@
 var sha256 = require("/sha256.js");
 var convert =require("/convert.js");
 var rand = require("/crypto_rand.js");
+var url = require("/url.js");
 exports.model=function(c,userName){
 	var m = c.DBModel("lx_user","lx_userrole");
 	var db= m[0].DBHelper();
@@ -41,29 +42,42 @@ exports.model=function(c,userName){
 		var newPwd = sha256.Sum256(newSalt.concat(convert.Str2Bytes(newPwd)));
 		db.Open();
 		try{
-			db.Exec("update lx_user set pwd = {{ph}},salt={{ph}} where name={{ph}}",newPwd,newSalt,c.UserName)
+			db.Exec("update lx_user set pwd = {{ph}},salt={{ph}} where name={{ph}}",newPwd,newSalt,c.UserName())
 		}finally{
 			db.Close();
 		}
 	}
 };
-exports.GetUserElement=function(c,userName){
-	var ele =c.DBModel("lx_element")[0];
-	var db =ele.DBHelper();
+exports.BuildUserElementJSFile=function(c){
+	var eles =c.DBModel("lx_element")[0];
+	var db =eles.DBHelper();
 	db.Open();
 	try{
-		ele.FillWhere(
+		eles.FillWhere(
 			"exists(select 1 \
 				from lx_userrole a inner join \
 					lx_roleele b on a.rolename=b.rolename \
 				where a.username={{ph}} and \
 					b.elename=dest.name \
-			)",userName);
+			)",c.UserName());
 	}
 	finally{
 		db.Close();
 	}
-	return ele.DataTable;
+	for(var i =0;i < eles.RowCount();i++){
+		row = eles.Row(i);
+		if(row.url){
+			row.url = url.SetQuery(c.AuthUrl(row.url),{_ele:row.name});
+			eles.UpdateRow(i,row);
+		}
+	}
+	var fileName = "sys/curele.js";
+	var jsonp = eles.AsJSONP("CurrentUserElement",eles.ColumnNames());
+	if(!c.UserFile.FileExists(fileName) ||
+		c.UserFile.ReadFileStr(fileName) != jsonp){
+		c.UserFile.WriteFileStr(fileName,jsonp);
+	}
+	return;
 };
 exports.GetUserDept=function(c,userName){
 	dept = c.DBModel("lx_dept")[0];

@@ -2,7 +2,7 @@
 	<#set . "PackCSSDest" "/public/css/pjheader_pack.css"#>
 <#end#>
 <#if not .PackJSDest#>
-	<#set . "PackJSDest" "/public/css/pjheader_pack.js"#>
+	<#set . "PackJSDest" "/public/js/pjheader_pack.js"#>
 <#end#>
 <#if not .Translate_en#>
 	<#set . "Translate_en" mkMap#>
@@ -13,6 +13,9 @@
 <#set .Translate_en "EN" "English"#>
 <#set .Translate_en "CN" "Simplified Chinese"#>
 <#set .Translate_en "CLOSE" "Close"#>
+<#set .Translate_en "ELEMENT_CATEGORY" .Element.category_en_clear#>
+<#set .Translate_en "ELEMENT_LABEL" .Element.label_en_clear#>
+<#set .Translate_en "LOGOUT" "Logout"#>
 
 <#if not .Translate_cn#>
 	<#set . "Translate_cn" mkMap#>
@@ -22,18 +25,21 @@
 <#set .Translate_cn "EN" "英语"#>
 <#set .Translate_cn "CN" "简体中文"#>
 <#set .Translate_cn "CLOSE" "关闭"#>
+<#set .Translate_cn "ELEMENT_CATEGORY" .Element.category_cn_clear#>
+<#set .Translate_cn "ELEMENT_LABEL" .Element.label_cn_clear#>
+<#set .Translate_cn "LOGOUT" "重新登录"#>
 
-<#append . "OtherPackJS" "public/js/abn_tree_directive.js"#>
-<#append . "OtherPackJS" (static "pjheader/page.js")#>
-<#append . "OtherPackJS" (userFile "sys/curele.js")#>
+<#append . "OtherPackPublicJS" "public/js/abn_tree_directive.js"#>
+<#append . "OtherPackStaticJS" (static "pjheader/page.js")#>
 
-<#append . "OtherPackCSS" "/public/css/abn_tree.css"#>
-<#append . "OtherPackCSS" (static "pjheader/page.css")#>
+<#append . "OtherPackPublicCSS" "/public/css/abn_tree.css"#>
+<#append . "OtherPackStaticCSS" (static "pjheader/page.css")#>
 
+<#append . "OtherJSFiles" (userFile "sys/curele.js")#>
 <#append . "OtherDependencys" "angularBootstrapNavTree"#>
 <#template "ngheader.html" .#>
 <script>
-app.controller('mainCtrl', ['$translate', '$scope','$rootScope','$location','$aside','$alert','$http',function ($translate, $scope,$rootScope,$location,$aside,$alert,$http) {
+app.controller('navbarCtrl', ['$window','$translate', '$scope','$rootScope','$location','$aside','$alert','$http',function ($window,$translate, $scope,$rootScope,$location,$aside,$alert,$http) {
 	var leftAside = $aside({
 		scope: $scope,
 		title:"select menu",
@@ -43,6 +49,7 @@ app.controller('mainCtrl', ['$translate', '$scope','$rootScope','$location','$as
 		template:"aside-template.html",
 		contentTemplate: "left.html"
 	});
+	$scope.logoutUrl = <#url "login.logout"#>;
 	$scope.elementTrees = toTree(CurrentUserElement());
 	$scope.dept = <#(.c.Session.Get "user.dept")#>;
 	$scope.deptMenuNodes =toDeptMenus(<#.deptData#>,$scope.dept);
@@ -50,36 +57,19 @@ app.controller('mainCtrl', ['$translate', '$scope','$rootScope','$location','$as
 	swithDeptLag([$scope.dept],$translate.use());
 	swith_lag($scope.elementTrees,$translate.use());
 	swithDeptLag($scope.deptMenuNodes,$translate.use());
-	if($location.path()=="" || $location.path().split("/").length<=2){
-		$scope.activeTopItem= $scope.elementTrees.children[0];
-		console.log($scope.activeTopItem);
-	}
 	$scope.changeLanguage = function (langKey) {
 		$translate.use(langKey);
 		swith_lag($scope.elementTrees,langKey);
 		swithDeptLag([$scope.dept],langKey);
 		swithDeptLag($scope.deptMenuNodes,langKey);
 	};
-	$scope.onMenuSelectChange=function(){
-		if($scope.activeMenu&&$scope.activeMenu.data &&$scope.activeMenu.data.url ){
-			var url = "/"+<#.c.Project.Name#>+"/" + $scope.activeMenu.data.url;
-			$("#frameContent").html(frameHtml(url));
-		}
-	}
-    $scope.$on('$locationChangeSuccess', function () {
-		if($location.path().length > 0){
-			$scope.activeTopItem= $scope.elementTrees.findById($location.path().split("/").slice(1,2));
-			$scope.activeMenu = $scope.elementTrees.findByPath($location.path());
-			$scope.activeTopItem.selectNode($scope.activeMenu);
-			clearOtherSelect($scope.elementTrees,$scope.activeMenu);
-			$scope.onMenuSelectChange();
-		}
-    });
 	$scope.topClick=function(item){
 		$scope.activeTopItem= item;
 		$scope.navCollapsed = true;
+		$rootScope.clearMessage();
 		if(item){
 			$scope.asideTitle = item.label;
+			clearSelect($scope.elementTrees);
 			leftAside.$promise.then(function() {
    				leftAside.show();
 			});
@@ -87,19 +77,11 @@ app.controller('mainCtrl', ['$translate', '$scope','$rootScope','$location','$as
 	};
 	$scope.my_tree_handler=function(item){
 		if(item.data){
-			if($rootScope.viewport=="xs"){
-				leftAside.$promise.then(function() {
-		  			leftAside.hide();
-				});
-			}
-			if(item.path == $location.path()){
-				$scope.onMenuSelectChange();
-			}else{
-				$location.path(item.path);
-			}
-		}else{
-			$scope.activeTopItem.selectNode($scope.activeMenu);
-			clearOtherSelect($scope.elementTrees,$scope.activeMenu);
+			if(item.data.url)
+				$window.location.href = item.data.url;
+			/*leftAside.$promise.then(function() {
+	  			leftAside.hide();
+			});*/
 		}
 	}
 
@@ -132,7 +114,7 @@ app.controller('mainCtrl', ['$translate', '$scope','$rootScope','$location','$as
       </div>
       <div class="aside-body" ng-bind="content"></div>
       <div class="aside-footer">
-        <button type="button" class="btn btn-default" ng-click="$hide()" translate >Close</button>
+        <button type="button" class="btn btn-default" ng-click="$hide()" translate >CLOSE</button>
       </div>
     </div>
   </div>
@@ -147,6 +129,8 @@ app.controller('mainCtrl', ['$translate', '$scope','$rootScope','$location','$as
 <script type="text/ng-template" id="dept-list.html">
 <ul class="dropdown-menu">
 	<li ng-repeat="item in deptMenuNodes" ng-class="{divider:item.divider}"><a href="" ng-click="selectDept(item)" ng-if="!item.divider") >{{item.label}}</a></li>
+	<li class="divider"></li>
+	<li><a href="{{logoutUrl}}"><i class="fa fa-sign-out"></i>{{'LOGOUT'|translate}}</a></li>
 </ul>
 </script>
 <script type="text/ng-template" id="left.html">
@@ -155,38 +139,36 @@ app.controller('mainCtrl', ['$translate', '$scope','$rootScope','$location','$as
 </div>
 </script>
 
-<div ng-controller="mainCtrl" >
-	<div class="navbar navbar-inverse navbar-static-top" role="navigation">
-		<div class="container-fluid">
-			<div class="navbar-header">
-				<button type="button" class="navbar-toggle" ng-click="navCollapsed = !navCollapsed">
-					<span class="sr-only">Toggle navigation</span>
-					<span class="icon-bar"></span>
-					<span class="icon-bar"></span>
-					<span class="icon-bar"></span>
-				</button>
-				<div class="navbar-brand navbar-left" ><i class="fa fa-home"></i> <span translate>PROJECT_LABEL</span></div>
-			</div>
-			<div class="navbar-collapse collapse" ng-class="{'in':!navCollapsed}">
-				<ul class="nav navbar-nav navbar-left">
-					<li ng-repeat="item in elementTrees.children" ng-class="{ active: activeTopItem==item}" ng-click="topClick(item)">
-						<a href="">{{item.label}}</a>
-					</li>
-				</ul>
-				<ul class="nav navbar-nav navbar-right">
-					<li>
-						<a href="" data-animation="am-flip-x" bs-dropdown data-template="dept-list.html" data-placement="bottom-left" data-container="body"><i class="fa fa-user"></i> <span><#.c.Session.Get "user.name"#> {{dept.label}}</span></a>
-					</li>
-					<li class="hidden-xs">
-						<a href="" data-animation="am-flip-x" bs-dropdown data-placement="bottom-right" data-template="language-list.html" data-container="body"><i class="fa fa-align-justify"></i> <span translate>LANGUAGE</span></a>
-					</li>
-					<li class="visible-xs">
-						<a href="" data-animation="am-flip-x" bs-dropdown data-placement="bottom-left" data-template="language-list.html" data-container="body"><i class="fa fa-align-justify"></i> <span translate>LANGUAGE</span></a>
-					</li>
-				</ul>
-			</div>
+<div class="navbar navbar-inverse navbar-static-top" role="navigation" ng-controller="navbarCtrl">
+	<div class="container-fluid">
+		<div class="navbar-header">
+			<button type="button" class="navbar-toggle" ng-click="navCollapsed = !navCollapsed">
+				<span class="sr-only">Toggle navigation</span>
+				<span class="icon-bar"></span>
+				<span class="icon-bar"></span>
+				<span class="icon-bar"></span>
+			</button>
+			<div class="navbar-brand navbar-left" ><i class="fa fa-home"></i> <span translate>PROJECT_LABEL</span></div>
+		</div>
+		<div class="navbar-collapse collapse" ng-class="{'in':!navCollapsed}">
+			<ul class="nav navbar-nav navbar-left">
+				<li ng-repeat="item in elementTrees.children" ng-click="topClick(item)">
+					<a href="">{{item.label}}</a>
+				</li>
+			</ul>
+			<ul class="nav navbar-nav navbar-right">
+				<li>
+					<a href="" data-animation="am-flip-x" bs-dropdown data-template="dept-list.html" data-placement="bottom-left" data-container="body"><i class="fa fa-user"></i> <span><#.c.Session.Get "user.name"#> {{dept.label}}</span></a>
+				</li>
+				<li class="hidden-xs">
+					<a href="" data-animation="am-flip-x" bs-dropdown data-placement="bottom-right" data-template="language-list.html" data-container="body"><i class="fa fa-align-justify"></i> <span translate>LANGUAGE</span></a>
+				</li>
+				<li class="visible-xs">
+					<a href="" data-animation="am-flip-x" bs-dropdown data-placement="bottom-left" data-template="language-list.html" data-container="body"><i class="fa fa-align-justify"></i> <span translate>LANGUAGE</span></a>
+				</li>
+			</ul>
 		</div>
 	</div>
-	<div class="container-fluid">
-	<div class="nav-path">{{activeMenu.pathLabel}}</div>
-	<div ng-show="finishedMessage" class="fullpage text-info"><p class="message">{{finishedMessage}}</p></div>
+</div>
+<div class="nav-path">{{('ELEMENT_CATEGORY'|translate).replace("/","->")+'->'+('ELEMENT_LABEL'|translate)}}</div>
+<div ng-if="!finishedMessage">

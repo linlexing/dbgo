@@ -1,5 +1,6 @@
 rolename,elename
 public,changepwd
+public,home_default
 system,rolemanager
 public,test1
 public,test2

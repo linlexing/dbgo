@@ -29,7 +29,7 @@ function regexp_like(value,regstr){
 	return new RegExp(regstr,"m").test(value);
 }
 var app = angular.module('app',appDependencys);
-app.run(['$rootScope','$log','$window', function ($rootScope, $log, $window) {
+app.run(['$rootScope','$log','$window','$alert', function ($rootScope, $log, $window,$alert) {
 	$rootScope.$log = $log;
 	$rootScope.viewport ='';
 	$rootScope.mediaquery = function(){
@@ -51,8 +51,16 @@ app.run(['$rootScope','$log','$window', function ($rootScope, $log, $window) {
 	}
 	$rootScope.mediaquery();
 	angular.element($window).bind('resize',$rootScope.mediaquery);
+	$rootScope.clearMessage = function(){
+		if(alertMessage){
+			alertMessage.hide();
+		}
+	}
+	var alertMessage;
 	$rootScope.gotoMessage = function(mes){
-		$rootScope.finishedMessage = mes;
+		alertMessage = $alert({title: '', content:mes, placement: 'top', type: 'info', show: true});
+		console.log(alertMessage);
+		$rootScope.finishedMessage = true;
 	}
 }]);
 app.directive('lxField', ['$compile',function ($compile) {

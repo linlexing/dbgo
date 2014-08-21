@@ -33,7 +33,6 @@ type ControllerAgent struct {
 	ControllerName   string
 	ActionName       string
 	TagPath          string
-	Title            string
 	Public           bool        //Indicate whether you can access without authentication
 	CurrentGrade     grade.Grade //When this call, the user's Grade properties. After obtaining the value from the Session, and not to change it, even if the user changes their Grade other requests
 	Result           Result
@@ -161,6 +160,10 @@ func NewAgent(w http.ResponseWriter, r *http.Request) *ControllerAgent {
 					if err != nil {
 						panic(err)
 					}
+					_, err = file.WriteString("\n")
+					if err != nil {
+						panic(err)
+					}
 				}
 
 				buffer, err := json.Marshal(newConfig)
@@ -245,9 +248,6 @@ func (c *ControllerAgent) RenderTemplate(tname string, args map[string]interface
 			"Name":         c.Project.Name(),
 			"DisplayLabel": c.Project.DisplayLabel(),
 		},
-	}
-	if c.Title != "" {
-		data["Title"] = c.Title
 	}
 	t, err := c.Project.TemplateSet(c.TemplateFun)
 	if err != nil {
@@ -349,6 +349,10 @@ func (c *ControllerAgent) jsRenderTemplate(call otto.FunctionCall) otto.Value {
 	c.RenderTemplate(templateName, params)
 	return otto.NullValue()
 }
+func (c *ControllerAgent) jsRenderRedirection(call otto.FunctionCall) otto.Value {
+	c.RenderRedirection(call.Argument(0).String())
+	return otto.NullValue()
+}
 
 func (c *ControllerAgent) jsRenderStaticFile(call otto.FunctionCall) otto.Value {
 	c.RenderStaticFile(call.Argument(0).String())
@@ -366,6 +370,13 @@ func (c *ControllerAgent) jsRenderJson(call otto.FunctionCall) otto.Value {
 func (c *ControllerAgent) jsUrlAuthed(call otto.FunctionCall) otto.Value {
 	v, _ := otto.ToValue(c.UrlAuthed())
 	return v
+}
+func (c *ControllerAgent) jsUrl(call otto.FunctionCall) otto.Value {
+	strs := make([]string, len(call.ArgumentList))
+	for i, v := range call.ArgumentList {
+		strs[i] = oftenfun.AssertString(v)
+	}
+	return oftenfun.JSToValue(call.Otto, c.Url(strs...))
 }
 func (c *ControllerAgent) jsDBModel(call otto.FunctionCall) otto.Value {
 	gradestr := c.CurrentGrade
@@ -397,6 +408,15 @@ func (c *ControllerAgent) jsAuthUrl(call otto.FunctionCall) otto.Value {
 		strs[i] = oftenfun.AssertString(v)
 	}
 	return oftenfun.JSToValue(call.Otto, c.AuthUrl(strs...))
+}
+func (c *ControllerAgent) jsUserName(call otto.FunctionCall) otto.Value {
+	if len(call.ArgumentList) > 0 {
+		c.UserName = oftenfun.AssertString(call.Argument(0))
+		if err := c.Session.Set("user.name", c.UserName); err != nil {
+			panic(err)
+		}
+	}
+	return oftenfun.JSToValue(call.Otto, c.UserName)
 }
 func (c *ControllerAgent) package_UserFile() map[string]interface{} {
 	return map[string]interface{}{
@@ -456,29 +476,32 @@ func (c *ControllerAgent) package_UserFile() map[string]interface{} {
 func (c *ControllerAgent) object() map[string]interface{} {
 
 	return map[string]interface{}{
-		"ActionName":       c.ActionName,
-		"UrlAuthed":        c.jsUrlAuthed,
-		"AuthUrl":          c.jsAuthUrl,
-		"GradeCanUse":      c.jsGradeCanUse,
-		"CurrentGrade":     c.CurrentGrade.String(),
-		"ControllerName":   c.ControllerName,
-		"JsonBody":         c.JsonBody,
-		"TagPath":          c.TagPath,
-		"Render":           c.jsRender,
-		"RenderTemplate":   c.jsRenderTemplate,
-		"RenderStaticFile": c.jsRenderStaticFile,
-		"RenderJson":       c.jsRenderJson,
-		"RenderUserFile":   c.jsRenderUserFile,
-		"HasResult":        c.jsHasResult,
-		"Session":          c.Session.Object(),
-		"Project":          c.Project.Object(),
-		"Method":           c.Request.Method,
+		"ActionName":        c.ActionName,
+		"UrlAuthed":         c.jsUrlAuthed,
+		"AuthUrl":           c.jsAuthUrl,
+		"GradeCanUse":       c.jsGradeCanUse,
+		"CurrentGrade":      c.CurrentGrade.String(),
+		"ControllerName":    c.ControllerName,
+		"JsonBody":          c.JsonBody,
+		"TagPath":           c.TagPath,
+		"QueryValues":       c.jsQueryValues,
+		"Render":            c.jsRender,
+		"RenderTemplate":    c.jsRenderTemplate,
+		"RenderStaticFile":  c.jsRenderStaticFile,
+		"RenderJson":        c.jsRenderJson,
+		"RenderUserFile":    c.jsRenderUserFile,
+		"RenderRedirection": c.jsRenderRedirection,
+		"HasResult":         c.jsHasResult,
+		"Session":           c.Session.Object(),
+		"Project":           c.Project.Object(),
+		"Method":            c.Request.Method,
 		//"Model":            c.jsModel,
 		"DBModel":      c.jsDBModel,
 		"ModelChecks":  c.jsModelChecks,
 		"TemplateFunc": c.jsTemplateFunc,
 		"UserFile":     c.package_UserFile(),
-		"UserName":     c.UserName,
+		"UserName":     c.jsUserName,
+		"Url":          c.jsUrl,
 	}
 
 }

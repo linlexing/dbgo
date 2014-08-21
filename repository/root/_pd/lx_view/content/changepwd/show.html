@@ -1,10 +1,39 @@
+<#set . "Title_en" "Change Password"#>
+<#set . "Title_cn" "修改密码"#>
+
+<#if not .Translate_en#>
+	<#set . "Translate_en" mkMap#>
+<#end#>
+<#set .Translate_en "FINISHED_MESSAGE" "Success change the password"#>
+<#set .Translate_en "USER_HINT" "User Name"#>
+<#set .Translate_en "FORM_TITLE" "Please input old and new password"#>
+<#set .Translate_en "OLD_PWD_HINT" "Old Password"#>
+<#set .Translate_en "NEW_PWD_HINT" "New Password"#>
+<#set .Translate_en "CONFIRM_PWD_HINT" "Confirm Password"#>
+<#set .Translate_en "OK" "OK"#>
+<#set .Translate_en "ERROR_PWD" "The old password invalid"#>
+<#set .Translate_en "ERROR_SAME" "The new password and confirm password must same"#>
+
+<#if not .Translate_cn#>
+	<#set . "Translate_cn" mkMap#>
+<#end#>
+<#set .Translate_cn "FINISHED_MESSAGE" "成功完成密码修改"#>
+<#set .Translate_cn "USER_HINT" "用户名称"#>
+<#set .Translate_cn "FORM_TITLE" "请输入新旧密码来更改密码"#>
+<#set .Translate_cn "OLD_PWD_HINT" "旧密码"#>
+<#set .Translate_cn "NEW_PWD_HINT" "新密码"#>
+<#set .Translate_cn "CONFIRM_PWD_HINT" "确认新密码"#>
+<#set .Translate_cn "OK" "确定"#>
+<#set .Translate_cn "ERROR_PWD" "旧密码无效"#>
+<#set .Translate_cn "ERROR_SAME" "新密码与确认密码必须一致"#>
+<#template "pjheader.html" .#>
 <style type="text/css">
 	body {
 		background-color: #eee;
 	}
 	.container{
-		padding:0px;
-		margin:0px;
+		padding-left:0px;
+		padding-right:0px;
 	}
 	.panel-default{
 		max-width: 330px;
@@ -15,48 +44,13 @@
 	}
 </style>
 <script>
-	app.config(['$translateProvider', function ($translateProvider) {
-		$translateProvider.translations('en', {
-			"FINISHED_MESSAGE":"Success change the password",
-			"TITLE": "Change Password",
-			"USER_HINT":"User Name",
-			"FORM_TITLE":"Please input old and new password",
-			"OLD_PWD_HINT":"Old Password",
-			"NEW_PWD_HINT":"New Password",
-			"CONFIRM_PWD_HINT":"Confirm Password",
-			"OK":"OK",
-			"ERROR_PWD":"The old password invalid",
-			"ERROR_SAME":"The new password and confirm password must same"
-		}).translations('cn', {
-			"FINISHED_MESSAGE":"成功完成密码修改",
-			"TITLE": "修改密码",
-			"USER_HINT":"用户名称",
-			"FORM_TITLE":"请输入新旧密码来更改密码",
-			"OLD_PWD_HINT":"旧密码",
-			"NEW_PWD_HINT":"新密码",
-			"CONFIRM_PWD_HINT":"确认新密码",
-			"OK":"确定",
-			"ERROR_PWD":"旧密码无效",
-			"ERROR_SAME":"新密码与确认密码必须一致"
-		}).registerAvailableLanguageKeys(['en', 'cn'], {
-			'en_US': 'en',
-			'en_UK': 'en',
-			'zh_CN': 'cn',
-			'zh_cn': 'cn'
-		}).determinePreferredLanguage()
-		.useLocalStorage();
-
-	}]);
+var a = <#.Element#>;
 	app.controller('MainCtrl', ['$scope', '$http','$window','$translate','$alert',function($scope,$http,$window,$translate,$alert) {
-		$scope.test =$translate.preferredLanguage();
 		$scope.userName = <#.c.UserName#>;
 		$scope.oldPwd = '';
 		$scope.newPwd = '';
 		$scope.confirmPwd = '';
 		$scope.error = {old_pwd:false,new_pwd:false};
-		$translate('TITLE').then(function (title) {
-			document.title=title;
-		});
 		$scope.doChangePwd = function(){
 			$http.post(<#authUrl "changepwd.changepwd"#>,{oldPwd:$scope.oldPwd,newPwd:$scope.newPwd})
 				.success(function(data,status,headers,config,statusText){
@@ -85,8 +79,8 @@
 			<form name="frmMain" role="form" novalidate>
 				<p class="text-info"></p>
 				<div class="form-group">
-					<label class="control-label" for="oldPwd" translate>OLD_PWD_HINT</label>
-					<input type="password" name="oldPwd" class="form-control"  required autofocus ng-model="oldPwd" ng-change="frmMain.oldPwd.$setValidity('valid',true)" ></input>
+					<label class="control-label" for="oldPwd" translate >OLD_PWD_HINT</label>
+					<input type="password" name="oldPwd" class="form-control" autofocus required ng-model="oldPwd" ng-change="frmMain.oldPwd.$setValidity('valid',true)" ></input>
 				</div>
 				<div class="form-group">
 					<label class="control-label" for="newPwd" translate>NEW_PWD_HINT</label>
@@ -103,3 +97,4 @@
 		</div>
 	</div>
 </div>
+<#template "pjfooter.html" .#>

@@ -35,7 +35,6 @@ func RouteFilter(c *ControllerAgent, f []Filter) {
 		}
 
 	}
-	c.Title = c.Request.URL.Query().Get("title")
 	c.Project, err = Meta.Project(pname)
 	if err != nil {
 		c.RenderError(err)

@@ -5,7 +5,9 @@ filename,grade
 /convert.js,root
 /sha256.js,root
 /crypto_rand.js,root
-/intercept/root_001.js,root
+/url.js,root
+/intercept/element.js,root
+/intercept/render.js,root
 /controller/login.js,root
 /controller/home.js,root
 /controller/manager.js,root

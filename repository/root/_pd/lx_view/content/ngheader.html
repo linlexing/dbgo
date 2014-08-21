@@ -15,7 +15,7 @@
 	<#set . "PackCSSDest" "/public/css/ngheader_pack.css"#>
 <#end#>
 <#if not .PackJSDest#>
-	<#set . "PackJSDest" "/public/css/ngheader_pack.js"#>
+	<#set . "PackJSDest" "/public/js/ngheader_pack.js"#>
 <#end#>
 
 <#$Pack := mkMap#>
@@ -24,12 +24,16 @@
 <#append $Pack "Css" "/public/css/font-awesome.min.css"#>
 <#append $Pack "Css" "/public/css/angular-motion.min.css"#>
 <#append $Pack "Css" "/public/css/bootstrap-additions.min.css"#>
+<#range $index,$value:=.OtherPackPublicCSS#>
+	<#append $Pack "Css" $value#>
+<#end#>
 <#append $Pack "Css" (static "ngheader/page.css")#>
-<#range $index,$value:=.OtherPackCSS#>
+<#range $index,$value:=.OtherPackStaticCSS#>
 	<#append $Pack "Css" $value#>
 <#end#>
 
 <#append $Pack "Js" "/public/js/jquery-1.11.1.min.js"#>
+<#append $Pack "Js" "/public/js/spin.min.js"#>
 <#append $Pack "Js" "/public/js/angular.min.js"#>
 <#append $Pack "Js" "/public/js/angular-cookies.min.js"#>
 <#append $Pack "Js" "/public/js/angular-animate.min.js"#>
@@ -38,8 +42,11 @@
 <#append $Pack "Js" "/public/js/angular-strap.tpl.min.js"#>
 <#append $Pack "Js" "/public/js/underscore-min.js"#>
 <#append $Pack "Js" "/public/js/underscore.string.min.js"#>
+<#range $index,$value:=.OtherPackPublicJS#>
+	<#append $Pack "Js" $value#>
+<#end#>
 <#append $Pack "Js" (static "ngheader/app.js")#>
-<#range $index,$value:=.OtherPackJS#>
+<#range $index,$value:=.OtherPackStaticJS#>
 	<#append $Pack "Js" $value#>
 <#end#>
 <!DOCTYPE html>
@@ -65,6 +72,9 @@
   <body>
 	<script>
 	var appDependencys = ['ngCookies','ngAnimate','pascalprecht.translate','mgcrea.ngStrap'];
+	<#if .OtherDependencys#>
+		appDependencys =appDependencys.concat(<#.OtherDependencys#>);
+	<#end#>
 	</script>
 
 	<script src="<#packFiles .PackJSDest $Pack.Js#>" type="text/javascript" charset="utf-8"></script>
@@ -72,9 +82,6 @@
 		<script src="<#$value#>" type="text/javascript" charset="utf-8"></script>
 	<#end#>
 	<script type="text/javascript">
-	<#if .OtherDependencys#>
-		appDependencys =_.union(appDependencys,<#.OtherDependencys#>);
-	<#end#>
 	app.config(['$translateProvider', function ($translateProvider) {
 		<#if .Translate_en#>
 			$translateProvider.translations('en', <#.Translate_en#>);

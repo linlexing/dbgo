@@ -1,5 +1,6 @@
 var fmt= require("/fmt.js");
 var cnst = require("/const.js");
+var deptModel = require("/model/dept.js");
 exports.When =cnst.BFORE;
 exports.Intercept = function(c,filter){
 	//render table,get table's data,checks,checkresult etc.
@@ -8,18 +9,26 @@ exports.Intercept = function(c,filter){
 		args.tmplName = fmt.Sprintf("%s/%s.html",c.ControllerName,c.ActionName);
 		c.RenderTemplate("ngpage.html",args);
 	};
-	c.RenderProjectPage=function(args){
-		args=args||{};
-		args.tmplName = fmt.Sprintf("%s/%s.html",c.ControllerName,c.ActionName);
+	c.ReadyPJArgs=function(){
+		var args={};
+		sdept = c.Session.Get("user.dept");
+		args.deptData=deptModel.GetDeptMenuNodes(c,sdept.grade,sdept.gradelevel),
+		args.Element = args.Element||c.Element;
+		return args;
+	}
+	c.RenderPJPage=function(args){
+		args = _.extend(c.ReadyPJArgs(),args);
+		args.tmplName = args.tmplName || fmt.Sprintf("%s/%s.html",c.ControllerName,c.ActionName);
 		c.RenderTemplate("pjpage.html",args);
 	};
-	c.RenderMDPage=function(args){
+	c.RenderPJMDPage=function(args){
 		args=args||{};
-		args.tmplName = fmt.Sprintf("%s/%s.md",c.ControllerName,c.ActionName);
-		c.RenderTemplate("mdpage.html",args);
+		args.tmplName = "mdpage.html";
+		args.mdTmplName = fmt.Sprintf("%s/%s.md",c.ControllerName,c.ActionName);
+		c.RenderPJPage(args);
 	};
 	c.RenderRecordView=function(args){
-		args=args||{};
+		args = _.extend(c.ReadyPJArgs(),args);
 		c.RenderTemplate("recordview.html",args);
 	};
   /*c.RenderModelOperate=function(optName,keys,args){

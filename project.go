@@ -231,6 +231,9 @@ func (p *project) loadTemplate(f template.FuncMap) (*template.Template, error) {
 		"title": func(title, urlstr string) string {
 			return fmt.Sprintf("%s?title=%s", urlstr, url.QueryEscape(title))
 		},
+		"HTMLAttr": func(src string) template.HTMLAttr {
+			return template.HTMLAttr(src)
+		},
 		"JS": func(src string) template.JS {
 			return template.JS(src)
 		},

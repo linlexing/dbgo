@@ -8,6 +8,7 @@ import (
 	"github.com/linlexing/dbgo/oftenfun"
 	"github.com/robertkrimen/otto"
 	_ "github.com/robertkrimen/otto/underscore"
+	"net/url"
 )
 
 const (
@@ -33,6 +34,24 @@ func package_grade() map[string]interface{} {
 		"GradeCanUse": JSGradeCanUse,
 		"GRADE_ROOT":  grade.GRADE_ROOT.String(),
 		"GRADE_TAG":   grade.GRADE_TAG.String(),
+	}
+}
+func package_url() map[string]interface{} {
+	return map[string]interface{}{
+		"SetQuery": func(call otto.FunctionCall) otto.Value {
+			str := oftenfun.AssertString(call.Argument(0))
+			values := oftenfun.AssertObject(call.Argument(1))
+			u, err := url.Parse(str)
+			if err != nil {
+				panic(err)
+			}
+			q := u.Query()
+			for key, value := range values {
+				q.Set(key, value.(string))
+			}
+			u.RawQuery = q.Encode()
+			return oftenfun.JSToValue(call.Otto, u.String())
+		},
 	}
 }
 func package_convert() map[string]interface{} {
@@ -108,6 +127,7 @@ func NewJSPool(size int) *JSPool {
 		"grade":       package_grade(),
 		"fmt":         package_fmt(),
 		"sha256":      package_sha256(),
+		"url":         package_url(),
 		"convert":     package_convert(),
 		"crypto_rand": package_crypto_rand(),
 	})
