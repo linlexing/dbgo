@@ -67,7 +67,7 @@ exports.BuildUserElementJSFile=function(c){
 	for(var i =0;i < eles.RowCount();i++){
 		row = eles.Row(i);
 		if(row.url){
-			row.url = url.SetQuery(c.AuthUrl(row.url),{_ele:row.name});
+			row.url = c.AuthUrl(url.SetQuery(row.url,{_ele:row.name}));
 			eles.UpdateRow(i,row);
 		}
 	}

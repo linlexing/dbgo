@@ -74,3 +74,28 @@ app.directive('lxField', ['$compile',function ($compile) {
     }
   };
 }]);
+app.config(['$translateProvider', function ($translateProvider) {
+	if( NGHeader_Translate_en){
+		$translateProvider.translations('en', NGHeader_Translate_en);
+	}
+	if( NGHeader_Translate_cn){
+		$translateProvider.translations('cn', NGHeader_Translate_cn);
+	}
+	$translateProvider.registerAvailableLanguageKeys(['en', 'cn'], {
+		'en_US': 'en',
+		'en_UK': 'en',
+		'zh_CN': 'cn',
+		'zh_cn': 'cn'
+	}).determinePreferredLanguage()
+	.useLocalStorage();
+}]);
+app.run(["$translate","$rootScope",function ($translate,$rootScope) {
+	$translate("Title").then(function(t){
+		document.title=NGHeader_ProjectName+" - " + t;
+	});
+	$rootScope.$on('$translateChangeSuccess', function () {
+		$translate("Title").then(function(t){
+			document.title=NGHeader_ProjectName+" - " + t;
+		});
+	});
+}]);

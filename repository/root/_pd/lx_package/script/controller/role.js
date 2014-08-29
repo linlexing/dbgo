@@ -1,6 +1,9 @@
 exports.manager=function(c){
 	c.RenderRecordView({
-		data_action:c.AuthUrl("role.manager_data")});
+		recordView:{
+			dataAction:c.AuthUrl("role.manager_data")
+		}
+	});
 }
 exports.manager_data=function(c){
 	c.RenderJson( {

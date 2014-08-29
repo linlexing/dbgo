@@ -18,10 +18,16 @@ type Filter func(c *ControllerAgent, filterChain []Filter)
 func RouteFilter(c *ControllerAgent, f []Filter) {
 	var pname string
 	var err error
-	if c.Request.URL.Path == "/" {
+	var Url string
+	if c.ws != nil {
+		Url = c.ws.conn.RequestUrl.Path
+	} else {
+		Url = c.Request.URL.Path
+	}
+	if Url == "/" {
 		pname = DefaultProject
 	} else {
-		s := strings.Split(c.Request.URL.Path, "/")
+		s := strings.Split(Url, "/")
 		pname = s[1]
 		if len(s) >= 4 {
 			c.ControllerName, c.ActionName = s[2], s[3]
@@ -33,7 +39,6 @@ func RouteFilter(c *ControllerAgent, f []Filter) {
 				c.TagPath = c.TagPath[:len(c.TagPath)-1]
 			}
 		}
-
 	}
 	c.Project, err = Meta.Project(pname)
 	if err != nil {
@@ -50,7 +55,7 @@ func RouteFilter(c *ControllerAgent, f []Filter) {
 	}
 }
 func ParseJsonFilter(c *ControllerAgent, f []Filter) {
-	if strings.Contains(c.Request.Header.Get("Content-Type"), "application/json") {
+	if c.ws == nil && strings.Contains(c.Request.Header.Get("Content-Type"), "application/json") {
 		decoder := json.NewDecoder(c.Request.Body)
 		t := map[string]interface{}{}
 		decoder.UseNumber()
@@ -67,17 +72,21 @@ func ParseJsonFilter(c *ControllerAgent, f []Filter) {
 }
 func SessionFilter(c *ControllerAgent, f []Filter) {
 	var sid string
-	if cookie, err := c.Request.Cookie("sid"); err != nil {
-		if http.ErrNoCookie == err {
-			sid = base64.StdEncoding.EncodeToString(uuid.NewRandom())
-			cok := &http.Cookie{Name: "sid", Value: sid, Path: "/"}
-			http.SetCookie(c.Response, cok)
+	if c.ws == nil {
+		if cookie, err := c.Request.Cookie("sid"); err != nil {
+			if http.ErrNoCookie == err {
+				sid = base64.StdEncoding.EncodeToString(uuid.NewRandom())
+				cok := &http.Cookie{Name: "sid", Value: sid, Path: "/"}
+				http.SetCookie(c.Response, cok)
+			} else {
+				c.RenderError(err)
+			}
 		} else {
-			c.RenderError(err)
+			sid = cookie.Value
+
 		}
 	} else {
-		sid = cookie.Value
-
+		sid = c.ws.conn.SessionID
 	}
 	c.Session = NewSession(sid, c.Project.Name())
 
@@ -171,7 +180,7 @@ end:
 	}
 }
 func UrlAuthFilter(c *ControllerAgent, f []Filter) {
-	if !c.UrlAuthed() {
+	if c.ws == nil && !c.UrlAuthed() {
 		log.WARN.Printf("Forbidden url:%s,sid:%s", c.Request.URL.String(), c.Session.SessionID)
 		c.RenderRedirection(c.Project.ReverseUrl(c.Project.DefaultAction()))
 	}

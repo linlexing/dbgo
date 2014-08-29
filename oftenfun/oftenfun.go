@@ -209,17 +209,29 @@ func AssertBool(v interface{}) bool {
 	}
 }
 func AssertArray(v otto.Value) []interface{} {
-	if v.Class() != "Array" {
-		panic(jsmvcerror.JSNotIsArray)
+	if v.IsNull() || v.IsUndefined() {
+		return nil
 	}
 	nv, err := v.Export()
 
 	if err != nil {
 		panic(err)
 	}
+	if v.Class() != "Array" {
+		panic(fmt.Errorf("the value %#v not is array", nv))
+	}
+	switch tv := nv.(type) {
+	case []interface{}:
+		return tv
+	default:
+		panic(fmt.Errorf("the value %#v not is array", nv))
+	}
 	return nv.([]interface{})
 }
 func AssertStringArray(v otto.Value) []string {
+	if v.IsNull() || v.IsUndefined() {
+		return nil
+	}
 	if v.Class() != "Array" && v.Class() != "GoArray" {
 		panic(jsmvcerror.JSNotIsArray)
 	}
@@ -247,6 +259,9 @@ func AssertStringArray(v otto.Value) []string {
 	}
 }
 func AssertByteArray(value otto.Value) []byte {
+	if value.IsNull() || value.IsUndefined() {
+		return nil
+	}
 	switch value.Class() {
 	case "GoArray", "Array":
 		nv, err := value.Export()

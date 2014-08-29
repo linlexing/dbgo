@@ -1,5 +1,5 @@
 filename,grade
-ngheader/app.js,root
+ngheader/page.js,root
 ngheader/page.css,root
 pjheader/page.css,root
 pjheader/page.js,root
@@ -9,4 +9,5 @@ home/home.js,root
 home/home.css,root
 home/abn_tree.css,root
 home/abn_tree_directive.js,root
-recordview/show.css,root
+recordview/page.css,root
+recordview/page.js,root

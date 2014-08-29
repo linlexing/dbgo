@@ -1,0 +1,18 @@
+{
+	"Version": [
+		1
+	],
+	"CurrentGrade": "root",
+	"RowCount": 0,
+	"FileColumns": {
+		"datasrc": ".sql",
+		"col":".json",
+		"btn":".json",
+		"lab":".json"
+	},
+	"SqlWhere": "exists(select 1 from lx_element where lx_element.name = dest.name and grade_canuse('root',lx_element.grade))",
+	"ImpAutoUpdate":true,
+	"ImpAutoRemove": true,
+	"ImpRefreshStruct": true,
+	"CheckVersion": true
+}

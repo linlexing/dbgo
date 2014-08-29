@@ -240,3 +240,68 @@ function swithDeptLag(deptNodes,lag){
 		}
 	}
 }
+/**********************************/
+app.controller('navbarCtrl', ['$window','$translate', '$scope','$rootScope','$location','$aside','$alert','$http',function ($window,$translate, $scope,$rootScope,$location,$aside,$alert,$http) {
+	var leftAside = $aside({
+		scope: $scope,
+		title:"select menu",
+		animation:"am-slide-left",
+		show:false,
+		placement:"left",
+		template:"aside-template.html",
+		contentTemplate: "left.html"
+	});
+	$scope.logoutUrl = PJHeader_LogoutUrl;
+	$scope.elementTrees = toTree(CurrentUserElement());
+	$scope.dept = PJHeader_Dept;
+	$scope.deptMenuNodes =toDeptMenus(PJHeader_DeptData,$scope.dept);
+	$scope.navCollapsed = true;
+	swithDeptLag([$scope.dept],$translate.use());
+	swith_lag($scope.elementTrees,$translate.use());
+	swithDeptLag($scope.deptMenuNodes,$translate.use());
+	$scope.changeLanguage = function (langKey) {
+		$translate.use(langKey);
+		swith_lag($scope.elementTrees,langKey);
+		swithDeptLag([$scope.dept],langKey);
+		swithDeptLag($scope.deptMenuNodes,langKey);
+	};
+	$scope.topClick=function(item){
+		$scope.activeTopItem= item;
+		$scope.navCollapsed = true;
+		$rootScope.clearMessage();
+		if(item){
+			$scope.asideTitle = item.label;
+			clearSelect($scope.elementTrees);
+			leftAside.$promise.then(function() {
+   				leftAside.show();
+			});
+		}
+	};
+	$scope.my_tree_handler=function(item){
+		if(item.data){
+			if(item.data.url)
+				$window.location.href = item.data.url;
+			/*leftAside.$promise.then(function() {
+	  			leftAside.hide();
+			});*/
+		}
+	}
+
+	$scope.selectDept=function(item){
+		$http.post(PJHeader_HomeSwitchDeptUrl,{dept:item,userName:PJHeader_UserName})
+			.success(function(data,status,headers,config,statusText){
+				if(data.ok){
+					$scope.dept = item;
+					$scope.deptMenuNodes =toDeptMenus(data.deptData,item);
+					swithDeptLag([$scope.dept],$translate.use());
+					swithDeptLag($scope.deptMenuNodes,$translate.use());
+				}else{
+					$alert({title: 'error', content:data.error, placement: 'top-right', type: 'danger', show: true});
+				}
+			})
+			.error(function(data,status,headers,config,statusText){
+				$alert({title: 'error1', content:data + "status:" + status+",statusText:" + statusText, placement: 'top-right', type: 'danger', show: true});
+			});
+	}
+
+}]);

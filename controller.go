@@ -39,6 +39,8 @@ type ControllerAgent struct {
 	TemplateFun      template.FuncMap
 	Object           otto.Value
 	ControllerScript otto.Value
+	Tag              map[string]interface{}
+	ws               *WSAgent
 	jsRuntime        *otto.Otto
 }
 
@@ -99,7 +101,11 @@ func (c *ControllerAgent) Require(fileName, currentModuleDir string) otto.Value 
 	}
 }
 func (c *ControllerAgent) QueryValues() url.Values {
-	return c.Request.URL.Query()
+	if c.ws == nil {
+		return c.Request.URL.Query()
+	} else {
+		return c.ws.conn.RequestUrl.Query()
+	}
 }
 
 type packConfig struct {
@@ -107,11 +113,18 @@ type packConfig struct {
 	Times []time.Time
 }
 
+func NewAgentWS(ws *WSAgent) *ControllerAgent {
+	return &ControllerAgent{
+		ws:  ws,
+		Tag: map[string]interface{}{},
+	}
+}
 func NewAgent(w http.ResponseWriter, r *http.Request) *ControllerAgent {
 
 	c := &ControllerAgent{
 		Request:  r,
 		Response: w,
+		Tag:      map[string]interface{}{},
 	}
 	c.TemplateFun = template.FuncMap{
 		"url":     c.Url,
@@ -244,6 +257,7 @@ func (c *ControllerAgent) RenderTemplate(tname string, args map[string]interface
 		"UserName":       c.UserName,
 		"Session":        c.Session,
 		"CurrentGrade":   c.CurrentGrade,
+		"Tag":            c.Tag,
 		"Project": map[string]interface{}{
 			"Name":         c.Project.Name(),
 			"DisplayLabel": c.Project.DisplayLabel(),
@@ -310,7 +324,7 @@ func (c *ControllerAgent) UrlAuthed() bool {
 	if c.Public {
 		return true
 	}
-	url := c.Request.URL.Path
+	url := c.Request.URL.String()
 	return c.Session.Get(SessionAuthUrlPrex+url) == "1"
 }
 func (c *ControllerAgent) jsQueryValues(call otto.FunctionCall) otto.Value {
@@ -334,7 +348,7 @@ func (c *ControllerAgent) jsRender(call otto.FunctionCall) otto.Value {
 		}
 	}
 	c.Render(params)
-	return otto.NullValue()
+	return otto.UndefinedValue()
 }
 
 func (c *ControllerAgent) jsRenderTemplate(call otto.FunctionCall) otto.Value {
@@ -347,25 +361,29 @@ func (c *ControllerAgent) jsRenderTemplate(call otto.FunctionCall) otto.Value {
 		}
 	}
 	c.RenderTemplate(templateName, params)
-	return otto.NullValue()
+	return otto.UndefinedValue()
 }
 func (c *ControllerAgent) jsRenderRedirection(call otto.FunctionCall) otto.Value {
 	c.RenderRedirection(call.Argument(0).String())
-	return otto.NullValue()
+	return otto.UndefinedValue()
 }
 
 func (c *ControllerAgent) jsRenderStaticFile(call otto.FunctionCall) otto.Value {
 	c.RenderStaticFile(call.Argument(0).String())
-	return otto.NullValue()
+	return otto.UndefinedValue()
 }
 func (c *ControllerAgent) jsRenderUserFile(call otto.FunctionCall) otto.Value {
 	c.RenderUserFile(call.Argument(0).String())
-	return otto.NullValue()
+	return otto.UndefinedValue()
+}
+func (c *ControllerAgent) jsRenderError(call otto.FunctionCall) otto.Value {
+	c.RenderError(fmt.Errorf(call.Argument(0).String()))
+	return otto.UndefinedValue()
 }
 func (c *ControllerAgent) jsRenderJson(call otto.FunctionCall) otto.Value {
 	v := oftenfun.AssertObject(call.Argument(0))
 	c.RenderJson(v)
-	return otto.NullValue()
+	return otto.UndefinedValue()
 }
 func (c *ControllerAgent) jsUrlAuthed(call otto.FunctionCall) otto.Value {
 	v, _ := otto.ToValue(c.UrlAuthed())
@@ -393,6 +411,17 @@ func (c *ControllerAgent) jsDBModel(call otto.FunctionCall) otto.Value {
 func (c *ControllerAgent) jsGradeCanUse(call otto.FunctionCall) otto.Value {
 	byUseGrade := grade.Grade(oftenfun.AssertString(call.Argument(0)))
 	return oftenfun.JSToValue(call.Otto, c.CurrentGrade.CanUse(byUseGrade))
+}
+func (c *ControllerAgent) jsSetTag(call otto.FunctionCall) otto.Value {
+	vname := oftenfun.AssertString(call.Argument(0))
+	vv := oftenfun.AssertValue(call.Argument(1))[0]
+	c.Tag[vname] = vv
+	return call.Argument(1)
+}
+func (c *ControllerAgent) jsGetTag(call otto.FunctionCall) otto.Value {
+	vname := oftenfun.AssertString(call.Argument(0))
+
+	return oftenfun.JSToValue(call.Otto, c.Tag[vname])
 }
 func (c *ControllerAgent) jsModelChecks(call otto.FunctionCall) otto.Value {
 	mname := oftenfun.AssertString(call.Argument(0))
@@ -472,20 +501,20 @@ func (c *ControllerAgent) package_UserFile() map[string]interface{} {
 		},
 	}
 }
-
 func (c *ControllerAgent) object() map[string]interface{} {
-
-	return map[string]interface{}{
+	rev := map[string]interface{}{
 		"ActionName":        c.ActionName,
 		"UrlAuthed":         c.jsUrlAuthed,
 		"AuthUrl":           c.jsAuthUrl,
 		"GradeCanUse":       c.jsGradeCanUse,
+		"GetTag":            c.jsGetTag,
 		"CurrentGrade":      c.CurrentGrade.String(),
 		"ControllerName":    c.ControllerName,
 		"JsonBody":          c.JsonBody,
 		"TagPath":           c.TagPath,
 		"QueryValues":       c.jsQueryValues,
 		"Render":            c.jsRender,
+		"RenderError":       c.jsRenderError,
 		"RenderTemplate":    c.jsRenderTemplate,
 		"RenderStaticFile":  c.jsRenderStaticFile,
 		"RenderJson":        c.jsRenderJson,
@@ -493,8 +522,8 @@ func (c *ControllerAgent) object() map[string]interface{} {
 		"RenderRedirection": c.jsRenderRedirection,
 		"HasResult":         c.jsHasResult,
 		"Session":           c.Session.Object(),
+		"SetTag":            c.jsSetTag,
 		"Project":           c.Project.Object(),
-		"Method":            c.Request.Method,
 		//"Model":            c.jsModel,
 		"DBModel":      c.jsDBModel,
 		"ModelChecks":  c.jsModelChecks,
@@ -503,7 +532,13 @@ func (c *ControllerAgent) object() map[string]interface{} {
 		"UserName":     c.jsUserName,
 		"Url":          c.jsUrl,
 	}
+	if c.ws != nil {
+		rev["WS"] = c.ws.Object()
+	} else {
+		rev["Method"] = c.Request.Method
 
+	}
+	return rev
 }
 
 func (c *ControllerAgent) jsTemplateFunc(call otto.FunctionCall) otto.Value {

@@ -13,8 +13,8 @@
 <#set .Translate_en "EN" "English"#>
 <#set .Translate_en "CN" "Simplified Chinese"#>
 <#set .Translate_en "CLOSE" "Close"#>
-<#set .Translate_en "ELEMENT_CATEGORY" .Element.category_en_clear#>
-<#set .Translate_en "ELEMENT_LABEL" .Element.label_en_clear#>
+<#set .Translate_en "ELEMENT_CATEGORY" .c.Tag.Element.category_en_clear#>
+<#set .Translate_en "ELEMENT_LABEL" .c.Tag.Element.label_en_clear#>
 <#set .Translate_en "LOGOUT" "Logout"#>
 
 <#if not .Translate_cn#>
@@ -25,8 +25,8 @@
 <#set .Translate_cn "EN" "英语"#>
 <#set .Translate_cn "CN" "简体中文"#>
 <#set .Translate_cn "CLOSE" "关闭"#>
-<#set .Translate_cn "ELEMENT_CATEGORY" .Element.category_cn_clear#>
-<#set .Translate_cn "ELEMENT_LABEL" .Element.label_cn_clear#>
+<#set .Translate_cn "ELEMENT_CATEGORY" .c.Tag.Element.category_cn_clear#>
+<#set .Translate_cn "ELEMENT_LABEL" .c.Tag.Element.label_cn_clear#>
 <#set .Translate_cn "LOGOUT" "重新登录"#>
 
 <#append . "OtherPackPublicJS" "public/js/abn_tree_directive.js"#>
@@ -39,70 +39,11 @@
 <#append . "OtherDependencys" "angularBootstrapNavTree"#>
 <#template "ngheader.html" .#>
 <script>
-app.controller('navbarCtrl', ['$window','$translate', '$scope','$rootScope','$location','$aside','$alert','$http',function ($window,$translate, $scope,$rootScope,$location,$aside,$alert,$http) {
-	var leftAside = $aside({
-		scope: $scope,
-		title:"select menu",
-		animation:"am-slide-left",
-		show:false,
-		placement:"left",
-		template:"aside-template.html",
-		contentTemplate: "left.html"
-	});
-	$scope.logoutUrl = <#url "login.logout"#>;
-	$scope.elementTrees = toTree(CurrentUserElement());
-	$scope.dept = <#(.c.Session.Get "user.dept")#>;
-	$scope.deptMenuNodes =toDeptMenus(<#.deptData#>,$scope.dept);
-	$scope.navCollapsed = true;
-	swithDeptLag([$scope.dept],$translate.use());
-	swith_lag($scope.elementTrees,$translate.use());
-	swithDeptLag($scope.deptMenuNodes,$translate.use());
-	$scope.changeLanguage = function (langKey) {
-		$translate.use(langKey);
-		swith_lag($scope.elementTrees,langKey);
-		swithDeptLag([$scope.dept],langKey);
-		swithDeptLag($scope.deptMenuNodes,langKey);
-	};
-	$scope.topClick=function(item){
-		$scope.activeTopItem= item;
-		$scope.navCollapsed = true;
-		$rootScope.clearMessage();
-		if(item){
-			$scope.asideTitle = item.label;
-			clearSelect($scope.elementTrees);
-			leftAside.$promise.then(function() {
-   				leftAside.show();
-			});
-		}
-	};
-	$scope.my_tree_handler=function(item){
-		if(item.data){
-			if(item.data.url)
-				$window.location.href = item.data.url;
-			/*leftAside.$promise.then(function() {
-	  			leftAside.hide();
-			});*/
-		}
-	}
-
-	$scope.selectDept=function(item){
-		$http.post(<#authUrl "home.switch_dept"#>,{dept:item,userName:<#.c.Session.Get "user.name"#>})
-			.success(function(data,status,headers,config,statusText){
-				if(data.ok){
-					$scope.dept = item;
-					$scope.deptMenuNodes =toDeptMenus(data.deptData,item);
-					swithDeptLag([$scope.dept],$translate.use());
-					swithDeptLag($scope.deptMenuNodes,$translate.use());
-				}else{
-					$alert({title: 'error', content:data.error, placement: 'top-right', type: 'danger', show: true});
-				}
-			})
-			.error(function(data,status,headers,config,statusText){
-				$alert({title: 'error1', content:data + "status:" + status+",statusText:" + statusText, placement: 'top-right', type: 'danger', show: true});
-			});
-	}
-
-}]);
+var PJHeader_LogoutUrl = <#url "login.logout"#>;
+var PJHeader_Dept = <#(.c.Session.Get "user.dept")#>;
+var PJHeader_DeptData = <#.deptData#>;
+var PJHeader_HomeSwitchDeptUrl = <#authUrl "home.switch_dept"#>;
+var PJHeader_UserName = <#.c.Session.Get "user.name"#>;
 </script>
 <script type="text/ng-template" id="aside-template.html">
 <div class="aside" tabindex="-1" role="dialog">

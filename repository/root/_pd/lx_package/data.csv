@@ -15,6 +15,7 @@ filename,grade
 /controller/userfile.js,root
 /controller/changepwd.js,root
 /controller/role.js,root
+/controller/rv.js,root
 /model/user.js,root
 /model/dept.js,root
 /model/option.js,root

@@ -4,7 +4,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/linlexing/dbgo/httpgzip"
+	"github.com/daaku/go.httpgzip"
 	"github.com/linlexing/dbgo/log"
 	"github.com/robfig/cron"
 	"io/ioutil"
@@ -16,6 +16,7 @@ import (
 
 var (
 	// Loggers
+	SocketHub      *WSHub
 	Meta           MetaProject
 	DefaultProject string
 	Filters        []Filter
@@ -68,6 +69,7 @@ func initiMeta(c *Config) error {
 }*/
 func main() {
 	var err error
+	SocketHub = NewWSHub()
 	if AppPath, err = filepath.Abs("."); err != nil {
 		log.INFO.Fatal(err)
 	}
@@ -85,6 +87,7 @@ func main() {
 		}
 	})
 	Jobs.Start()
+	go SocketHub.run()
 	Filters = []Filter{PanicFilter, RouteFilter, ParseJsonFilter, SessionFilter, UserFilter, BuildObjectFilter, InterceptFilter, LoadControlFilter, UrlAuthFilter, ActionFilter}
 	http.HandleFunc("/favicon.ico", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(404)

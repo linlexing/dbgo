@@ -14,7 +14,6 @@ exports.auth=function(c){
 	if(user.Exists() &&user.Auth(c.JsonBody.password)){
 		userDept =userModel.GetUserDept(c,c.JsonBody.userName);
 		if(userDept){
-			c.AuthUrl("home.default");
 			c.UserName(c.JsonBody.userName);
 			c.Session.Set("user.dept" ,userDept);
 			userModel.BuildUserElementJSFile(c);

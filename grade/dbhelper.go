@@ -38,6 +38,28 @@ func (p *DBHelper) GetData(strSql string, params ...interface{}) (*DataTable, er
 	return NewDataTableT(tab), nil
 
 }
+func (p *DBHelper) SelectLimit(srcSql string, pkFields []string, startKeyValue []interface{}, selectCols []string, where string, orderby []string, limit int) (*DataTable, error) {
+	tab, err := p.DBHelper.SelectLimit(srcSql, pkFields, startKeyValue, selectCols, where, orderby, limit)
+	if err != nil {
+		return nil, err
+	}
+	return NewDataTableT(tab), nil
+}
+func (p *DBHelper) SelectLimitT(srcSql string, templateParam map[string]interface{}, pkFields []string, startKeyValue []interface{}, selectCols []string, where string, orderby []string, limit int) (*DataTable, error) {
+	tab, err := p.DBHelper.SelectLimitT(srcSql, templateParam, pkFields, startKeyValue, selectCols, where, orderby, limit)
+	if err != nil {
+		return nil, err
+	}
+	return NewDataTableT(tab), nil
+}
+func (p *DBHelper) GetDataT(strSql string, templateParams map[string]interface{}, params ...interface{}) (*DataTable, error) {
+	tab, err := p.DBHelper.GetDataT(strSql, templateParams, params...)
+	if err != nil {
+		return nil, err
+	}
+	return NewDataTableT(tab), nil
+
+}
 func (p *DBHelper) Table(tablename string) (*DataTable, error) {
 	tab, err := p.DBHelper.Table(tablename)
 	if err != nil {
@@ -92,6 +114,36 @@ func (p *DBHelper) jsRollback(call otto.FunctionCall) otto.Value {
 	return oftenfun.JSToValue(call.Otto, p.Rollback())
 }
 
+func (p *DBHelper) jsSelectLimit(call otto.FunctionCall) otto.Value {
+	srcSql := oftenfun.AssertString(call.Argument(0))
+	pkFields := oftenfun.AssertStringArray(call.Argument(1))
+	startKeyValue := oftenfun.AssertArray(call.Argument(2))
+	selectCols := oftenfun.AssertStringArray(call.Argument(3))
+	where := oftenfun.AssertString(call.Argument(4))
+	orderby := oftenfun.AssertStringArray(call.Argument(5))
+	limit := oftenfun.AssertInteger(call.Argument(6))
+	result, err := p.SelectLimit(srcSql, pkFields, startKeyValue, selectCols, where, orderby, limit)
+	if err != nil {
+		panic(err)
+	}
+	return oftenfun.JSToValue(call.Otto, result.Object())
+}
+
+func (p *DBHelper) jsSelectLimitT(call otto.FunctionCall) otto.Value {
+	srcSql := oftenfun.AssertString(call.Argument(0))
+	templateParam := oftenfun.AssertObject(call.Argument(1))
+	pkFields := oftenfun.AssertStringArray(call.Argument(2))
+	startKeyValue := oftenfun.AssertArray(call.Argument(3))
+	selectCols := oftenfun.AssertStringArray(call.Argument(4))
+	where := oftenfun.AssertString(call.Argument(5))
+	orderby := oftenfun.AssertStringArray(call.Argument(6))
+	limit := oftenfun.AssertInteger(call.Argument(7))
+	result, err := p.SelectLimitT(srcSql, templateParam, pkFields, startKeyValue, selectCols, where, orderby, limit)
+	if err != nil {
+		panic(err)
+	}
+	return oftenfun.JSToValue(call.Otto, result.Object())
+}
 func (p *DBHelper) jsExecT(call otto.FunctionCall) otto.Value {
 	sql := oftenfun.AssertString(call.Argument(0))
 	templateParam := oftenfun.AssertObject(call.Argument(1))
@@ -145,6 +197,17 @@ func (p *DBHelper) jsGetData(call otto.FunctionCall) otto.Value {
 	}
 	return oftenfun.JSToValue(call.Otto, result.Object())
 }
+func (p *DBHelper) jsGetDataT(call otto.FunctionCall) otto.Value {
+
+	strSql := oftenfun.AssertString(call.Argument(0))
+	templateParam := oftenfun.AssertObject(call.Argument(1))
+	params := oftenfun.AssertValue(call.ArgumentList[2:]...)
+	result, err := p.GetDataT(strSql, templateParam, params...)
+	if err != nil {
+		panic(err)
+	}
+	return oftenfun.JSToValue(call.Otto, result.Object())
+}
 func (p *DBHelper) jsQueryOne(call otto.FunctionCall) otto.Value {
 	strSql := oftenfun.AssertString(call.Argument(0))
 	params := oftenfun.AssertValue(call.ArgumentList[1:]...)
@@ -154,19 +217,32 @@ func (p *DBHelper) jsQueryOne(call otto.FunctionCall) otto.Value {
 	}
 	return oftenfun.JSToValue(call.Otto, rev)
 }
+func (p *DBHelper) jsQStr(call otto.FunctionCall) otto.Value {
+	strSql := oftenfun.AssertString(call.Argument(0))
+	params := oftenfun.AssertValue(call.ArgumentList[1:]...)
+	rev, err := p.QueryOne(strSql, params...)
+	if err != nil {
+		panic(err)
+	}
+	return oftenfun.JSToValue(call.Otto, oftenfun.SafeToString(rev))
+}
 func (p *DBHelper) Object() map[string]interface{} {
 	return map[string]interface{}{
-		"GetData":  p.jsGetData,
-		"Table":    p.jsTable,
-		"Exec":     p.jsExec,
-		"ExecT":    p.jsExecT,
-		"GoExecT":  p.jsGoExecT,
-		"QueryOne": p.jsQueryOne,
-		"Open":     p.jsOpen,
-		"Close":    p.jsClose,
-		"Begin":    p.jsBegin,
-		"Commit":   p.jsCommit,
-		"Rollback": p.jsRollback,
+		"GetData":      p.jsGetData,
+		"GetDataT":     p.jsGetDataT,
+		"Table":        p.jsTable,
+		"Exec":         p.jsExec,
+		"ExecT":        p.jsExecT,
+		"GoExecT":      p.jsGoExecT,
+		"QueryOne":     p.jsQueryOne,
+		"QStr":         p.jsQStr,
+		"Open":         p.jsOpen,
+		"Close":        p.jsClose,
+		"Begin":        p.jsBegin,
+		"Commit":       p.jsCommit,
+		"Rollback":     p.jsRollback,
+		"SelectLimit":  p.jsSelectLimit,
+		"SelectLimitT": p.jsSelectLimitT,
 	}
 }
 
@@ -344,7 +420,7 @@ func importFromCsv(pathName string, rCSV *csv.Reader, table *DBTable, config *du
 			for i, v := range config.FileColumns {
 				icolIndex := fileColumnIndexes[i]
 				tv, err := readFileColumn(pathName, table.Columns[icolIndex].Name, v, keys)
-				if err != nil {
+				if err != nil && !os.IsNotExist(err) {
 					return err
 				}
 				if tv == nil {

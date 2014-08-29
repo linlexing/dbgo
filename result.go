@@ -3,6 +3,8 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/daaku/go.httpgzip"
+	"github.com/linlexing/dbgo/log"
 	"html/template"
 	"net/http"
 	"path/filepath"
@@ -77,6 +79,10 @@ type RenderTemplateResult struct {
 }
 
 func (r *RenderTemplateResult) Apply(req *http.Request, w http.ResponseWriter) {
+	httpgzip.NewHandler(r).ServeHTTP(w, req)
+}
+
+func (r *RenderTemplateResult) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	if r.TemplateSet.Lookup(r.TemplateName) == nil {
 		w.Write([]byte(fmt.Sprintf("can't found template:%s\n",
@@ -92,10 +98,9 @@ func (r *RenderTemplateResult) Apply(req *http.Request, w http.ResponseWriter) {
 
 		}
 	}()
-	err := r.TemplateSet.ExecuteTemplate(w, r.TemplateName, r.RenderArgs)
-	if err != nil {
-		w.Write([]byte(fmt.Sprintf("render template:%s error:%s\n",
-			r.TemplateName, err)))
+	if err := r.TemplateSet.ExecuteTemplate(w, r.TemplateName, r.RenderArgs); err != nil {
+		log.ERROR.Println(err)
+		w.Write([]byte(fmt.Sprintf("render template:%s error:%s\n", r.TemplateName, err)))
 	}
 }
 
@@ -105,6 +110,9 @@ type RenderStaticFileResult struct {
 }
 
 func (r *RenderStaticFileResult) Apply(req *http.Request, w http.ResponseWriter) {
+	httpgzip.NewHandler(r).ServeHTTP(w, req)
+}
+func (r *RenderStaticFileResult) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	http.ServeFile(w, req, filepath.Join(AppPath, "static", r.ProjectName, r.FileName))
 }
 
@@ -115,6 +123,9 @@ type RenderUserFileResult struct {
 }
 
 func (r *RenderUserFileResult) Apply(req *http.Request, w http.ResponseWriter) {
+	httpgzip.NewHandler(r).ServeHTTP(w, req)
+}
+func (r *RenderUserFileResult) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	http.ServeFile(w, req, filepath.Join(AppPath, "userfile", r.ProjectName, r.UserName, r.FileName))
 }
 
@@ -123,6 +134,9 @@ type RenderJsonResult struct {
 }
 
 func (r *RenderJsonResult) Apply(req *http.Request, w http.ResponseWriter) {
+	httpgzip.NewHandler(r).ServeHTTP(w, req)
+}
+func (r *RenderJsonResult) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Content-Type", "application/json;charset=UTF-8")
 	encoder := json.NewEncoder(w)
 

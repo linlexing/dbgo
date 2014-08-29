@@ -226,8 +226,7 @@ func (d *DataTable) jsColumnNames(call otto.FunctionCall) otto.Value {
 	return oftenfun.JSToValue(call.Otto, d.ColumnNames())
 }
 func (d *DataTable) jsColumns(call otto.FunctionCall) otto.Value {
-	v, _ := call.Otto.ToValue(map[string]interface{}{})
-	obj := v.Object()
+	obj, _ := call.Otto.Object("({})")
 	for _, col := range d.Columns {
 		obj.Set(col.Name, col.Object())
 	}

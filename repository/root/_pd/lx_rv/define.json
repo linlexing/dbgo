@@ -1,0 +1,116 @@
+{
+	"TableName": "lx_rv",
+	"PK": [
+		"name"
+	],
+	"Desc": {
+		"Grade": "root"
+	},
+	"Columns": [
+		{
+			"Name": "name",
+			"DataType": "string",
+			"MaxSize": 255,
+			"NotNull": true,
+			"Desc": {
+				"Grade": "root"
+			}
+		},
+		{
+			"Name": "basetable",
+			"DataType": "string",
+			"MaxSize": 64,
+			"NotNull": false,
+			"Desc": {
+				"Grade": "root"
+			}
+		},
+		{
+			"Name": "pk",
+			"DataType": "string",
+			"MaxSize": 0,
+			"NotNull": false,
+			"Desc": {
+				"Grade": "root"
+			}
+		},
+		{
+			"Name": "datasrc",
+			"DataType": "string",
+			"MaxSize": 0,
+			"NotNull": true,
+			"Desc": {
+				"Grade": "root"
+			}
+		},
+		{
+			"Name": "col",
+			"DataType": "string",
+			"MaxSize": 0,
+			"NotNull": false,
+			"Desc": {
+				"Grade": "root"
+			}
+		},
+		{
+			"Name": "lab",
+			"DataType": "string",
+			"MaxSize": 0,
+			"NotNull": false,
+			"Desc": {
+				"Grade": "root"
+			}
+		},
+		{
+			"Name": "btn",
+			"DataType": "string",
+			"MaxSize": 0,
+			"NotNull": false,
+			"Desc": {
+				"Grade": "root"
+			}
+		},
+		{
+			"Name": "canexport",
+			"DataType": "bool",
+			"NotNull": false,
+			"Desc": {
+				"Grade": "root"
+			}
+		},
+		{
+			"Name": "canimport",
+			"DataType": "bool",
+			"NotNull": false,
+			"Desc": {
+				"Grade": "root"
+			}
+		},
+		{
+			"Name": "canreplace",
+			"DataType": "bool",
+			"NotNull": false,
+			"Desc": {
+				"Grade": "root"
+			}
+		},
+		{
+			"Name": "canclear",
+			"DataType": "bool",
+			"NotNull": false,
+			"Desc": {
+				"Grade": "root"
+			}
+		},
+		{
+			"Name": "replacecol",
+			"DataType": "string",
+			"MaxSize": 0,
+			"NotNull": false,
+			"Desc": {
+				"Grade": "root"
+			}
+		}
+	],
+	"Indexes": {}
+}

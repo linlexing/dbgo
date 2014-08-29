@@ -32,20 +32,21 @@
 	<#append $Pack "Css" $value#>
 <#end#>
 
-<#append $Pack "Js" "/public/js/jquery-1.11.1.min.js"#>
+<#append $Pack "Js" "/public/js/jquery-1.11.1.js"#>
+<#append $Pack "Js" "/public/js/underscore-min.js"#>
+<#append $Pack "Js" "/public/js/underscore.string.min.js"#>
 <#append $Pack "Js" "/public/js/spin.min.js"#>
-<#append $Pack "Js" "/public/js/angular.min.js"#>
+<#append $Pack "Js" "/public/js/angular.js"#>
 <#append $Pack "Js" "/public/js/angular-cookies.min.js"#>
 <#append $Pack "Js" "/public/js/angular-animate.min.js"#>
 <#append $Pack "Js" "/public/js/angular-translate.min.js"#>
 <#append $Pack "Js" "/public/js/angular-strap.min.js"#>
 <#append $Pack "Js" "/public/js/angular-strap.tpl.min.js"#>
-<#append $Pack "Js" "/public/js/underscore-min.js"#>
-<#append $Pack "Js" "/public/js/underscore.string.min.js"#>
+
 <#range $index,$value:=.OtherPackPublicJS#>
 	<#append $Pack "Js" $value#>
 <#end#>
-<#append $Pack "Js" (static "ngheader/app.js")#>
+<#append $Pack "Js" (static "ngheader/page.js")#>
 <#range $index,$value:=.OtherPackStaticJS#>
 	<#append $Pack "Js" $value#>
 <#end#>
@@ -57,9 +58,9 @@
 	<meta name="viewport" content="width=device-width, height=device-height, initial-scale=1.0">
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
 	<!-- Bootstrap -->
-    <link rel="stylesheet" type="text/css" href=<#packFiles .PackCSSDest $Pack.Css#>>
+    <link rel="stylesheet" type="text/css" href="<#packFiles .PackCSSDest $Pack.Css#>">
 	<#range $index,$value:=.OtherCSSFiles#>
-		<link rel="stylesheet" type="text/css" href="<#$value#>">
+		<link rel="stylesheet" type="text/css" href="<#$value#>"/>
 	<#end#>
 	<!-- HTML5 Shim and Respond.js IE8 support of HTML5 elements and media queries -->
     <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
@@ -71,43 +72,22 @@
   </head>
   <body>
 	<script>
+	var G = <#.G#>;
+
 	var appDependencys = ['ngCookies','ngAnimate','pascalprecht.translate','mgcrea.ngStrap'];
 	<#if .OtherDependencys#>
 		appDependencys =appDependencys.concat(<#.OtherDependencys#>);
 	<#end#>
+	var NGHeader_Translate_en = <#.Translate_en#>;
+	var NGHeader_Translate_cn = <#.Translate_cn#>;
+	var NGHeader_ProjectName = <#.c.Project.Name#>;
 	</script>
 
 	<script src="<#packFiles .PackJSDest $Pack.Js#>" type="text/javascript" charset="utf-8"></script>
 	<#range $index,$value:=.OtherJSFiles#>
 		<script src="<#$value#>" type="text/javascript" charset="utf-8"></script>
 	<#end#>
-	<script type="text/javascript">
-	app.config(['$translateProvider', function ($translateProvider) {
-		<#if .Translate_en#>
-			$translateProvider.translations('en', <#.Translate_en#>);
-		<#end#>
-		<#if .Translate_cn#>
-			$translateProvider.translations('cn', <#.Translate_cn#>);
-		<#end#>
-		$translateProvider.registerAvailableLanguageKeys(['en', 'cn'], {
-			'en_US': 'en',
-			'en_UK': 'en',
-			'zh_CN': 'cn',
-			'zh_cn': 'cn'
-		}).determinePreferredLanguage()
-		.useLocalStorage();
-	}]);
-	app.run(["$translate","$rootScope",function ($translate,$rootScope) {
-		$translate("Title").then(function(t){
-			document.title=<#.c.Project.Name#>+" - " + t;
-		});
-		$rootScope.$on('$translateChangeSuccess', function () {
-			$translate("Title").then(function(t){
-				document.title=<#.c.Project.Name#>+" - " + t;
-			});
-		});
-	}]);
-	</script>
+
 	<div class="hidden">
 		<div class="bitdb-view-lg"></div>
 		<div class="bitdb-view-md"></div>

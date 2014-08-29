@@ -5,7 +5,7 @@ grade = require("/grade.js");
 opt = require("/model/option.js");
 exports.show=function(c){
 	sdept = c.Session.Get("user.dept");
-	var defaultUrl = opt.Get(c,"home_default")||"home/default";
+	var defaultUrl = opt.Get(c,"home_default")||"home/default?_ele=home_default";
 	c.Render({
 		deptData:deptModel.GetDeptMenuNodes(c,sdept.grade,sdept.gradelevel),
 		defaultUrl:defaultUrl

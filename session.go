@@ -9,6 +9,7 @@ import (
 	"github.com/robertkrimen/otto"
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/util"
+	"strings"
 	"time"
 )
 
@@ -43,14 +44,14 @@ func (s *SessionManager) Put(pname, sid, key string, value interface{}) error {
 		return err
 	}
 
-	if err := s.db.Put([]byte(SessionLWTPrex+pname+sid), time2Bytes(time.Now()), nil); err != nil {
+	if err := s.db.Put([]byte(SessionLWTPrex+pname+"|"+sid), time2Bytes(time.Now()), nil); err != nil {
 		return err
 	}
 
 	return s.db.Put([]byte(pname+sid+key), buf.Bytes(), nil)
 }
 func (s *SessionManager) Get(pname, sid, key string) interface{} {
-	if err := s.db.Put([]byte(SessionLWTPrex+pname+sid), time2Bytes(time.Now()), nil); err != nil {
+	if err := s.db.Put([]byte(SessionLWTPrex+pname+"|"+sid), time2Bytes(time.Now()), nil); err != nil {
 		panic(err)
 	}
 	buf, err := s.db.Get([]byte(pname+sid+key), nil)
@@ -95,7 +96,7 @@ func time2Bytes(t time.Time) []byte {
 }
 
 func (s *SessionManager) clearSession(pname, sid string) error {
-	if err := s.db.Delete([]byte(SessionLWTPrex+pname+sid), nil); err != nil && err != leveldb.ErrNotFound {
+	if err := s.db.Delete([]byte(SessionLWTPrex+pname+"|"+sid), nil); err != nil && err != leveldb.ErrNotFound {
 		return err
 	}
 	iter := s.db.NewIterator(&util.Range{Start: []byte(pname + sid)}, nil)
@@ -125,12 +126,15 @@ func (s *SessionManager) ClearTimeoutSession() error {
 		keyBys := iter.Key()
 		if bytes.Compare(keyBys[:len(SessionLWTPrex)], []byte(SessionLWTPrex)) == 0 {
 			key := string(keyBys)
-			pname := key[len(SessionLWTPrex) : len(key)-24]
-			sid := key[len(key)-24:]
-			t := bytes2Time(iter.Value())
-			if time.Now().Sub(t).Minutes() > float64(s.timeout) {
-				if err := s.clearSession(pname, sid); err != nil {
-					return err
+			vs := strings.Split(key[len(SessionLWTPrex):], "|")
+			if len(vs) == 2 {
+				pname := vs[0]
+				sid := vs[1]
+				t := bytes2Time(iter.Value())
+				if time.Now().Sub(t).Minutes() > float64(s.timeout) {
+					if err := s.clearSession(pname, sid); err != nil {
+						return err
+					}
 				}
 			}
 		} else {

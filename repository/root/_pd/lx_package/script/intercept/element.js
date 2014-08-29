@@ -29,16 +29,17 @@ exports.Intercept = function(c,filter){
 			db.Close();
 		}
 		if(eleTable.RowCount() >0){
-			c.Element = eleTable.Row(0);
-			c.Element.label_en_clear = clearText(c.Element.label_en);
-			c.Element.label_cn_clear = clearText(c.Element.label_cn);
-			c.Element.category_en_clear = clearCategory(c.Element.category_en);
-			c.Element.category_cn_clear = clearCategory(c.Element.category_cn);
+			var Element = eleTable.Row(0);
+			Element.label_en_clear = clearText(Element.label_en);
+			Element.label_cn_clear = clearText(Element.label_cn);
+			Element.category_en_clear = clearCategory(Element.category_en);
+			Element.category_cn_clear = clearCategory(Element.category_cn);
 
-			c.Element.label_en_clear = c.Element.label_en_clear||c.Element.label_cn_clear;
-			c.Element.label_cn_clear = c.Element.label_cn_clear||c.Element.label_en_clear;
-			c.Element.category_en_clear = c.Element.category_en_clear||c.Element.category_cn_clear;
-			c.Element.category_cn_clear = c.Element.category_cn_clear||c.Element.category_en_clear;
+			Element.label_en_clear = Element.label_en_clear||Element.label_cn_clear;
+			Element.label_cn_clear = Element.label_cn_clear||Element.label_en_clear;
+			Element.category_en_clear = Element.category_en_clear||Element.category_cn_clear;
+			Element.category_cn_clear = Element.category_cn_clear||Element.category_en_clear;
+			c.SetTag("Element",Element);
 		}
 	}
 	if(!c.HasResult() && filter.length>0){

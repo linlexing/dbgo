@@ -47,6 +47,7 @@ type Project interface {
 	GetPackageNames(dirName string, gradestr grade.Grade) ([]string, error)
 	Require(rm *otto.Otto, fileName, currentModuleDir string, gradestr grade.Grade) (*otto.Script, string, error)
 
+	WSHub() *WSHub
 	Version(grade grade.Grade) (int64, bool, error)
 	//Model(mname string, gradestr grade.Grade) *grade.DataTable
 	DBModel(gradestr grade.Grade, mnames ...string) []*grade.DBTable
@@ -58,10 +59,12 @@ type Project interface {
 }
 
 type project struct {
-	name             string
-	displayLabel     TranslateString
-	repository       string
-	dburl            string
+	name         string
+	displayLabel TranslateString
+	repository   string
+	dburl        string
+	wsHub        *WSHub
+
 	lockTableDefine  *sync.Mutex
 	lockVersion      *sync.Mutex
 	lockTemplateSet  *sync.Mutex
@@ -144,7 +147,12 @@ func NewProject(name string, label TranslateString, dburl, repository string) Pr
 		displayLabel: label,
 		dburl:        dburl,
 		repository:   repository,
-
+		wsHub: &WSHub{
+			broadcast:   make(chan SocketMessage),
+			register:    make(chan *WSConn),
+			unregister:  make(chan *WSConn),
+			connections: make(map[string]map[*WSConn]bool),
+		},
 		lockTableDefine:  &sync.Mutex{},
 		lockVersion:      &sync.Mutex{},
 		lockTemplateSet:  &sync.Mutex{},
@@ -924,4 +932,7 @@ func (p *project) DisplayLabel() TranslateString {
 }
 func (p *project) NewDBHelper() *grade.DBHelper {
 	return grade.NewDBHelper(p.dburl)
+}
+func (p *project) WSHub() *WSHub {
+	return p.wsHub
 }

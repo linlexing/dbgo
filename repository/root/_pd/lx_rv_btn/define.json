@@ -1,0 +1,66 @@
+{
+	"TableName": "lx_rv_btn",
+	"PK": [
+		"elename",
+		"name"
+	],
+	"Desc": {
+		"Grade": "root"
+	},
+	"Columns": [
+		{
+			"Name": "elename",
+			"DataType": "string",
+			"MaxSize": 255,
+			"NotNull": true,
+			"Desc": {
+				"Grade": "root"
+			}
+		},
+		{
+			"Name": "name",
+			"DataType": "string",
+			"MaxSize": 20,
+			"NotNull": true,
+			"Desc": {
+				"Grade": "root"
+			}
+		},
+		{
+			"Name": "exeele",
+			"DataType": "string",
+			"MaxSize": 255,
+			"NotNull": true,
+			"Desc": {
+				"Grade": "root"
+			}
+		},
+		{
+			"Name": "label_en",
+			"DataType": "string",
+			"MaxSize": 255,
+			"NotNull": false,
+			"Desc": {
+				"Grade": "root"
+			}
+		},
+		{
+			"Name": "label_cn",
+			"DataType": "string",
+			"MaxSize": 255,
+			"NotNull": false,
+			"Desc": {
+				"Grade": "root"
+			}
+		},
+		{
+			"Name": "bindrecord",
+			"DataType": "bool",
+			"NotNull": true,
+			"Desc": {
+				"Grade": "root"
+			}
+		}
+	],
+	"Indexes": {}
+}

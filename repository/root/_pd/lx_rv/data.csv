@@ -1,0 +1,2 @@
+name,basetable,pk,canexport,canimport,canreplace,canclear,replacecol
+rolemanager,lx_role,name,true,false,true,true,
