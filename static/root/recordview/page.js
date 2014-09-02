@@ -34,10 +34,10 @@ app.controller('mainCtrl', ['$translate', '$scope','$alert','$http','$timeout',f
 	$scope.pending = 0;
 	$scope.time = 10.0;
 	$scope.search = {field :null,opt:"equ",value:""};
-	$scope.sort = {};
+	$scope.sort = [];
 	$scope.searchOpts = ["OPT_PREX","OPT_EQ","OPT_LIKE","OPT_NE","OPT_LT","OPT_LE","OPT_GT","OPT_GE","OPT_IN","OPT_NIN","OPT_REGEXP","OPT_SUFX"];
 	$scope.navCollapsed=true;
-	$scope.data={columns:[],data:[],total:0};
+	$scope.data={columns:[],data:[],total:-1,finish:false};
 	$scope.scrollTop = 0;
 	$scope.$translate = $translate;
 	$(window).scroll(function (e){
@@ -46,7 +46,9 @@ app.controller('mainCtrl', ['$translate', '$scope','$alert','$http','$timeout',f
 			$scope.thStyle ={top:Math.round(Math.max(0,top-$(".content table").offset().top))+"px"} ;
 		});
 		if ($(window).scrollTop() >0 && $(window).scrollTop() + $(window).height() >= $(document).height()){
-			$scope.fetchData();
+			if(!$scope.data.finish){
+				$scope.fetchData();
+			}
 		}
 	});
 	$scope.$watch("pending",function(newvalue,oldvalue){
@@ -56,6 +58,14 @@ app.controller('mainCtrl', ['$translate', '$scope','$alert','$http','$timeout',f
 			hideSpin();
 		}
 	});
+	$scope.getSort=function(colName){
+		for(var i in $scope.sort){
+			if($scope.sort[i].column == colName){
+				return $scope.sort[i];
+			}
+		}
+		return null;
+	}
 	$scope.onMessage=function(evt){
 		var data = eval("("+evt.data+")");
 		$scope.$apply(function(){
@@ -86,12 +96,12 @@ app.controller('mainCtrl', ['$translate', '$scope','$alert','$http','$timeout',f
 	    websocket.onmessage = $scope.onMessage;
 	}
 	$scope.fetchData=function(){
+		console.log("fetch");
 		if($scope.data.data.length>0){
-			fetchOption.lastkey = _.map(
-				_.pick(_.last($scope.data.data),$scope.sort.column,G.rv_primaryKeys.split(",")),
-				function(value,key){
-					return {field:key,value:value};
-				}
+			fetchOption.lastkey = _.pick(
+				_.last($scope.data.data),
+				_.pluck($scope.sort,"column"),
+				G.rv_primaryKeys.split(",")
 			);
 		}
 		$scope.fetchInfo = {
@@ -102,6 +112,7 @@ app.controller('mainCtrl', ['$translate', '$scope','$alert','$http','$timeout',f
 		$http.post(G.rv_dataAction,fetchOption)
 			.success(function(data,status,headers,config,statusText){
 				try{
+
 					$scope.fetchInfo.time = new Date()-$scope.fetchInfo.startTime;
 					$scope.fetchInfo.count = data.data.length;
 					var No = $scope.data.data.length;
@@ -112,6 +123,10 @@ app.controller('mainCtrl', ['$translate', '$scope','$alert','$http','$timeout',f
 					);
 					if($scope.data.columns.length==0){
 						$scope.data.columns = data.columns;
+					}
+					$scope.data.finish = data.finish;
+					if($scope.data.finish){
+						$scope.data.total=$scope.data.data.length;
 					}
 				}finally{
 					$scope.pending --;
@@ -132,22 +147,30 @@ app.controller('mainCtrl', ['$translate', '$scope','$alert','$http','$timeout',f
 				opt:$scope.search.opt,
 				value:$scope.search.value
 			},
-			sort:$scope.sort
+			sort:_.map($scope.sort,function(value){
+				if(value.type == "DESC"){
+					return value.column + " DESC"
+				}else{
+					return value.column
+				}
+			})
 		};
-		$scope.data = {columns:[],data:[],total:0};
+		$scope.data = {columns:[],data:[],total:-1,finish:false};
 		$scope.fetchData();
 	}
 	$scope.thClick=function(col){
 		if($scope.pending!=0){
 			return;
 		}
-		if($scope.sort.column && $scope.sort.column == col.fieldName && $scope.sort.type == "DESC"){
-			$scope.sort.type = "ASC";
-		}else if($scope.sort.column && $scope.sort.column == col.fieldName && $scope.sort.type == "ASC"){
-			$scope.sort = {};
+		if($scope.sort.length ==1){
+			var sort = $scope.sort[0];
+			if (sort.column && sort.column == col.fieldName && sort.type == "DESC"){
+				sort.type = "ASC";
+			}else if(sort.column && sort.column == col.fieldName && sort.type == "ASC"){
+				$scope.sort = [];
+			}
 		}else{
-			$scope.sort.column = col.fieldName;
-			$scope.sort.type = "DESC";
+			$scope.sort = [{column:col.fieldName,type:"DESC"}];
 		}
 		$scope.refreshData();
 	}

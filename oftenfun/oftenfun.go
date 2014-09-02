@@ -157,12 +157,15 @@ func Exists(path string) (bool, error) {
 	return false, err
 }
 func AssertObject(v otto.Value) map[string]interface{} {
-	if !v.IsObject() {
-		panic(jsmvcerror.JSNotIsObject)
+	if v.IsNull() || v.IsUndefined() {
+		return map[string]interface{}{}
 	}
 	nv, err := v.Export()
 	if err != nil {
 		panic(err)
+	}
+	if !v.IsObject() {
+		panic(fmt.Errorf("the value:%#v not is object", nv))
 	}
 	return nv.(map[string]interface{})
 }
@@ -217,7 +220,7 @@ func AssertArray(v otto.Value) []interface{} {
 	if err != nil {
 		panic(err)
 	}
-	if v.Class() != "Array" {
+	if v.Class() != "Array" && v.Class() != "GoArray" {
 		panic(fmt.Errorf("the value %#v not is array", nv))
 	}
 	switch tv := nv.(type) {

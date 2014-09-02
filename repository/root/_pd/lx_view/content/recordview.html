@@ -25,6 +25,7 @@
 <#set .Translate_en "NO" "NO."#>
 <#set .Translate_en "START_TIME" "Start Time"#>
 <#set .Translate_en "TIME_CONSUMING" "Time consuming"#>
+<#set .Translate_en "TOTAL" "Total"#>
 
 <#if not .Translate_cn#>
 	<#set . "Translate_cn" mkMap#>
@@ -45,6 +46,7 @@
 <#set .Translate_cn "NO" "序号"#>
 <#set .Translate_cn "START_TIME" "开始时间"#>
 <#set .Translate_cn "TIME_CONSUMING" "耗时"#>
+<#set .Translate_cn "TOTAL" "记录总数"#>
 <#append . "OtherJSFiles" (static "recordview/page.js")#>
 
 <#template "pjheader.html" .#>
@@ -128,13 +130,14 @@
 	<div class="content">
 		<div class="fetchinfo">
 		{{'START_TIME'|translate}}:{{fetchInfo.startTime| date:'yyyy-MM-dd HH:mm:ss'}} {{'TIME_CONSUMING'|translate}}:{{fetchInfo.time}} ms
+		{{'TOTAL'|translate}}:{{data.total}}
 		</div>
 		<table class="table table-striped table-bordered table-hover">
 			<thead>
 				<tr ng-if="data.columns.length>0">
 					<th ng-style="thStyle">{{'NO'|translate}}</th>
 					<th ng-repeat="column in data.columns" ng-style="thStyle" ng-class="{notallowed:pending!=0,allowed:pending==0}" ng-click="thClick(column)">
-					{{column.displayName[$translate.use()]}}&nbsp;<i ng-if="column.fieldName==sort.column" class="fa ng-class:{'fa-caret-up':sort.type=='ASC','fa-caret-down':sort.type=='DESC'}"></i>
+					{{column.displayName[$translate.use()]}}&nbsp;<i ng-if="getSort(column.fieldName)" class="fa ng-class:{'fa-caret-up':getSort(column.fieldName)&&getSort(column.fieldName).type=='ASC','fa-caret-down':getSort(column.fieldName)&&getSort(column.fieldName).type=='DESC'}"></i>
 					</th>
 				</tr>
 			</thead>

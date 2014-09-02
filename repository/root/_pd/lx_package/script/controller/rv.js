@@ -45,7 +45,7 @@ exports.fetch=function(c){
 					fetchOption.lastkey,
 					null,
 					"",
-					null,
+					fetchOption.sort,
 					limit
 				)
 				rev.columns = [];
@@ -62,6 +62,7 @@ exports.fetch=function(c){
 					);
 				}
 				rev.data = tab.Rows();
+				rev.finish = tab.RowCount()<limit;
 			}
 		}else{
 			rev.error="the sql is empty";

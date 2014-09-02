@@ -38,14 +38,14 @@ func (p *DBHelper) GetData(strSql string, params ...interface{}) (*DataTable, er
 	return NewDataTableT(tab), nil
 
 }
-func (p *DBHelper) SelectLimit(srcSql string, pkFields []string, startKeyValue []interface{}, selectCols []string, where string, orderby []string, limit int) (*DataTable, error) {
+func (p *DBHelper) SelectLimit(srcSql string, pkFields []string, startKeyValue map[string]interface{}, selectCols []string, where string, orderby []string, limit int) (*DataTable, error) {
 	tab, err := p.DBHelper.SelectLimit(srcSql, pkFields, startKeyValue, selectCols, where, orderby, limit)
 	if err != nil {
 		return nil, err
 	}
 	return NewDataTableT(tab), nil
 }
-func (p *DBHelper) SelectLimitT(srcSql string, templateParam map[string]interface{}, pkFields []string, startKeyValue []interface{}, selectCols []string, where string, orderby []string, limit int) (*DataTable, error) {
+func (p *DBHelper) SelectLimitT(srcSql string, templateParam map[string]interface{}, pkFields []string, startKeyValue map[string]interface{}, selectCols []string, where string, orderby []string, limit int) (*DataTable, error) {
 	tab, err := p.DBHelper.SelectLimitT(srcSql, templateParam, pkFields, startKeyValue, selectCols, where, orderby, limit)
 	if err != nil {
 		return nil, err
@@ -117,7 +117,7 @@ func (p *DBHelper) jsRollback(call otto.FunctionCall) otto.Value {
 func (p *DBHelper) jsSelectLimit(call otto.FunctionCall) otto.Value {
 	srcSql := oftenfun.AssertString(call.Argument(0))
 	pkFields := oftenfun.AssertStringArray(call.Argument(1))
-	startKeyValue := oftenfun.AssertArray(call.Argument(2))
+	startKeyValue := oftenfun.AssertObject(call.Argument(2))
 	selectCols := oftenfun.AssertStringArray(call.Argument(3))
 	where := oftenfun.AssertString(call.Argument(4))
 	orderby := oftenfun.AssertStringArray(call.Argument(5))
@@ -133,7 +133,7 @@ func (p *DBHelper) jsSelectLimitT(call otto.FunctionCall) otto.Value {
 	srcSql := oftenfun.AssertString(call.Argument(0))
 	templateParam := oftenfun.AssertObject(call.Argument(1))
 	pkFields := oftenfun.AssertStringArray(call.Argument(2))
-	startKeyValue := oftenfun.AssertArray(call.Argument(3))
+	startKeyValue := oftenfun.AssertObject(call.Argument(3))
 	selectCols := oftenfun.AssertStringArray(call.Argument(4))
 	where := oftenfun.AssertString(call.Argument(5))
 	orderby := oftenfun.AssertStringArray(call.Argument(6))
