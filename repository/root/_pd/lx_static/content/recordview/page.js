@@ -37,9 +37,13 @@ app.controller('mainCtrl', ['$translate', '$scope','$alert','$http','$timeout',f
 	$scope.sort = [];
 	$scope.searchOpts = ["OPT_PREX","OPT_EQ","OPT_LIKE","OPT_NE","OPT_LT","OPT_LE","OPT_GT","OPT_GE","OPT_IN","OPT_NIN","OPT_REGEXP","OPT_SUFX"];
 	$scope.navCollapsed=true;
-	$scope.data={columns:[],data:[],total:-1,finish:false};
+	$scope.define = G.rv_define;
 	$scope.scrollTop = 0;
 	$scope.$translate = $translate;
+	$("#divHScroll").scroll(function(e){
+		var left = $("#divHScroll").scrollLeft();
+		$(".content").scrollLeft(left);
+	});
 	$(window).scroll(function (e){
 		var top = $(window).scrollTop();
 		$scope.$apply(function(){
@@ -96,12 +100,11 @@ app.controller('mainCtrl', ['$translate', '$scope','$alert','$http','$timeout',f
 	    websocket.onmessage = $scope.onMessage;
 	}
 	$scope.fetchData=function(){
-		console.log("fetch");
 		if($scope.data.data.length>0){
 			fetchOption.lastkey = _.pick(
 				_.last($scope.data.data),
 				_.pluck($scope.sort,"column"),
-				G.rv_primaryKeys.split(",")
+				$scope.define.pk.split(",")
 			);
 		}
 		$scope.fetchInfo = {
@@ -121,6 +124,7 @@ app.controller('mainCtrl', ['$translate', '$scope','$alert','$http','$timeout',f
 							return _.extend(value,{_No_:++No});
 						})
 					);
+					$scope.data.btnUrl = $scope.data.btnUrl.concat(data.btnUrl);
 					if($scope.data.columns.length==0){
 						$scope.data.columns = data.columns;
 					}
@@ -128,6 +132,10 @@ app.controller('mainCtrl', ['$translate', '$scope','$alert','$http','$timeout',f
 					if($scope.data.finish){
 						$scope.data.total=$scope.data.data.length;
 					}
+					$timeout(function(){
+						$("#divHScroll .data").width($("#tabData").width());
+					},0,false);
+
 				}finally{
 					$scope.pending --;
 				}
@@ -155,7 +163,7 @@ app.controller('mainCtrl', ['$translate', '$scope','$alert','$http','$timeout',f
 				}
 			})
 		};
-		$scope.data = {columns:[],data:[],total:-1,finish:false};
+		$scope.data = {columns:[],data:[],total:-1,finish:false,btnUrl:[]};
 		$scope.fetchData();
 	}
 	$scope.thClick=function(col){

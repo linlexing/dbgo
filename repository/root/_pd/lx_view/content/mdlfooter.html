@@ -1,0 +1,9 @@
+		<div class="form-group footer-btn" ng-switch on="Option.operate">
+			<button type="button" class="btn btn-primary" ng-disabled="frmModelData.$invalid" ng-switch-when="add" ng-click="save()"><i class="fa fa-save"></i> {{'ADD'|translate}}</button>
+			<button type="button" class="btn btn-primary" ng-disabled="MainRowIsUnchanged() || frmModelData.$invalid" ng-switch-when="edit" ng-click="save()"><i class="fa fa-save"></i> {{'SAVE'|translate}}</button>
+			<button type="button" class="btn btn-danger" ng-switch-when="delete" ng-click="save()"><i class="fa fa-minus-circle"></i> {{'DELETE'|translate}}</button>
+			<button type="button" class="btn btn-default" ng-click="close()"><i class="fa fa-times"></i> {{'CLOSE'|translate}}</button>
+		</div>
+	</form>
+</div>
+<#template "pjfooter.html" .#>

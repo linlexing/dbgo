@@ -124,7 +124,11 @@ func InterceptFilter(c *ControllerAgent, f []Filter) {
 	}
 	filterFuncs = make([]otto.Value, len(names))
 	for i, v := range names {
-		jsValue := c.Require(v, "/")
+		jsValue, err := c.Require(v, "/")
+		if err != nil {
+			c.RenderError(err)
+			goto end
+		}
 		oneIntercept := jsValue.Object()
 		whenValue, err := oneIntercept.Get("When")
 		if err != nil {
@@ -164,8 +168,14 @@ end:
 	}
 }
 func LoadControlFilter(c *ControllerAgent, f []Filter) {
-	c.ControllerScript = c.Require(path.Join("/controller", c.ControllerName), "/")
-	pub, err := c.ControllerScript.Object().Get("Public")
+	var err error
+	var pub otto.Value
+	c.ControllerScript, err = c.Require(path.Join("/controller", c.ControllerName), "/")
+	if err != nil {
+		c.RenderError(err)
+		goto end
+	}
+	pub, err = c.ControllerScript.Object().Get("Public")
 	if err != nil {
 		c.Public = false
 		goto end
@@ -201,13 +211,16 @@ func UserFilter(c *ControllerAgent, f []Filter) {
 func ActionFilter(c *ControllerAgent, f []Filter) {
 	actionFunc, err := c.ControllerScript.Object().Get(c.ActionName)
 	if err != nil {
+		log.WARN.Printf("error at get action:%s.%s\n%s\n", c.ControllerName, c.ActionName, err)
 		c.RenderError(err)
 		goto end
 	}
 	if actionFunc.IsFunction() {
 		_, err = actionFunc.Call(actionFunc, c.Object)
 		if err != nil {
-			c.RenderError(err)
+			newErr := fmt.Errorf("error at call action:%s.%s\n%s", c.ControllerName, c.ActionName, err)
+			log.WARN.Println(newErr)
+			c.RenderError(newErr)
 			goto end
 		}
 	} else {

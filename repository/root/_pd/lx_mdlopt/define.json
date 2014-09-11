@@ -1,7 +1,6 @@
 {
-	"TableName": "lx_rv_btn",
+	"TableName": "lx_mdlopt",
 	"PK": [
-		"elename",
 		"name"
 	],
 	"Desc": {
@@ -9,25 +8,16 @@
 	},
 	"Columns": [
 		{
-			"Name": "elename",
-			"DataType": "string",
-			"MaxSize": 255,
-			"NotNull": true,
-			"Desc": {
-				"Grade": "root"
-			}
-		},
-		{
 			"Name": "name",
 			"DataType": "string",
-			"MaxSize": 20,
+			"MaxSize": 255,
 			"NotNull": true,
 			"Desc": {
 				"Grade": "root"
 			}
 		},
 		{
-			"Name": "exeele",
+			"Name": "grade",
 			"DataType": "string",
 			"MaxSize": 255,
 			"NotNull": true,
@@ -36,27 +26,28 @@
 			}
 		},
 		{
-			"Name": "label_en",
+			"Name": "mdlname",
 			"DataType": "string",
-			"MaxSize": 255,
+			"MaxSize": 64,
+			"NotNull": true,
+			"Desc": {
+				"Grade": "root"
+			}
+		},
+		{
+			"Name": "operate",
+			"DataType": "string",
+			"MaxSize": 6,
+			"NotNull": true,
+			"Desc": {
+				"Grade": "root"
+			}
+		},
+		{
+			"Name": "fieldsets",
+			"DataType": "string",
+			"MaxSize": 0,
 			"NotNull": false,
-			"Desc": {
-				"Grade": "root"
-			}
-		},
-		{
-			"Name": "label_cn",
-			"DataType": "string",
-			"MaxSize": 255,
-			"NotNull": false,
-			"Desc": {
-				"Grade": "root"
-			}
-		},
-		{
-			"Name": "bindrecord",
-			"DataType": "bool",
-			"NotNull": true,
 			"Desc": {
 				"Grade": "root"
 			}

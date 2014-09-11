@@ -1,15 +1,3 @@
-<#if .Title_en#>
-	<#if not .Translate_en#>
-		<#set . "Translate_en" mkMap#>
-	<#end#>
-	<#set .Translate_en "Title" .Title_en#>
-<#end#>
-<#if .Title_cn#>
-	<#if not .Translate_cn#>
-		<#set . "Translate_cn" mkMap#>
-	<#end#>
-	<#set .Translate_cn "Title" .Title_cn#>
-<#end#>
 
 <#if not .PackCSSDest#>
 	<#set . "PackCSSDest" "/public/css/ngheader_pack.css"#>
@@ -36,7 +24,8 @@
 <#append $Pack "Js" "/public/js/underscore-min.js"#>
 <#append $Pack "Js" "/public/js/underscore.string.min.js"#>
 <#append $Pack "Js" "/public/js/spin.min.js"#>
-<#append $Pack "Js" "/public/js/angular.js"#>
+<#append $Pack "Js" "/public/js/angular.min.js"#>
+<#append $Pack "Js" "/public/js/angular-sanitize.min.js"#>
 <#append $Pack "Js" "/public/js/angular-cookies.min.js"#>
 <#append $Pack "Js" "/public/js/angular-animate.min.js"#>
 <#append $Pack "Js" "/public/js/angular-translate.min.js"#>
@@ -74,7 +63,7 @@
 	<script>
 	var G = <#.G#>;
 
-	var appDependencys = ['ngCookies','ngAnimate','pascalprecht.translate','mgcrea.ngStrap'];
+	var appDependencys = ['ngSanitize','ngCookies','ngAnimate','pascalprecht.translate','mgcrea.ngStrap'];
 	<#if .OtherDependencys#>
 		appDependencys =appDependencys.concat(<#.OtherDependencys#>);
 	<#end#>

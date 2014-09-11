@@ -3,8 +3,10 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	//"github.com/davecgh/go-spew/spew"
 	"github.com/linlexing/dbgo/grade"
 	"github.com/linlexing/dbgo/jsmvcerror"
+	"github.com/linlexing/dbgo/log"
 	"github.com/linlexing/dbgo/oftenfun"
 	"github.com/robertkrimen/otto"
 	"html/template"
@@ -65,15 +67,15 @@ func (c *ControllerAgent) MapFileName(url string) string {
 		panic(fmt.Errorf("can't map the file:%s", url))
 	}
 }
-func (c *ControllerAgent) Require(fileName, currentModuleDir string) otto.Value {
+func (c *ControllerAgent) Require(fileName, currentModuleDir string) (otto.Value, error) {
 
 	script, moduleFileName, err := c.Project.Require(c.jsRuntime, fileName, currentModuleDir, c.CurrentGrade)
 	if err != nil {
-		panic(err)
+		return otto.UndefinedValue(), err
 	}
 	jsfun, err := c.jsRuntime.Run(script)
 	if err != nil {
-		panic(err)
+		return otto.UndefinedValue(), err
 	}
 
 	tmpValue, err := c.jsRuntime.ToValue(map[string]interface{}{
@@ -81,23 +83,38 @@ func (c *ControllerAgent) Require(fileName, currentModuleDir string) otto.Value 
 		"__dirname":  path.Dir(moduleFileName),
 		"__filename": path.Base(moduleFileName),
 		"require": func(call otto.FunctionCall) otto.Value {
-			return c.Require(oftenfun.AssertString(call.Argument(0)), path.Dir(moduleFileName))
+			rev, err := c.Require(oftenfun.AssertString(call.Argument(0)), path.Dir(moduleFileName))
+			if err != nil {
+				panic(err)
+			}
+			return rev
+		},
+		"safeRequire": func(call otto.FunctionCall) otto.Value {
+			rev, err := c.Require(oftenfun.AssertString(call.Argument(0)), path.Dir(moduleFileName))
+			switch err.(type) {
+			case nil:
+				return rev
+			case *EmptyPackageError:
+				return otto.NullValue()
+			default:
+				panic(err)
+			}
 		},
 	})
 	if err != nil {
-		panic(err)
+		return otto.UndefinedValue(), err
 	}
 	jsModule := tmpValue.Object()
 	exports, _ := jsModule.Get("exports")
 	rev, err := jsfun.Call(exports, jsModule)
 	if err != nil {
-		panic(err)
+		return otto.UndefinedValue(), err
 	}
 	if rev.IsUndefined() {
 		exports, _ := jsModule.Get("exports")
-		return exports
+		return exports, nil
 	} else {
-		return rev
+		return rev, nil
 	}
 }
 func (c *ControllerAgent) QueryValues() url.Values {
@@ -245,6 +262,13 @@ func (c *ControllerAgent) RenderJson(data map[string]interface{}) Result {
 	c.Result = &RenderJsonResult{data}
 	return c.Result
 }
+func (c *ControllerAgent) TemplateExists(tname string) bool {
+	t, err := c.Project.TemplateSet(c.TemplateFun)
+	if err != nil {
+		panic(err)
+	}
+	return t.Lookup(tname) != nil
+}
 func (c *ControllerAgent) RenderTemplate(tname string, args map[string]interface{}) Result {
 	data := map[string]interface{}{}
 	for k, v := range args {
@@ -354,11 +378,8 @@ func (c *ControllerAgent) jsRender(call otto.FunctionCall) otto.Value {
 func (c *ControllerAgent) jsRenderTemplate(call otto.FunctionCall) otto.Value {
 	templateName := oftenfun.AssertString(call.Argument(0))
 	params := map[string]interface{}{}
-	if len(call.ArgumentList) > 1 && call.Argument(1).Class() == "Object" {
-		v, err := call.Argument(1).Export()
-		if err == nil {
-			params = v.(map[string]interface{})
-		}
+	if len(call.ArgumentList) > 1 {
+		params = oftenfun.AssertObject(call.Argument(1))
 	}
 	c.RenderTemplate(templateName, params)
 	return otto.UndefinedValue()
@@ -377,6 +398,7 @@ func (c *ControllerAgent) jsRenderUserFile(call otto.FunctionCall) otto.Value {
 	return otto.UndefinedValue()
 }
 func (c *ControllerAgent) jsRenderError(call otto.FunctionCall) otto.Value {
+	log.WARN.Println("js render error:", call.Argument(0).String())
 	c.RenderError(fmt.Errorf(call.Argument(0).String()))
 	return otto.UndefinedValue()
 }
@@ -398,15 +420,24 @@ func (c *ControllerAgent) jsUrl(call otto.FunctionCall) otto.Value {
 }
 func (c *ControllerAgent) jsDBModel(call otto.FunctionCall) otto.Value {
 	gradestr := c.CurrentGrade
-	tnames := make([]string, len(call.ArgumentList))
-	for i, v := range call.ArgumentList {
-		tnames[i] = oftenfun.AssertString(v)
+	tnames := []string{}
+	for _, v := range call.ArgumentList {
+		switch v.Class() {
+		case "GoArray", "Array":
+			tnames = append(tnames, oftenfun.AssertStringArray(v)...)
+		default:
+			tnames = append(tnames, oftenfun.AssertString(v))
+		}
 	}
 	rev := make([]interface{}, len(tnames))
 	for i, v := range c.Project.DBModel(gradestr, tnames...) {
 		rev[i] = v.Object()
 	}
 	return oftenfun.JSToValue(call.Otto, rev)
+}
+func (c *ControllerAgent) jsTemplateExists(call otto.FunctionCall) otto.Value {
+	tname := oftenfun.AssertString(call.Argument(0))
+	return oftenfun.JSToValue(call.Otto, c.TemplateExists(tname))
 }
 func (c *ControllerAgent) jsGradeCanUse(call otto.FunctionCall) otto.Value {
 	byUseGrade := grade.Grade(oftenfun.AssertString(call.Argument(0)))
@@ -525,12 +556,13 @@ func (c *ControllerAgent) object() map[string]interface{} {
 		"SetTag":            c.jsSetTag,
 		"Project":           c.Project.Object(),
 		//"Model":            c.jsModel,
-		"DBModel":      c.jsDBModel,
-		"ModelChecks":  c.jsModelChecks,
-		"TemplateFunc": c.jsTemplateFunc,
-		"UserFile":     c.package_UserFile(),
-		"UserName":     c.jsUserName,
-		"Url":          c.jsUrl,
+		"DBModel":        c.jsDBModel,
+		"ModelChecks":    c.jsModelChecks,
+		"TemplateFunc":   c.jsTemplateFunc,
+		"TemplateExists": c.jsTemplateExists,
+		"UserFile":       c.package_UserFile(),
+		"UserName":       c.jsUserName,
+		"Url":            c.jsUrl,
 	}
 	if c.ws != nil {
 		rev["WS"] = c.ws.Object()

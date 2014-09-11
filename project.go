@@ -57,6 +57,13 @@ type Project interface {
 	TemplateSet(f template.FuncMap) (*template.Template, error)
 	Object() map[string]interface{}
 }
+type EmptyPackageError struct {
+	Message string
+}
+
+func (e *EmptyPackageError) Error() string {
+	return e.Message
+}
 
 type project struct {
 	name         string
@@ -846,9 +853,9 @@ func (p *project) loadPackage(rm *otto.Otto, fileName string, gradestr grade.Gra
 	}
 	str := strings.Join(strTmp, "\n")
 	if len(strTmp) == 0 {
-		return nil, fmt.Errorf("empty package:%s(%s)", fileName, gradestr)
+		return nil, &EmptyPackageError{fmt.Sprintf("empty package:%s(%s)", fileName, gradestr)}
 	}
-	rev := "(function(module) {var require = module.require;var exports = module.exports;" + str + ";module.exports=exports;})"
+	rev := "(function(module) {var require = module.require;var safeRequire = module.safeRequire;var exports = module.exports;" + str + ";module.exports=exports;})"
 	src, err := rm.Compile(fileName, rev)
 	if err != nil {
 		src := []string{}

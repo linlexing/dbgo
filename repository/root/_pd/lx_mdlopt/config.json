@@ -4,7 +4,10 @@
 	],
 	"CurrentGrade": "root",
 	"RowCount": 0,
-	"SqlWhere": "exists(select 1 from lx_element where lx_element.name = dest.elename and grade_canuse('root',lx_element.grade))",
+	"FileColumns": {
+		"fieldsets": ".json"
+	},
+	"SqlWhere": "grade_canuse('root',grade)",
 	"ImpAutoUpdate":true,
 	"ImpAutoRemove": true,
 	"ImpRefreshStruct": true,

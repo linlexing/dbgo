@@ -1,0 +1,9 @@
+<#append . "OtherCSSFiles" (static "mdlcommon/page.css")#>
+<#template "mdlheader.html" .#>
+<div class="form-group" ng-repeat="column in MainDefine.columns|filter:{Perm:'!hidden'}">
+	<label for="exampleInputPassword1" class="col-sm-2 control-label">{{getColumnLabel(column.Name)}}:</label>
+	<div class="col-sm-10">
+		<input type="text" class="form-control" ng-required="_.contains(MainDefine.pk,column.Name)" ng-model="MainRow[column.Name]" ng-readonly="Option.operate=='delete' || Option.operate=='browse'||column.Perm=='readonly'" ></input>
+	</div>
+</div>
+<#template "mdlfooter.html" .#>

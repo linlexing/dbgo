@@ -32236,6 +32236,7 @@ var app = angular.module('app',appDependencys);
 app.run(['$rootScope','$log','$window','$alert', function ($rootScope, $log, $window,$alert) {
 	$rootScope.$log = $log;
 	$rootScope.viewport ='';
+	$rootScope._ = _;
 	$rootScope.mediaquery = function(){
 		$rootScope.$apply(function(){
 			if ($(".bitdb-view-xs").css("display") == "block" ){
@@ -32267,17 +32268,6 @@ app.run(['$rootScope','$log','$window','$alert', function ($rootScope, $log, $wi
 		$rootScope.finishedMessage = true;
 	}
 }]);
-app.directive('lxField', ['$compile',function ($compile) {
-  return {
-    restrict: 'A',
-    link: function (scope, element,attrs) {
-	  if(!attrs.ngModel){
-        attrs.$set("ngModel",attrs.lxField);
-	    $compile(element)(scope);
-	  }
-    }
-  };
-}]);
 app.config(['$translateProvider', function ($translateProvider) {
 	if( NGHeader_Translate_en){
 		$translateProvider.translations('en', NGHeader_Translate_en);
@@ -32303,3 +32293,4 @@ app.run(["$translate","$rootScope",function ($translate,$rootScope) {
 		});
 	});
 }]);
+

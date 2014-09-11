@@ -12,8 +12,12 @@
 			"DataType": "string",
 			"MaxSize": 255,
 			"NotNull": true,
-			"Desc": {
-				"Grade": "root"
+			"Desc":{
+				"Grade": "root",
+				"Label":{
+					"en":"Name",
+					"cn":"名称"
+				}
 			}
 		},
 		{
@@ -22,7 +26,11 @@
 			"MaxSize": 255,
 			"NotNull": false,
 			"Desc": {
-				"Grade": "root"
+				"Grade": "root",
+				"Label":{
+					"en":"Label_en",
+					"cn":"标签_英"
+				}
 			}
 		},
 		{
@@ -31,7 +39,11 @@
 			"MaxSize": 255,
 			"NotNull": false,
 			"Desc": {
-				"Grade": "root"
+				"Grade": "root",
+				"Label":{
+					"en":"Label_cn",
+					"cn":"标签_中"
+				}
 			}
 		},
 		{
@@ -40,7 +52,11 @@
 			"MaxSize": 255,
 			"NotNull": true,
 			"Desc": {
-				"Grade": "root"
+				"Grade": "root",
+				"Label":{
+					"en":"Grade",
+					"cn":"级别"
+				}
 			}
 		}
 	],

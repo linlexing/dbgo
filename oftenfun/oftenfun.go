@@ -156,18 +156,43 @@ func Exists(path string) (bool, error) {
 	}
 	return false, err
 }
-func AssertObject(v otto.Value) map[string]interface{} {
+func decodeObject(obj map[string]interface{}) map[string]interface{} {
+	for k, v := range obj {
+		switch stv := v.(type) {
+		case otto.Value:
+			obj[k] = decodeValue(stv)
+		case map[string]interface{}:
+			obj[k] = decodeObject(stv)
+		}
+	}
+	return obj
+}
+func decodeValue(v otto.Value) interface{} {
 	if v.IsNull() || v.IsUndefined() {
-		return map[string]interface{}{}
+		return nil
 	}
 	nv, err := v.Export()
 	if err != nil {
 		panic(err)
 	}
-	if !v.IsObject() {
-		panic(fmt.Errorf("the value:%#v not is object", nv))
+	switch tv := nv.(type) {
+	case map[string]interface{}:
+		return decodeObject(tv)
+	default:
+		return nv
 	}
-	return nv.(map[string]interface{})
+}
+func AssertObject(v otto.Value) map[string]interface{} {
+	if v.IsNull() || v.IsUndefined() {
+		return map[string]interface{}{}
+	}
+	rev := decodeValue(v)
+	switch tv := rev.(type) {
+	case map[string]interface{}:
+		return tv
+	default:
+		panic(fmt.Errorf("the value:%#v not is object", rev))
+	}
 }
 func AssertInteger(v interface{}) int {
 	switch t := v.(type) {

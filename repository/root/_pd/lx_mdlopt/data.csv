@@ -1,0 +1,5 @@
+name,grade,mdlname,operate
+role_edit,root,lx_role,edit
+role_delete,root,lx_role,delete
+role_add,root,lx_role,add
+role_browse,root,lx_role,browse

@@ -17,6 +17,15 @@
 			}
 		},
 		{
+			"Name": "grade",
+			"DataType": "string",
+			"MaxSize": 255,
+			"NotNull": true,
+			"Desc": {
+				"Grade": "root"
+			}
+		},
+		{
 			"Name": "basetable",
 			"DataType": "string",
 			"MaxSize": 64,

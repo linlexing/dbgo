@@ -45,5 +45,4 @@ exports.Intercept = function(c,filter){
 	if(!c.HasResult() && filter.length>0){
 		filter[0](c,filter.slice(1));
 	}
-
 }

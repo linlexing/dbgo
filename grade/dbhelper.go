@@ -75,6 +75,7 @@ func (p *DBHelper) DBTable(tablename string) (*DBTable, error) {
 	t := NewDBTable(p, NewDataTableT(tab))
 	return t, nil
 }
+
 func (p *DBHelper) UpdateStruct(newStruct *DataTable) error {
 	var oldStruct *DataTable
 	if exists, err := p.TableExists(newStruct.TableName); err != nil {
@@ -88,14 +89,14 @@ func (p *DBHelper) UpdateStruct(newStruct *DataTable) error {
 		}
 	}
 	if oldStruct == nil {
-		return p.DBHelper.UpdateStruct(nil, newStruct.DataTable)
+		return p.DBHelper.UpdateStruct(nil, newStruct.DataTable, nil)
 	}
 	trueOld, ok := oldStruct.Reduced(newStruct.Grade())
 	if !ok {
 		return fmt.Errorf("the oldStruct's grade is %q,newStruct can't use it", oldStruct.Grade())
 	}
 
-	return p.DBHelper.UpdateStruct(trueOld.DataTable, newStruct.DataTable)
+	return p.DBHelper.UpdateStruct(trueOld.DataTable, newStruct.DataTable, oldStruct.ColumnNames())
 
 }
 func (p *DBHelper) jsOpen(call otto.FunctionCall) otto.Value {

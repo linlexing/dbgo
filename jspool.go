@@ -47,7 +47,16 @@ func package_url() map[string]interface{} {
 			}
 			q := u.Query()
 			for key, value := range values {
-				q.Set(key, value.(string))
+				switch tv := value.(type) {
+				case string:
+					q.Set(key, tv)
+				case []string:
+					for _, v := range tv {
+						q.Add(key, v)
+					}
+				default:
+					panic(fmt.Errorf("the value %#v not is string or []string", value))
+				}
 			}
 			u.RawQuery = q.Encode()
 			return oftenfun.JSToValue(call.Otto, u.String())

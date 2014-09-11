@@ -2,6 +2,7 @@ var sha256 = require("/sha256.js");
 var convert =require("/convert.js");
 var rand = require("/crypto_rand.js");
 var url = require("/url.js");
+var fmt = require("/fmt.js");
 exports.model=function(c,userName){
 	var m = c.DBModel("lx_user","lx_userrole");
 	var db= m[0].DBHelper();
@@ -34,7 +35,9 @@ exports.model=function(c,userName){
 		return this._exists;
 	}
 	this.Auth=function(pwd){
-		return _.isEqual(this.Password,	sha256.Sum256(this.Salt.concat(convert.Str2Bytes(pwd))));
+		rev = _.isEqual(this.Password,	sha256.Sum256(this.Salt.concat(convert.Str2Bytes(pwd))));
+		//console.log(fmt.Sprintf("rev=%#v\ndata pwd:%X\nuser pwd:%X\n",rev ,this.Password, sha256.Sum256(this.Salt.concat(convert.Str2Bytes(pwd)))));
+		return rev;
 	}
 	this.ChangePwd=function(newPwd){
 		var newSalt = convert.NewBytes(10);

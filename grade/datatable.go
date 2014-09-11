@@ -1,6 +1,7 @@
 package grade
 
 import (
+	"fmt"
 	//"github.com/davecgh/go-spew/spew"
 	"encoding/json"
 	"github.com/linlexing/datatable.go"
@@ -77,6 +78,21 @@ func (d *DataTable) AddIndex(indexName string, index *Index) {
 	d.DataTable.AddIndex(indexName, index.Index)
 	d.Indexes[indexName] = index
 }
+func (d *DataTable) ReducedColumns(gradestr Grade) []*DataColumn {
+	if !gradestr.CanUse(d.Grade()) {
+		return nil
+	}
+	result := []*DataColumn{}
+
+	//process the columns
+	for _, col := range d.Columns {
+		//the key column must to be add
+		if gradestr.CanUse(col.Grade()) || d.IsPrimaryKey(col.Name) {
+			result = append(result, col)
+		}
+	}
+	return result
+}
 func (d *DataTable) Reduced(gradestr Grade) (*DataTable, bool) {
 	if !gradestr.CanUse(d.Grade()) {
 		return nil, false
@@ -102,6 +118,7 @@ func (d *DataTable) Reduced(gradestr Grade) (*DataTable, bool) {
 }
 func (d *DataTable) Object() map[string]interface{} {
 	return map[string]interface{}{
+		"AcceptChange":  d.jsAcceptChange,
 		"AsCsv":         d.jsAsCsv,
 		"AsJSONP":       d.jsAsJSONP,
 		"AddColumn":     d.jsAddColumn,
@@ -115,6 +132,7 @@ func (d *DataTable) Object() map[string]interface{} {
 		"GetOriginRow":  d.jsGetOriginRow,
 		"GetValue":      d.jsGetValue,
 		"GetValues":     d.jsGetValues,
+		"GetStrings":    d.jsGetStrings,
 		"HasChange":     d.jsHasChange,
 		"HasPrimaryKey": d.jsHasPrimaryKey,
 		"IsPrimaryKey":  d.jsIsPrimaryKey,
@@ -132,6 +150,10 @@ func (d *DataTable) Object() map[string]interface{} {
 		"TableName":     d.TableName,
 		"Indexes":       d.Indexes,
 	}
+}
+func (d *DataTable) jsAcceptChange(call otto.FunctionCall) otto.Value {
+	d.AcceptChange()
+	return otto.UndefinedValue()
 }
 func (d *DataTable) jsAsCsv(call otto.FunctionCall) otto.Value {
 	columns := make([]string, len(call.ArgumentList))
@@ -171,10 +193,21 @@ func (d *DataTable) jsAddColumn(call otto.FunctionCall) otto.Value {
 }
 
 func (d *DataTable) jsRow(call otto.FunctionCall) otto.Value {
-
 	index := oftenfun.AssertInteger(call.Argument(0))
-
 	return oftenfun.JSToValue(call.Otto, d.Row(index))
+}
+func (d *DataTable) jsGetStrings(call otto.FunctionCall) otto.Value {
+	index := oftenfun.AssertInteger(call.Argument(0))
+	fields := oftenfun.AssertStringArray(call.Argument(1))
+	if fields == nil {
+		panic(fmt.Errorf("the fields is empty"))
+	}
+	rev := make([]string, len(fields))
+	for i, v := range fields {
+		colIndex := d.ColumnIndex(v)
+		rev[i] = d.GetString(index, colIndex)
+	}
+	return oftenfun.JSToValue(call.Otto, rev)
 }
 func (d *DataTable) jsNewRow(call otto.FunctionCall) otto.Value {
 	return oftenfun.JSToValue(call.Otto, d.NewRow())
@@ -276,7 +309,7 @@ func NewDataTableJSON(data []byte) (*DataTable, error) {
 	rev := NewDataTable(tab.TableName, tab.Grade())
 
 	for _, v := range tab.Columns {
-		rev.AddColumn(NewColumn(v.Name, v.Grade(), v.DataType, v.MaxSize, v.NotNull))
+		rev.AddColumn(NewColumn(v.Name, v.Grade(), v.DataType, v.MaxSize, v.NotNull)).Desc = v.Desc.Clone()
 	}
 	for k, v := range tab.Indexes {
 		rev.AddIndex(k, v)

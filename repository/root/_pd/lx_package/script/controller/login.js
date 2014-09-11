@@ -19,7 +19,7 @@ exports.auth=function(c){
 			userModel.BuildUserElementJSFile(c);
 			c.RenderJson({ok:true});
 		}else{
-			c.RenderJson({ok:false});
+			c.RenderJson({ok:false,error:fmt.Sprintf("the dept %q not exists",user.DeptName)});
 		}
 	}else{
 		c.RenderJson({ok:false});

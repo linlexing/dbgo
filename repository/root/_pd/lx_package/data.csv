@@ -16,6 +16,7 @@ filename,grade
 /controller/changepwd.js,root
 /controller/role.js,root
 /controller/rv.js,root
+/controller/mdlopt.js,root
 /model/user.js,root
 /model/dept.js,root
 /model/option.js,root

@@ -26,6 +26,5 @@ exports.switch_dept=function(c){
 	c.RenderJson(rev);
 }
 exports.default=function(c){
-	//BuildUserElementJSFile
-	c.RenderPJMDPage({Title_en:"welcome",Title_cn:"欢迎"});
+	c.RenderPJMDPage();
 }

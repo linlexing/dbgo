@@ -1,21 +1,21 @@
 [
 	{
 		"orderno":"001",
-		"elename":"add_role",
+		"elename":"role_add",
 		"label_en":"add role",
-		"label_cn":"新增角色",
+		"label_cn":"<i class='fa fa-plus'></i> 新增角色",
 		"bindrecord":false
 	},
 	{
 		"orderno":"002",
-		"elename":"edit_role",
+		"elename":"role_edit",
 		"label_en":"edit role",
 		"label_cn":"修改角色",
 		"bindrecord":true
 	},
 	{
 		"orderno":"003",
-		"elename":"delete_role",
+		"elename":"role_delete",
 		"label_en":"delete role",
 		"label_cn":"删除角色",
 		"bindrecord":true

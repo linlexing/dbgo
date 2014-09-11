@@ -305,3 +305,15 @@ app.controller('navbarCtrl', ['$window','$translate', '$scope','$rootScope','$lo
 	}
 
 }]);
+/*app.directive('lxField', ['$compile',function ($compile) {
+  return {
+    restrict: 'A',
+    link: function (scope, element,attrs) {
+	  if(!attrs.ngModel){
+        attrs.$set("ngModel",attrs.lxField);
+	    $compile(element)(scope);
+	  }
+    }
+  };
+}]);
+*/

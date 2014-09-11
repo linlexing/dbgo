@@ -1,0 +1,37 @@
+<#if not .Translate_en#>
+	<#set . "Translate_en" mkMap#>
+<#end#>
+<#set .Translate_en "SAVE" "Save"#>
+<#set .Translate_en "ADD" "Add"#>
+<#set .Translate_en "DELETE" "Delete"#>
+<#set .Translate_en "CLOSE" "Close"#>
+
+<#if not .Translate_cn#>
+	<#set . "Translate_cn" mkMap#>
+<#end#>
+
+<#set .Translate_cn "SAVE" "保存"#>
+<#set .Translate_cn "ADD" "新增"#>
+<#set .Translate_cn "DELETE" "删除"#>
+<#set .Translate_cn "CLOSE" "关闭"#>
+
+<#if not .G#>
+	<#set . "G" mkMap#>
+<#end#>
+<#set .G "mdlModel" .model#>
+<#set .G "mdlOption" .mdlopt#>
+<#set .G "mdlSaveUrl" .SaveUrl#>
+
+
+<#if not .PackCSSDest#>
+	<#set . "PackCSSDest" "/public/css/mdlheader_pack.css"#>
+<#end#>
+<#if not .PackJSDest#>
+	<#set . "PackJSDest" "/public/js/mdlheader_pack.js"#>
+<#end#>
+<#append . "OtherPackStaticJS" (static "mdlheader/page.js")#>
+<#append . "OtherPackStaticCSS" (static "mdlheader/page.css")#>
+
+<#template "pjheader.html" .#>
+<div class="container">
+	<form id="frmModelData" name="frmModelData" role="form" novalidate ng-controller="frmModelDataCtrl" class="form-horizontal">

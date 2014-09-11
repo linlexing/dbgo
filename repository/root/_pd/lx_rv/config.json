@@ -10,7 +10,7 @@
 		"btn":".json",
 		"lab":".json"
 	},
-	"SqlWhere": "exists(select 1 from lx_element where lx_element.name = dest.name and grade_canuse('root',lx_element.grade))",
+	"SqlWhere": "grade_canuse('root',grade)",
 	"ImpAutoUpdate":true,
 	"ImpAutoRemove": true,
 	"ImpRefreshStruct": true,
