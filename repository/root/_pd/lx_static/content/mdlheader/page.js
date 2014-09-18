@@ -4,7 +4,6 @@ app.controller('frmModelDataCtrl', ['$scope','$translate','$http','$alert',funct
 			return [key,val.data];
 		}))
 	);
-
 	$scope.MainDefine = G.mdlModel[G.mdlOption.mdlname].define;
 	$scope.MainRow = G.mdlModel[G.mdlOption.mdlname].data[0];
 	$scope.Option = G.mdlOption;

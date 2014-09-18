@@ -16,7 +16,7 @@ func NewError(stack []byte, err interface{}) *Error {
 	return &Error{err: err, stack: stack}
 }
 func (e *Error) Error() string {
-	return fmt.Sprintf("%v\n%s", e.err, e.stack)
+	return fmt.Sprintf("%v", e.err)
 }
 
 // PanicFilter wraps the action invocation in a protective defer blanket that

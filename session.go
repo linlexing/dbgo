@@ -99,23 +99,20 @@ func (s *SessionManager) clearSession(pname, sid string) error {
 	if err := s.db.Delete([]byte(SessionLWTPrex+pname+"|"+sid), nil); err != nil && err != leveldb.ErrNotFound {
 		return err
 	}
-	iter := s.db.NewIterator(&util.Range{Start: []byte(pname + sid)}, nil)
+	batch := new(leveldb.Batch)
+	iter := s.db.NewIterator(util.BytesPrefix([]byte(pname+sid)), nil)
 	defer iter.Release()
-	keyPrex := []byte(pname + sid)
 	icount := int64(0)
 	for iter.Next() {
-		keyBys := iter.Key()
-		if bytes.Compare(keyBys[:len(keyPrex)], keyPrex) == 0 {
-			if err := s.db.Delete(keyBys, nil); err != nil {
-				return err
-			}
-			icount++
-		} else {
-			break
-		}
+		batch.Delete(iter.Key())
+		icount++
 	}
-	log.TRACE.Printf("clear session:%s.%s,count:%v", pname, sid, icount)
-
+	if err := s.db.Write(batch, nil); err != nil {
+		return err
+	}
+	if icount > 0 {
+		log.TRACE.Printf("clear session:%s.%s,count:%v", pname, sid, icount)
+	}
 	return iter.Error()
 
 }

@@ -218,7 +218,11 @@ func ActionFilter(c *ControllerAgent, f []Filter) {
 	if actionFunc.IsFunction() {
 		_, err = actionFunc.Call(actionFunc, c.Object)
 		if err != nil {
-			newErr := fmt.Errorf("error at call action:%s.%s\n%s", c.ControllerName, c.ActionName, err)
+			issocket := "[websocket]"
+			if c.ws == nil {
+				issocket = ""
+			}
+			newErr := fmt.Errorf("%serror at call action:%s.%s\n%s", issocket, c.ControllerName, c.ActionName, err)
 			log.WARN.Println(newErr)
 			c.RenderError(newErr)
 			goto end

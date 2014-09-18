@@ -42,15 +42,19 @@ func createWSConn(w http.ResponseWriter, r *http.Request) *WSConn {
 
 }
 func handle(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("request:", r.URL.Path)
+	var c *ControllerAgent
 	defer func() {
 		if err := recover(); err != nil {
-			log.ERROR.Println("recover :", err)
-			http.Error(w, fmt.Sprint(err), 200)
+			if c.ws != nil {
+				log.ERROR.Println("[websocket]recover :", err)
+				c.ws.conn.send <- fmt.Sprint(err)
+			} else {
+				log.ERROR.Println("recover :", err)
+				http.Error(w, fmt.Sprint(err), 200)
+			}
 		}
 	}()
 	upgrade := r.Header.Get("Upgrade")
-	var c *ControllerAgent
 	if upgrade == "websocket" || upgrade == "Websocket" {
 		if r.Method != "GET" {
 			http.Error(w, "Method not allowed", 405)
@@ -61,7 +65,7 @@ func handle(w http.ResponseWriter, r *http.Request) {
 		go conn.writePump()
 		go conn.readPump()
 		c = NewAgentWS(
-			&WSAgent{conn, "connection", ""},
+			&WSAgent{conn, "open", ""},
 		)
 	} else {
 		c = NewAgent(w, r)
@@ -77,7 +81,7 @@ func handle(w http.ResponseWriter, r *http.Request) {
 	} else {
 		switch tv := c.Result.(type) {
 		case *ErrorResult:
-			panic(tv.Error)
+			c.ws.conn.send <- tv.Error.Error()
 		}
 	}
 }

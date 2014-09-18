@@ -19,18 +19,32 @@ func (e *NotFoundResult) Apply(req *http.Request, w http.ResponseWriter) {
 	http.Error(w, "can't found the resource.", http.StatusNotFound)
 }
 
-type ForbiddenResult struct{}
+type ForbiddenResult struct {
+	ws *WSAgent
+}
 
 func (e *ForbiddenResult) Apply(r *http.Request, w http.ResponseWriter) {
-	http.Error(w, "can't access the resource,you need login.", http.StatusForbidden)
+	if e.ws != nil {
+		log.INFO.Println("[websocket]can't access the resource,you need login.")
+		e.ws.conn.send <- "can't access the resource,you need login."
+	} else {
+		http.Error(w, "can't access the resource,you need login.", http.StatusForbidden)
+	}
 }
 
 type ErrorResult struct {
 	Error error
+	ws    *WSAgent
 }
 
 func (e *ErrorResult) Apply(r *http.Request, w http.ResponseWriter) {
-	w.Write([]byte(e.Error.Error()))
+	if e.ws != nil {
+		log.INFO.Println("[websocket]", e.Error)
+		e.ws.conn.send <- e.Error.Error()
+	} else {
+
+		w.Write([]byte(e.Error.Error()))
+	}
 
 }
 

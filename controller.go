@@ -214,6 +214,26 @@ func NewAgent(w http.ResponseWriter, r *http.Request) *ControllerAgent {
 
 	return c
 }
+
+/*func (c *ControllerAgent) ConvertFillValue(fillValue string, args map[string]interface{}) string {
+	if fillValue == "" {
+		return ""
+	}
+	tmpl, err := template.New("fill").Parse(fillValue)
+	if err != nil {
+		panic(fmt.Errorf("convert fill value %q error:%s", fillValue, err))
+	}
+	rev := &bytes.Buffer{}
+	if args == nil {
+		args = map[string]interface{}{}
+	}
+	args["Project"] = c.Project
+	args["c"] = c
+	if err = tmpl.Execute(rev, args); err != nil {
+		panic(fmt.Errorf("convert fill value %q error:%s", fillValue, err))
+	}
+	return rev.String()
+}*/
 func (c *ControllerAgent) RenderForbidden() Result {
 	c.Result = &ForbiddenResult{}
 	return c.Result
@@ -225,11 +245,12 @@ func (c *ControllerAgent) RenderRedirection(url string) Result {
 }
 func (c *ControllerAgent) RenderError(err error) Result {
 	if err == jsmvcerror.ForbiddenError {
-		c.Result = &ForbiddenResult{}
+		c.Result = &ForbiddenResult{c.ws}
 		return c.Result
 	}
 	c.Result = &ErrorResult{
 		Error: err,
+		ws:    c.ws,
 	}
 	return c.Result
 }
@@ -352,11 +373,16 @@ func (c *ControllerAgent) UrlAuthed() bool {
 	return c.Session.Get(SessionAuthUrlPrex+url) == "1"
 }
 func (c *ControllerAgent) jsQueryValues(call otto.FunctionCall) otto.Value {
-	v, err := c.jsRuntime.ToValue(c.QueryValues())
-	if err != nil {
-		return otto.NullValue()
+	if len(call.ArgumentList) > 0 {
+		vName := oftenfun.AssertString(call.Argument(0))
+		return oftenfun.JSToValue(call.Otto, c.QueryValues().Get(vName))
 	} else {
-		return v
+		v, err := c.jsRuntime.ToValue(c.QueryValues())
+		if err != nil {
+			return otto.NullValue()
+		} else {
+			return v
+		}
 	}
 }
 func (c *ControllerAgent) jsHasResult(call otto.FunctionCall) otto.Value {
@@ -374,6 +400,12 @@ func (c *ControllerAgent) jsRender(call otto.FunctionCall) otto.Value {
 	c.Render(params)
 	return otto.UndefinedValue()
 }
+
+/*func (c *ControllerAgent) jsConvertFillValue(call otto.FunctionCall) otto.Value {
+	fillValue := oftenfun.AssertString(call.Argument(0))
+	args := oftenfun.AssertObject(call.Argument(1))
+	return oftenfun.JSToValue(call.Otto, c.ConvertFillValue(fillValue, args))
+}*/
 
 func (c *ControllerAgent) jsRenderTemplate(call otto.FunctionCall) otto.Value {
 	templateName := oftenfun.AssertString(call.Argument(0))
@@ -534,13 +566,15 @@ func (c *ControllerAgent) package_UserFile() map[string]interface{} {
 }
 func (c *ControllerAgent) object() map[string]interface{} {
 	rev := map[string]interface{}{
-		"ActionName":        c.ActionName,
+		"ActionName":     c.ActionName,
+		"AuthUrl":        c.jsAuthUrl,
+		"CurrentGrade":   c.CurrentGrade.String(),
+		"ControllerName": c.ControllerName,
+		"ClientAddr":     c.Request.RemoteAddr,
+		//"ConvertFillValue":  c.jsConvertFillValue,
 		"UrlAuthed":         c.jsUrlAuthed,
-		"AuthUrl":           c.jsAuthUrl,
 		"GradeCanUse":       c.jsGradeCanUse,
 		"GetTag":            c.jsGetTag,
-		"CurrentGrade":      c.CurrentGrade.String(),
-		"ControllerName":    c.ControllerName,
 		"JsonBody":          c.JsonBody,
 		"TagPath":           c.TagPath,
 		"QueryValues":       c.jsQueryValues,
@@ -565,7 +599,7 @@ func (c *ControllerAgent) object() map[string]interface{} {
 		"Url":            c.jsUrl,
 	}
 	if c.ws != nil {
-		rev["WS"] = c.ws.Object()
+		rev["ws"] = c.ws.Object()
 	} else {
 		rev["Method"] = c.Request.Method
 

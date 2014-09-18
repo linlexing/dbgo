@@ -1,8 +1,10 @@
 package main
 
 import (
+	"code.google.com/p/go-uuid/uuid"
 	"crypto/rand"
 	"crypto/sha256"
+	"encoding/base64"
 	"fmt"
 	"github.com/linlexing/dbgo/grade"
 	"github.com/linlexing/dbgo/oftenfun"
@@ -34,6 +36,13 @@ func package_grade() map[string]interface{} {
 		"GradeCanUse": JSGradeCanUse,
 		"GRADE_ROOT":  grade.GRADE_ROOT.String(),
 		"GRADE_TAG":   grade.GRADE_TAG.String(),
+	}
+}
+func package_uuid() map[string]interface{} {
+	return map[string]interface{}{
+		"NewRandom": func(call otto.FunctionCall) otto.Value {
+			return oftenfun.JSToValue(call.Otto, base64.StdEncoding.EncodeToString(uuid.NewRandom()))
+		},
 	}
 }
 func package_url() map[string]interface{} {
@@ -113,7 +122,7 @@ func package_fmt() map[string]interface{} {
 		"Printf": func(call otto.FunctionCall) otto.Value {
 			formatstr := oftenfun.AssertString(call.Argument(0))
 			vs := oftenfun.AssertValue(call.ArgumentList[1:]...)
-			fmt.Sprintf(formatstr, vs...)
+			fmt.Printf(formatstr, vs...)
 			return otto.UndefinedValue()
 		},
 		"Sprint": func(call otto.FunctionCall) otto.Value {
@@ -137,6 +146,7 @@ func NewJSPool(size int) *JSPool {
 		"fmt":         package_fmt(),
 		"sha256":      package_sha256(),
 		"url":         package_url(),
+		"uuid":        package_uuid(),
 		"convert":     package_convert(),
 		"crypto_rand": package_crypto_rand(),
 	})

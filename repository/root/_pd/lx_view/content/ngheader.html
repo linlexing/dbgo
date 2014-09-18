@@ -1,4 +1,9 @@
-
+<#if not .G#>
+	<#set . "G" mkMap#>
+<#end#>
+<#set .G "translate_en" .Translate_en#>
+<#set .G "translate_cn" .Translate_cn#>
+<#set .G "projectName" .c.Project.Name#>
 <#if not .PackCSSDest#>
 	<#set . "PackCSSDest" "/public/css/ngheader_pack.css"#>
 <#end#>
@@ -59,7 +64,7 @@
     <![endif]-->
 
   </head>
-  <body>
+  <body ng-cloak>
 	<script>
 	var G = <#.G#>;
 
@@ -67,9 +72,6 @@
 	<#if .OtherDependencys#>
 		appDependencys =appDependencys.concat(<#.OtherDependencys#>);
 	<#end#>
-	var NGHeader_Translate_en = <#.Translate_en#>;
-	var NGHeader_Translate_cn = <#.Translate_cn#>;
-	var NGHeader_ProjectName = <#.c.Project.Name#>;
 	</script>
 
 	<script src="<#packFiles .PackJSDest $Pack.Js#>" type="text/javascript" charset="utf-8"></script>

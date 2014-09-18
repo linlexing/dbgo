@@ -133,6 +133,7 @@ func (d *DataTable) Object() map[string]interface{} {
 		"GetValue":      d.jsGetValue,
 		"GetValues":     d.jsGetValues,
 		"GetStrings":    d.jsGetStrings,
+		"GetChange":     d.jsGetChange,
 		"HasChange":     d.jsHasChange,
 		"HasPrimaryKey": d.jsHasPrimaryKey,
 		"IsPrimaryKey":  d.jsIsPrimaryKey,
@@ -191,7 +192,9 @@ func (d *DataTable) jsAddColumn(call otto.FunctionCall) otto.Value {
 	d.AddColumn(NewColumn(name, grade, datatype, maxsize, notnull))
 	return otto.NullValue()
 }
-
+func (d *DataTable) jsGetChange(call otto.FunctionCall) otto.Value {
+	return oftenfun.JSToValue(call.Otto, d.GetChange())
+}
 func (d *DataTable) jsRow(call otto.FunctionCall) otto.Value {
 	index := oftenfun.AssertInteger(call.Argument(0))
 	return oftenfun.JSToValue(call.Otto, d.Row(index))

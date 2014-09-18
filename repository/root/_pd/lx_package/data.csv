@@ -6,6 +6,7 @@ filename,grade
 /sha256.js,root
 /crypto_rand.js,root
 /url.js,root
+/uuid.js,root
 /intercept/element.js,root
 /intercept/render.js,root
 /controller/login.js,root
@@ -17,6 +18,7 @@ filename,grade
 /controller/role.js,root
 /controller/rv.js,root
 /controller/mdlopt.js,root
+/controller/watch.js,root
 /model/user.js,root
 /model/dept.js,root
 /model/option.js,root

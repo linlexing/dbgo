@@ -22,7 +22,7 @@ func (g *WSAgent) Object() map[string]interface{} {
 		},
 		"Broadcast": func(call otto.FunctionCall) otto.Value {
 			mes := SocketMessage{
-				g.conn.RequestUrl.String(),
+				oftenfun.AssertString(call.Argument(0)),
 				oftenfun.AssertString(call.Argument(1)),
 			}
 			SocketHub.broadcast <- mes

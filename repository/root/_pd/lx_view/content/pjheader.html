@@ -1,3 +1,12 @@
+<#if not .G#>
+	<#set . "G" mkMap#>
+<#end#>
+<#set .G "pjLogoutUrl" (url "login.logout")#>
+<#set .G "dept" (.c.Session.Get "user.dept")#>
+<#set .G "deptData" .deptData#>
+<#set .G "pjSwitchDeptUrl" (authUrl "home.switch_dept")#>
+<#set .G "userName" (.c.Session.Get "user.name")#>
+
 <#if not .PackCSSDest#>
 	<#set . "PackCSSDest" "/public/css/pjheader_pack.css"#>
 <#end#>
@@ -40,13 +49,6 @@
 <#append . "OtherJSFiles" (userFile "sys/curele.js")#>
 <#append . "OtherDependencys" "angularBootstrapNavTree"#>
 <#template "ngheader.html" .#>
-<script>
-var PJHeader_LogoutUrl = <#url "login.logout"#>;
-var PJHeader_Dept = <#(.c.Session.Get "user.dept")#>;
-var PJHeader_DeptData = <#.deptData#>;
-var PJHeader_HomeSwitchDeptUrl = <#authUrl "home.switch_dept"#>;
-var PJHeader_UserName = <#.c.Session.Get "user.name"#>;
-</script>
 <script type="text/ng-template" id="aside-template.html">
 <div class="aside" tabindex="-1" role="dialog">
   <div class="aside-dialog">

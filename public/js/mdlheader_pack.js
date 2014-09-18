@@ -11162,11 +11162,11 @@ app.run(['$rootScope','$log','$window','$alert', function ($rootScope, $log, $wi
 	}
 }]);
 app.config(['$translateProvider', function ($translateProvider) {
-	if( NGHeader_Translate_en){
-		$translateProvider.translations('en', NGHeader_Translate_en);
+	if( G.translate_en){
+		$translateProvider.translations('en', G.translate_en);
 	}
-	if( NGHeader_Translate_cn){
-		$translateProvider.translations('cn', NGHeader_Translate_cn);
+	if( G.translate_cn){
+		$translateProvider.translations('cn', G.translate_cn);
 	}
 	$translateProvider.registerAvailableLanguageKeys(['en', 'cn'], {
 		'en_US': 'en',
@@ -11178,11 +11178,11 @@ app.config(['$translateProvider', function ($translateProvider) {
 }]);
 app.run(["$translate","$rootScope",function ($translate,$rootScope) {
 	$translate("Title").then(function(t){
-		document.title=NGHeader_ProjectName+" - " + t;
+		document.title=G.projectName+" - " + t;
 	});
 	$rootScope.$on('$translateChangeSuccess', function () {
 		$translate("Title").then(function(t){
-			document.title=NGHeader_ProjectName+" - " + t;
+			document.title=G.projectName+" - " + t;
 		});
 	});
 }]);
@@ -11193,7 +11193,6 @@ app.controller('frmModelDataCtrl', ['$scope','$translate','$http','$alert',funct
 			return [key,val.data];
 		}))
 	);
-
 	$scope.MainDefine = G.mdlModel[G.mdlOption.mdlname].define;
 	$scope.MainRow = G.mdlModel[G.mdlOption.mdlname].data[0];
 	$scope.Option = G.mdlOption;
@@ -11497,10 +11496,10 @@ app.controller('navbarCtrl', ['$window','$translate', '$scope','$rootScope','$lo
 		template:"aside-template.html",
 		contentTemplate: "left.html"
 	});
-	$scope.logoutUrl = PJHeader_LogoutUrl;
+	$scope.logoutUrl = G.pjLogoutUrl;
 	$scope.elementTrees = toTree(CurrentUserElement());
-	$scope.dept = PJHeader_Dept;
-	$scope.deptMenuNodes =toDeptMenus(PJHeader_DeptData,$scope.dept);
+	$scope.dept = G.dept;
+	$scope.deptMenuNodes =toDeptMenus(G.deptData,$scope.dept);
 	$scope.navCollapsed = true;
 	swithDeptLag([$scope.dept],$translate.use());
 	swith_lag($scope.elementTrees,$translate.use());
@@ -11534,7 +11533,7 @@ app.controller('navbarCtrl', ['$window','$translate', '$scope','$rootScope','$lo
 	}
 
 	$scope.selectDept=function(item){
-		$http.post(PJHeader_HomeSwitchDeptUrl,{dept:item,userName:PJHeader_UserName})
+		$http.post(G.pjSwitchDeptUrl,{dept:item,userName:G.userName})
 			.success(function(data,status,headers,config,statusText){
 				if(data.ok){
 					$scope.dept = item;

@@ -46,6 +46,7 @@ type Project interface {
 	ReloadRepository() error
 	GetPackageNames(dirName string, gradestr grade.Grade) ([]string, error)
 	Require(rm *otto.Otto, fileName, currentModuleDir string, gradestr grade.Grade) (*otto.Script, string, error)
+	AppCache() *AppCache
 
 	WSHub() *WSHub
 	Version(grade grade.Grade) (int64, bool, error)
@@ -71,6 +72,7 @@ type project struct {
 	repository   string
 	dburl        string
 	wsHub        *WSHub
+	appCache     *AppCache
 
 	lockTableDefine  *sync.Mutex
 	lockVersion      *sync.Mutex
@@ -154,6 +156,7 @@ func NewProject(name string, label TranslateString, dburl, repository string) Pr
 		displayLabel: label,
 		dburl:        dburl,
 		repository:   repository,
+		appCache:     CacheHub.AppCache(name),
 		wsHub: &WSHub{
 			broadcast:   make(chan SocketMessage),
 			register:    make(chan *WSConn),
@@ -392,6 +395,7 @@ func (p *project) Object() map[string]interface{} {
 		"NewDBHelper":      p.jsNewDBHelper,
 		"DBModel":          p.jsDBModel,
 		"Checks":           p.jsChecks,
+		"AppCache":         p.AppCache().Object(),
 		"ReloadRepository": p.jsReloadRepository,
 	}
 }
@@ -853,7 +857,7 @@ func (p *project) loadPackage(rm *otto.Otto, fileName string, gradestr grade.Gra
 	}
 	str := strings.Join(strTmp, "\n")
 	if len(strTmp) == 0 {
-		return nil, &EmptyPackageError{fmt.Sprintf("empty package:%s(%s)", fileName, gradestr)}
+		return nil, &EmptyPackageError{fmt.Sprintf("empty package:%s[%s]", fileName, gradestr)}
 	}
 	rev := "(function(module) {var require = module.require;var safeRequire = module.safeRequire;var exports = module.exports;" + str + ";module.exports=exports;})"
 	src, err := rm.Compile(fileName, rev)
@@ -942,4 +946,7 @@ func (p *project) NewDBHelper() *grade.DBHelper {
 }
 func (p *project) WSHub() *WSHub {
 	return p.wsHub
+}
+func (p *project) AppCache() *AppCache {
+	return p.appCache
 }

@@ -17,6 +17,7 @@ import (
 var (
 	// Loggers
 	SocketHub      *WSHub
+	CacheHub       *AppCacheHub
 	Meta           MetaProject
 	DefaultProject string
 	Filters        []Filter
@@ -39,37 +40,10 @@ func loadConfig() *Config {
 	return &c
 }
 
-/*func writeConfig(c *Config) error {
-	file, e := os.Create("./cnfg.json")
-	defer file.Close()
-	if e != nil {
-		return e
-	}
-	if bys, err := json.Marshal(c); err != nil {
-		return err
-	} else if _, err := file.Write(bys); err != nil {
-		return err
-	}
-	return nil
-}
-func initiMeta(c *Config) error {
-	Projects = NewDBGo(c.DBUrl)
-	if c.MetaDBUrl == "" {
-		metaUrl, err := Projects.CreateProject("meta", "meta123")
-		if err != nil {
-			return err
-		}
-		c.MetaDBUrl = metaUrl
-		if err := writeConfig(c); err != nil {
-			return err
-		}
-	}
-	Projects.ReadyMetaProject(c.MetaDBUrl)
-	return nil
-}*/
 func main() {
 	var err error
 	SocketHub = NewWSHub()
+	CacheHub = NewAppCacheHub()
 	if AppPath, err = filepath.Abs("."); err != nil {
 		log.INFO.Fatal(err)
 	}
@@ -81,7 +55,7 @@ func main() {
 	JSP = NewJSPool(10)
 	Jobs := cron.New()
 	Jobs.AddFunc("@every 3m", func() {
-		log.TRACE.Print("start background job[ClearTimeoutSession]\n")
+		//log.TRACE.Print("start background job[ClearTimeoutSession]\n")
 		if err := SDB.ClearTimeoutSession(); err != nil {
 			panic(err)
 		}

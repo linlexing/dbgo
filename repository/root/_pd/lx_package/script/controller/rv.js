@@ -1,6 +1,7 @@
 var fmt = require("/fmt.js");
 var url = require("/url.js");
-var limit = 30;
+var uuid = require("/uuid.js");
+var maxLimit = 200;
 function getElementUrl(db,eleName){
 	return db.QStr("select url from lx_element where name={{ph}}",eleName);
 }
@@ -26,6 +27,7 @@ exports.show=function(c){
 				}
 			}
 			rvRow.btn =rvBtn;
+			rvRow.uuid = uuid.NewRandom();
 			c.RenderRecordView({
 				recordView:rvRow
 			});
@@ -50,7 +52,9 @@ exports.fetch=function(c){
 			var rvColumn = rvTabRow.col != "" ? eval("("+rvTabRow.col+")") :{};
 			var rvPKFields = rvTabRow.pk.split(",");
 			var rvBtn = eval("("+rvTabRow.btn+")");
+			var limit = Math.min(fetchOption.limit,maxLimit);
 			if(rvTabRow.datasrc!= ""){
+				console.log("sort:"+fetchOption.sort);
 				var tab = db.SelectLimitT(
 					rvTabRow.datasrc,
 					{
@@ -95,6 +99,7 @@ exports.fetch=function(c){
 					rev.btnUrl.push(oneUrlArr);
 				}
 				rev.data = tab.Rows();
+				rev.first = fetchOption.first;
 				rev.finish = tab.RowCount()<limit;
 			}
 		}else{

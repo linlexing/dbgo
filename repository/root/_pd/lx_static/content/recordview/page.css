@@ -3,8 +3,7 @@ html,body{
 }
 .content{
 	width:100%;
-	overflow-y:auto;
-	overflow-x:hidden;
+	overflow:auto;
 }
 .content table{
 	width:auto;
@@ -20,6 +19,7 @@ html,body{
 	cursor:default;
 }
 .content thead th {
+	text-align:center;
 	white-space:nowrap;
     position:relative;
 	background-color:lightgrey;
@@ -58,4 +58,23 @@ html,body{
 }
 #divHScroll .data{
 	height:20px;
+}
+.table-hover tbody tr:hover td, .table-hover tbody tr:hover th {
+	background-color:#cfe9f7;
+}
+
+.table-striped tbody tr.highlight td {
+	background-color:#428bca;
+	color:white;
+}
+.popover-content{
+	margin-left:-4px;
+	margin-right:-4px;
+}
+.popover-content a {
+	margin-left:4px;
+	margin-right:4px;
+}
+#mainCtrl .navbar{
+	position:relative;
 }

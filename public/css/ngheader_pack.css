@@ -44,4 +44,7 @@
 @media (min-width: 1200px) {
 	.bitdb-view-lg { display: block }
 }
+.form-control.ng-invalid{
+	border:1px solid #DB98BD;
+}
 

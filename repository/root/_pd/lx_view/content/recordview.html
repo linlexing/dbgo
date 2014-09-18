@@ -2,7 +2,7 @@
 	<#set . "G" mkMap#>
 <#end#>
 <#set .G "rv_dataAction" (authUrl "rv.fetch" .c.Tag.Element.name)#>
-<#set .G "rv_watchAction" (authUrl "watch.rv" .c.Tag.Element.name)#>
+<#set .G "rv_watchAction" (authUrl "watch.rv" .recordView.uuid)#>
 <#set .G "rv_define" .recordView#>
 
 <#if not .Translate_en#>
@@ -29,6 +29,7 @@
 <#set .Translate_en "FETCH" "Fetch"#>
 <#set .Translate_en "SELECT" "Select"#>
 <#set .Translate_en "NEXT" "Next"#>
+<#set .Translate_en "RECORDBTN_TITLE" "'s process button"#>
 <#if not .Translate_cn#>
 	<#set . "Translate_cn" mkMap#>
 <#end#>
@@ -52,6 +53,7 @@
 <#set .Translate_cn "FETCH" "已经获取"#>
 <#set .Translate_cn "SELECT" "选择"#>
 <#set .Translate_cn "NEXT" "下一批"#>
+<#set .Translate_cn "RECORDBTN_TITLE" "的操作"#>
 <#append . "OtherJSFiles" (static "recordview/page.js")#>
 
 <#template "pjheader.html" .#>
@@ -69,9 +71,23 @@
 	<li><a href="">test1</a></li>
 </ul>
 </script>
-
-<div ng-controller="mainCtrl">
-	<nav role="navigation" class="navbar navbar-default">
+<script type="text/ng-template" id="recordBtnTemplate.html">
+<div class="popover">
+	<div class="arrow"></div>
+	<h3 class="popover-title">
+		<strong>{{pkValues}}</strong>{{"RECORDBTN_TITLE"|translate}}
+		<button type="button" class="close" ng-click="$hide()">
+			<span aria-hidden="true">&times;</span>
+			<span class="sr-only">Close</span>
+		</button>
+	</h3>
+	<div class="popover-content text-center">
+		<a class="btn btn-default btn-sm" ng-repeat="(btnIndex,oneButton) in btn" ng-href="{{oneButton.url}}" target="_blank" ng-bind-html="oneButton['label_'+$translate.use()]||oneButton.label_en||oneButton.label_cn"></a>
+	</div>
+</div>
+</script>
+<div id="mainCtrl" ng-controller="mainCtrl">
+	<nav role="navigation" class="navbar navbar-default" ng-style="navbarStyle">
 	    <!-- Brand and toggle get grouped for better mobile display -->
 	    <div class="navbar-header">
 			<div ng-show="pending==0" class="navbar-brand navbar-left" data-animation="am-flip-x" bs-dropdown data-template="process.html" data-placement="bottom-left" data-container="body">
@@ -139,24 +155,19 @@
 			<thead>
 				<tr ng-if="data.columns.length>0">
 					<th ng-style="thStyle">{{'NO'|translate}}</th>
-					<th ng-style="thStyle" ng-if="define.btn && (define.btn|filter:{bindrecord:true}).length >0"></th>
 					<th ng-style="thStyle">{{'SELECT'|translate}}</th>
 					<th ng-repeat="column in data.columns" ng-style="thStyle" ng-class="{notallowed:pending!=0,allowed:pending==0}" ng-click="thClick(column)">
 					{{column.displayName[$translate.use()]}}&nbsp;<i ng-if="getSort(column.fieldName)" class="fa ng-class:{'fa-caret-up':getSort(column.fieldName)&&getSort(column.fieldName).type=='ASC','fa-caret-down':getSort(column.fieldName)&&getSort(column.fieldName).type=='DESC'}"></i>
 					</th>
 				</tr>
 			</thead>
-			<tbody>
-				<tr ng-repeat="(itemIndex,item) in data.data">
+			<tbody >
+				<tr ng-repeat="(itemIndex,item) in data.data" ng-class="{highlight:selected==item}">
 					<td class="nocolumn" >{{item._No_}}</td>
-					<td ng-if="define.btn && (define.btn|filter:{bindrecord:true}).length >0">
-						<a ng-repeat-start="(btnIndex,oneButton) in define.btn|filter:{bindrecord:true}" target="_blank" ng-href="{{data.btnUrl[itemIndex][btnIndex]}}" ng-bind-html="oneButton['label_'+$translate.use()]||oneButton.label_en||oneButton.label_cn"></a>
-						<span ng-if="!$last" ng-repeat-end> | </span>
-					</td>
 					<td align="center">
 						<input type="checkbox"/>
 					</td>
-					<td ng-repeat="column in data.columns">
+					<td ng-repeat="column in data.columns" ng-click="selectedRow(item,$event)">
 						{{item[column.fieldName]}}
 					</td>
 				</tr>

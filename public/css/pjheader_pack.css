@@ -166,6 +166,9 @@ ul.nav.nav-list.abn-tree .level-9 .indented {
 @media (min-width: 1200px) {
 	.bitdb-view-lg { display: block }
 }
+.form-control.ng-invalid{
+	border:1px solid #DB98BD;
+}
 
 .navbar-header button{
 	float:left;

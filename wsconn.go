@@ -37,6 +37,7 @@ type WSConn struct {
 func (c *WSConn) readPump() {
 	defer func() {
 		SocketHub.unregister <- c
+		c.callAction("close", "")
 		c.ws.Close()
 	}()
 	c.ws.SetReadLimit(maxMessageSize)
@@ -45,10 +46,10 @@ func (c *WSConn) readPump() {
 	for {
 		_, message, err := c.ws.ReadMessage()
 		if err != nil {
-			log.Println(err)
+			//log.Println("websocket read message error:", err)
 			break
 		}
-		if err = c.callAction(string(message)); err != nil {
+		if err = c.callAction("message", string(message)); err != nil {
 			log.Println(err)
 			break
 		}
@@ -79,14 +80,14 @@ func (c *WSConn) writePump() {
 				return
 			}
 		case <-ticker.C:
-			log.Print("time out ,send ping\n")
+			//log.Print("time out ,send ping\n")
 			if err := c.write(websocket.PingMessage, []byte{}); err != nil {
 				return
 			}
 		}
 	}
 }
-func (c *WSConn) callAction(mes string) (errResult error) {
+func (c *WSConn) callAction(event, mes string) (errResult error) {
 	defer func() {
 		if err := recover(); err != nil {
 			switch tv := err.(type) {
@@ -98,7 +99,7 @@ func (c *WSConn) callAction(mes string) (errResult error) {
 		}
 	}()
 	cagent := NewAgentWS(
-		&WSAgent{c, "message", mes},
+		&WSAgent{c, event, mes},
 	)
 	cagent.jsRuntime = JSP.Get()
 	defer JSP.Release(cagent.jsRuntime)

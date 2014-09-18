@@ -10,14 +10,14 @@
 		"orderno":"002",
 		"elename":"role_edit",
 		"label_en":"edit role",
-		"label_cn":"修改角色",
+		"label_cn":"<i class='fa fa-edit'></i> 修改角色",
 		"bindrecord":true
 	},
 	{
 		"orderno":"003",
 		"elename":"role_delete",
 		"label_en":"delete role",
-		"label_cn":"删除角色",
+		"label_cn":"<i class='fa fa-minus-circle'></i> 删除角色",
 		"bindrecord":true
 	}
 ]
