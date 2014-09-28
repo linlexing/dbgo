@@ -124,6 +124,7 @@ func (d *DataTable) Object() map[string]interface{} {
 		"AddColumn":     d.jsAddColumn,
 		"AddRow":        d.jsAddRow,
 		"AddValues":     d.jsAddValues,
+		"ColumnIndex":   d.jsColumnIndex,
 		"ColumnNames":   d.jsColumnNames,
 		"Columns":       d.jsColumns,
 		"DeleteAll":     d.jsDeleteAll,
@@ -198,6 +199,10 @@ func (d *DataTable) jsGetChange(call otto.FunctionCall) otto.Value {
 func (d *DataTable) jsRow(call otto.FunctionCall) otto.Value {
 	index := oftenfun.AssertInteger(call.Argument(0))
 	return oftenfun.JSToValue(call.Otto, d.Row(index))
+}
+func (d *DataTable) jsColumnIndex(call otto.FunctionCall) otto.Value {
+	col := oftenfun.AssertString(call.Argument(0))
+	return oftenfun.JSToValue(call.Otto, d.ColumnIndex(col))
 }
 func (d *DataTable) jsGetStrings(call otto.FunctionCall) otto.Value {
 	index := oftenfun.AssertInteger(call.Argument(0))

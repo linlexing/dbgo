@@ -1,5 +1,6 @@
 var fmt = require("/fmt.js");
 var url = require("/url.js");
+var cache = require("watch/cache.js");
 function getTableDefine(tab){
 	rev = {};
 	rev.columns = [];
@@ -106,16 +107,28 @@ function Client2DB(c,eleName,mdlname,oldpk,operate,data){
 		for(var i in dataSet){
 			if(dataSet[i].HasChange()){
 				var chgs = dataSet[i].GetChange();
-				_.each(chgs.DeleteRows,function(val){
-					onRecordChange(optInfo,"delete",val.OriginData,val.Data);
+				var deleteRows = chgs.DeleteRows.concat();
+				var updateRows = chgs.UpdateRows.concat();
+				var insertRows = chgs.InsertRows.concat();
+				_.each(deleteRows,function(val){
+					onBeforeChange(c,db,optInfo,dataSet[i],"delete",val);
 					});
-				_.each(chgs.UpdateRows,function(val){
-					onRecordChange(optInfo,"update",val.OriginData,val.Data);
+				_.each(updateRows,function(val){
+					onBeforeChange(c,db,optInfo,dataSet[i],"update",val);
 					});
-				_.each(chgs.InsertRows,function(val){
-					onRecordChange(optInfo,"insert",val.OriginData,val.Data);
+				_.each(insertRows,function(val){
+					onBeforeChange(c,db,optInfo,dataSet[i],"insert",val);
 					});
 				dataSet[i].Save();
+				_.each(deleteRows,function(val){
+					onAfterChange(c,db,optInfo,dataSet[i],"delete",val);
+					});
+				_.each(updateRows,function(val){
+					onAfterChange(c,db,optInfo,dataSet[i],"update",val);
+					});
+				_.each(insertRows,function(val){
+					onAfterChange(c,db,optInfo,dataSet[i],"insert",val);
+					});
 			}
 		}
 	}finally{
@@ -123,8 +136,104 @@ function Client2DB(c,eleName,mdlname,oldpk,operate,data){
 	}
 
 }
-function onRecordChange(optInfo,operate,originData,newData){
-	fmt.Printf("write log:%#v,operate:%s\n%s",optInfo,operate,JSON.stringify(optInfo));
+function onBeforeChange(c,db,optInfo,table,operate,rowAgent){
+	var baseTable = table.TableName;
+	var sqlIDs = cache.GetTableSql(c,baseTable);
+	var pkFields = table.PK();
+	rowAgent.watch = [];
+	var oldPk=[];
+	switch(operate){
+		case "update":
+		case "delete":
+			for(var i in pkFields){
+				oldPk.push(rowAgent.OriginData[table.ColumnIndex(pkFields[i])]);
+			}
+			break;
+	}
+	for(var i in sqlIDs){
+		var watch = {
+			sqlID:sqlIDs[i],
+			watchSql:cache.GetWatchSql(c,baseTable,sqlIDs[i])
+		};
+		switch(operate){
+			case "update":
+			case "delete":
+				fmt.Printf("sql is :%s\npk is :%v",watch.watchSql.sql,oldPk.concat(watch.watchSql.params));
+				var oldData = db.GetData(watch.watchSql.sql,oldPk.concat(watch.watchSql.params));
+				if(oldData.RowCount()>0){
+					watch.originData = oldData.Row(0);
+				}
+				break;
+		}
+		rowAgent.watch.push(watch);
+	}
+}
+function sendSqlIDMessage(c,sqlID,message){
+	var rvuuids = cache.GetRvUUID(c,sqlID);
+	_.each(rvuuids,function(val){
+		//由于每个rv均有唯一的url，所以，Broadcast 这里当做send使用
+		c.Broadcast(buildWatchActionUrl(c,val),JSON.stringify(message));
+	});
+
+}
+function buildWatchActionUrl(c,rvuuid){
+	return fmt.Sprintf("/%s/watch/rv/%s",c.Project.Name,rvuuid);
+}
+function onAfterChange(c,db,optInfo,table,operate,rowAgent){
+	var baseTable = table.TableName;
+	var pkFields = table.PK();
+	var newPk=[];
+	switch(operate){
+		case "update":
+		case "insert":
+			for(var i in pkFields){
+				newPk.push(rowAgent.Data[table.ColumnIndex(pkFields[i])]);
+			}
+			break;
+	}
+	for(var i in rowAgent.watch){
+		var watch = rowAgent.watch[i];
+		switch(operate){
+			case "insert":
+			case "update":
+				var newData = db.GetData(watch.watchSql.sql,newPk.concat(watch.watchSql.params));
+				if(newData.RowCount()>0){
+					watch.data = newData.Row(0);
+				}
+				break;
+		}
+		//判断最终每个监视视图的增删改操作，并发送websocket消息
+		switch(operate){
+			case "insert":
+				if(watch.data){
+					sendSqlIDMessage(c,watch.sqlID,{opt:"insert",data:watch.data});
+				}
+				break;
+			case "update":
+				if(watch.originData){
+					if(watch.data){
+						if(!_.isEqual(watch.originData,watch.data)){
+							//记录被修改，但是可见范围没有变化
+							sendSqlIDMessage(c,watch.sqlID,{opt:"update",data:watch.data});
+						}
+					}else{
+						//原来有，现在不可见，作为删除发送
+						sendSqlIDMessage(c,watch.sqlID,{opt:"updelete",originData:watch.originData});
+					}
+				}else{
+					if(watch.data){
+						//原来不可见,现在有，作为新增发送
+						sendSqlIDMessage(c,watch.sqlID,{opt:"upinsert",originData:watch.data});
+					}
+				}
+				break;
+			case "delete":
+				if(watch.originData){
+					sendSqlIDMessage(c,watch.sqlID,{opt:"delete",originData:watch.originData});
+				}
+				break;
+		}
+	}
 }
 function convertFillValue(c,dataType,fillValue){
 	if(fillValue===undefined){

@@ -89,6 +89,10 @@ func package_convert() map[string]interface{} {
 			rev := make([]byte, l)
 			return oftenfun.JSToValue(call.Otto, rev)
 		},
+		"EncodeBase64": func(call otto.FunctionCall) otto.Value {
+			bys := oftenfun.AssertByteArray(call.Argument(0))
+			return oftenfun.JSToValue(call.Otto, base64.StdEncoding.EncodeToString(bys))
+		},
 	}
 }
 func package_sha256() map[string]interface{} {

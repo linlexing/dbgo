@@ -1,6 +1,9 @@
 var fmt = require("/fmt.js");
 var url = require("/url.js");
 var uuid = require("/uuid.js");
+var sha256 = require("/sha256.js");
+var convert = require("/convert.js");
+var cache = require("watch/cache.js");
 var maxLimit = 200;
 function getElementUrl(db,eleName){
 	return db.QStr("select url from lx_element where name={{ph}}",eleName);
@@ -37,14 +40,27 @@ exports.show=function(c){
 		db.Close();
 	}
 }
-
+function getWatchSql(db,dataSrc,templateParam,pkFields,lastKey,columns,sort){
+	var where  =[];
+	for(var i in pkFields){
+		where.push(fmt.Sprintf("%s = {{ph}}",pkFields[i]));
+	}
+	var whereStr = "";
+	if(where.length>0){
+		whereStr = where.join(" AND ");
+	}
+	var rev =db.BuildSelectLimitSql(dataSrc,pkFields,lastKey,columns,whereStr,sort,1);
+	rev.sql = db.ConvertSql(rev.sql,templateParam);
+	return rev;
+}
 exports.fetch=function(c){
+
 	var eleName = c.TagPath;
 	var db = c.Project.NewDBHelper();
 	db.Open();
 	try{
 		var fetchOption = c.JsonBody;
-		var rvTab = db.GetData("select datasrc,lab,col,pk,btn from lx_rv where name={{ph}}",eleName);
+		var rvTab = db.GetData("select datasrc,lab,col,pk,btn,basetable from lx_rv where name={{ph}}",eleName);
 		var rev ={};
 		if( rvTab.RowCount()>0){
 			var rvTabRow = rvTab.Row(0);
@@ -53,20 +69,39 @@ exports.fetch=function(c){
 			var rvPKFields = rvTabRow.pk.split(",");
 			var rvBtn = eval("("+rvTabRow.btn+")");
 			var limit = Math.min(fetchOption.limit,maxLimit);
-			if(rvTabRow.datasrc!= ""){
-				console.log("sort:"+fetchOption.sort);
-				var tab = db.SelectLimitT(
-					rvTabRow.datasrc,
-					{
+			var templateParam ={
 						CurrentGrade:c.CurrentGrade,
 						UserName:c.UserName,
 						UserDept:c.Session.Get("user.dept")
-					},
+			};
+			var sortStrArray=[];
+			var descSortStrArray=[];
+			if( fetchOption.sort.length>0){
+				for(var i in fetchOption.sort){
+					if(fetchOption.sort[i].type == "DESC"){
+						sortStrArray.push(fetchOption.sort[i].column + " DESC");
+						descSortStrArray.push(fetchOption.sort[i].column);
+					}else{
+						sortStrArray.push(fetchOption.sort[i].column);
+						descSortStrArray.push(fetchOption.sort[i].column + " DESC");
+					}
+				}
+			}else{
+				//如果没有排序，则是主键值的倒序
+				for(var i in rvPKFields){
+					descSortStrArray.push(rvPKFields[i] + " DESC");
+				}
+			}
+
+			if(rvTabRow.datasrc!= ""){
+				var tab = db.SelectLimitT(
+					rvTabRow.datasrc,
+					templateParam,
 					rvPKFields,
-					fetchOption.lastkey,
+					fetchOption.lastKey,
 					null,
 					"",
-					fetchOption.sort,
+					sortStrArray,
 					limit
 				)
 				rev.columns = [];
@@ -99,8 +134,22 @@ exports.fetch=function(c){
 					rev.btnUrl.push(oneUrlArr);
 				}
 				rev.data = tab.Rows();
-				rev.first = fetchOption.first;
+				rev.first = !fetchOption.lastKey;
 				rev.finish = tab.RowCount()<limit;
+				//watch basetable
+				if( rvTabRow.basetable ){
+					var endKeyValues;
+					if(tab.RowCount() >0){
+						endKeyValues = _.pick(
+							tab.Row(tab.RowCount()-1),
+							_.pluck(fetchOption.sort,"column"),
+							rvPKFields
+						)
+					}
+					var watchSql = getWatchSql(db,rvTabRow.datasrc,templateParam,rvPKFields,endKeyValues,null,descSortStrArray);
+					var sqlID = convert.EncodeBase64(sha256.Sum256(convert.Str2Bytes(watchSql.sql+JSON.stringify(watchSql.params))));
+					cache.Put(c,rvTabRow.basetable,watchSql,fetchOption.uuid);
+				}
 			}
 		}else{
 			rev.error="the sql is empty";

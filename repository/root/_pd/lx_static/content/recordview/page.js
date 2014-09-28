@@ -1,6 +1,6 @@
 var spinner;
-var recordLimit = Math.round($(window).height()/40*1.5);
-console.log(recordLimit);
+var recordLimit = Math.round($(window).height()/40*3);
+
 function showSpin(){
 	var opts = {
 	  lines: 8, // The number of lines to draw
@@ -78,28 +78,21 @@ app.controller('mainCtrl', ['$popover','$translate', '$scope','$alert','$http','
 		var left = $("#divHScroll").scrollLeft();
 		$(".content").scrollLeft(left);
 	});
-	var oldWindowTop = 0;
 	$(window).scroll(function (e){
 		var top = $(window).scrollTop();
-		if(oldWindowTop!= top ){
-			oldWindowTop = top;
-			$scope.$apply(function(){
-				$scope.thStyle ={top:Math.round(Math.max(0,
-					top-$("#mainCtrl").offset().top-$(".fetchinfo").height()
-					))+"px"} ;
-				$scope.navbarStyle ={top:Math.round(Math.max(0,top-$("#mainCtrl").offset().top))+"px"} ;
-			});
-			if ($(window).scrollTop() >0 && $(window).scrollTop() + $(window).height() >= $(document).height()){
-				if(!$scope.data.finish){
-					fetchOption.direction = "down";
-					$scope.fetchData();
-				}
-			}
-			if ($(window).scrollTop() ==0 ){
-				if(!$scope.data.top){
-					fetchOption.direction = "up";
-					$scope.fetchData();
-				}
+		$scope.$apply(function(){
+			$scope.thStyle ={top:Math.round(Math.max(0,
+				top-$("#mainCtrl").offset().top-$(".fetchinfo").height()
+				))+"px"} ;
+			$scope.navbarStyle ={top:Math.round(Math.max(0,top-$("#mainCtrl").offset().top))+"px"} ;
+		});
+		if ($(window).scrollTop() >0 && $(window).scrollTop() + $(window).height() >= $(document).height()){
+			if(!$scope.data.finish){
+				$scope.fetchData(_.pick(
+						_.last($scope.data.data),
+						_.pluck($scope.sort,"column"),
+						$scope.define.pk.split(",")
+					),$scope.sort,Math.round(recordLimit/2));
 			}
 		}
 	});
@@ -134,20 +127,22 @@ app.controller('mainCtrl', ['$popover','$translate', '$scope','$alert','$http','
 		};
 	    websocket.onmessage = $scope.onMessage;
 	}
-	$scope.fetchData=function(){
-		if(!fetchOption.first){
-			fetchOption.lastkey = _.pick(
-				_.last($scope.data.data),
-				_.pluck($scope.sort,"column"),
-				$scope.define.pk.split(",")
-			);
+	$scope.getItemPK=function(item){
+		return _.values(_.pick(item,$scope.define.pk.split(","))).join(",");
+	}
+	$scope.fetchData=function(lastKey,sort,limit){
+		var ops = {
+			lastKey:lastKey,
+			limit:limit,
+			uuid:$scope.define.uuid
 		}
 		$scope.fetchInfo = {
 			startTime:new Date(),
 		}
+		ops.sort=sort;
 		$scope.pending ++;
 		//websocket.send(JSON.stringify({event:"rv_fetchData",data:fetchOption})) ;
-		$http.post(G.rv_dataAction,_.clone(fetchOption))
+		$http.post(G.rv_dataAction,ops)
 			.success(function(data,status,headers,config,statusText){
 				try{
 					if(typeof data == "string"){
@@ -157,33 +152,23 @@ app.controller('mainCtrl', ['$popover','$translate', '$scope','$alert','$http','
 					$scope.fetchInfo.time = new Date()-$scope.fetchInfo.startTime;
 					$scope.fetchInfo.count = data.data.length;
 					var No ;
-					if(data.first){
-						recordLimit = data.data.length;
-						No = 0;
-						$scope.data.data = _.map(data.data,function(value,i){
-							return _.extend(value,{_No_:++No});
-						});
-						$scope.data.btnUrl = data.btnUrl;
+					if(!lastKey){
 						$scope.data.columns = data.columns;
+						$scope.data.data = [];
+						$scope.data.btnUrl = [];
+						$(window).scrollTop(0);
+					}
+					if($scope.data.data.length ==0){
+						No = 0;
 					}else{
-						if(data.direction == "up"){
-							No = $scope.data.data[0]._No_ - data.data.length ;
-							$scope.data.data = _.map(data.data,function(value,i){
-								return _.extend(value,{_No_:No++});
-							}).concat($scope.data.data);
-							$scope.data.btnUrl = data.btnUrl.concat($scope.data.btnUrl);
-						}else{
-							No = $scope.data.data.length;
-							$scope.data.data = $scope.data.data.concat(
-								_.map(data.data,function(value,i){
-									return _.extend(value,{_No_:++No});
-								})
-							);
-							$scope.data.btnUrl = $scope.data.btnUrl.concat(data.btnUrl);
-						}
+						No = $scope.data.data[$scope.data.data.length-1]._No_;
+					}
+					//add new record
+					for(var i in data.data){
+						$scope.data.data.push(_.extend(data.data[i],{_No_:++No}));
+						$scope.data.btnUrl.push(data.btnUrl[i]);
 					}
 					$scope.data.finish = data.finish;
-					$scope.data.top = data.top;
 					if($scope.data.finish){
 						$scope.data.total=$scope.data.data.length;
 					}
@@ -200,7 +185,6 @@ app.controller('mainCtrl', ['$popover','$translate', '$scope','$alert','$http','
 				$scope.fetchInfo.time = new Date()-$scope.fetchInfo.startTime;
 				$scope.pending --;
 			});
-		fetchOption.first=false;
 	}
 	$scope.refreshData= function(){
 		$scope.navCollapsed = true;
@@ -209,27 +193,7 @@ app.controller('mainCtrl', ['$popover','$translate', '$scope','$alert','$http','
 			recordBtnPop=null;
 			$scope.selected = null;
 		}
-		fetchOption ={
-			first:true,
-			uuid:G.rv_define.uuid,
-			direction:"down",
-			limit:recordLimit,
-			search:{
-				field:$scope.search.field ? $scope.search.field.fieldName :"",
-				opt:$scope.search.opt,
-				value:$scope.search.value
-			},
-			sort:_.map($scope.sort,function(value){
-				if(value.type == "DESC"){
-					return value.column + " DESC"
-				}else{
-					return value.column
-				}
-			})
-		};
-		$scope.fetchData();
-		oldWindowTop = 0;
-		$(window).scrollTop(0);
+		$scope.fetchData(null,$scope.sort,recordLimit);
 	}
 	$scope.thClick=function(col){
 		if($scope.pending!=0){

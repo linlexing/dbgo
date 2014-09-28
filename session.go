@@ -24,6 +24,7 @@ type SessionManager struct {
 
 func init() {
 	gob.Register(map[string]interface{}{})
+	gob.Register([]interface{}{})
 	gob.Register(json.Number(""))
 	gob.Register(time.Now())
 }

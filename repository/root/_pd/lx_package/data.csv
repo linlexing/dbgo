@@ -19,6 +19,7 @@ filename,grade
 /controller/rv.js,root
 /controller/mdlopt.js,root
 /controller/watch.js,root
+/controller/watch/cache.js,root
 /model/user.js,root
 /model/dept.js,root
 /model/option.js,root

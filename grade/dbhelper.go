@@ -129,7 +129,11 @@ func (p *DBHelper) jsSelectLimit(call otto.FunctionCall) otto.Value {
 	}
 	return oftenfun.JSToValue(call.Otto, result.Object())
 }
-
+func (p *DBHelper) jsConvertSql(call otto.FunctionCall) otto.Value {
+	sql := oftenfun.AssertString(call.Argument(0))
+	tparam := oftenfun.AssertObject(call.Argument(1))
+	return oftenfun.JSToValue(call.Otto, p.ConvertSql(sql, tparam))
+}
 func (p *DBHelper) jsSelectLimitT(call otto.FunctionCall) otto.Value {
 	srcSql := oftenfun.AssertString(call.Argument(0))
 	templateParam := oftenfun.AssertObject(call.Argument(1))
@@ -145,14 +149,27 @@ func (p *DBHelper) jsSelectLimitT(call otto.FunctionCall) otto.Value {
 	}
 	return oftenfun.JSToValue(call.Otto, result.Object())
 }
+func (p *DBHelper) jsBuildSelectLimitSql(call otto.FunctionCall) otto.Value {
+	srcSql := oftenfun.AssertString(call.Argument(0))
+	pkFields := oftenfun.AssertStringArray(call.Argument(1))
+	startKeyValue := oftenfun.AssertObject(call.Argument(2))
+	selectCols := oftenfun.AssertStringArray(call.Argument(3))
+	where := oftenfun.AssertString(call.Argument(4))
+	orderby := oftenfun.AssertStringArray(call.Argument(5))
+	limit := oftenfun.AssertInteger(call.Argument(6))
+	sql, params := p.BuildSelectLimitSql(srcSql, pkFields, startKeyValue, selectCols, where, orderby, limit)
+	return oftenfun.JSToValue(call.Otto, map[string]interface{}{"sql": sql, "params": params})
+}
 func (p *DBHelper) jsExecT(call otto.FunctionCall) otto.Value {
 	sql := oftenfun.AssertString(call.Argument(0))
 	templateParam := oftenfun.AssertObject(call.Argument(1))
-	args := []interface{}{}
-	if len(call.ArgumentList) > 2 {
-		args = oftenfun.AssertValue(call.ArgumentList[2:]...)
+	params := oftenfun.AssertValue(call.ArgumentList[2:]...)
+	if len(params) == 1 {
+		if _, ok := params[0].([]interface{}); ok {
+			params = params[0].([]interface{})
+		}
 	}
-	_, err := p.ExecT(sql, templateParam, args...)
+	_, err := p.ExecT(sql, templateParam, params...)
 	if err != nil {
 		panic(err)
 	}
@@ -161,11 +178,13 @@ func (p *DBHelper) jsExecT(call otto.FunctionCall) otto.Value {
 
 func (p *DBHelper) jsExec(call otto.FunctionCall) otto.Value {
 	sql := oftenfun.AssertString(call.Argument(0))
-	args := []interface{}{}
-	if len(call.ArgumentList) > 1 {
-		args = oftenfun.AssertValue(call.ArgumentList[1:]...)
+	params := oftenfun.AssertValue(call.ArgumentList[1:]...)
+	if len(params) == 1 {
+		if _, ok := params[0].([]interface{}); ok {
+			params = params[0].([]interface{})
+		}
 	}
-	_, err := p.Exec(sql, args...)
+	_, err := p.Exec(sql, params...)
 	if err != nil {
 		panic(err)
 	}
@@ -189,9 +208,14 @@ func (p *DBHelper) jsTable(call otto.FunctionCall) otto.Value {
 	return oftenfun.JSToValue(call.Otto, tab.Object())
 }
 func (p *DBHelper) jsGetData(call otto.FunctionCall) otto.Value {
-
 	strSql := oftenfun.AssertString(call.Argument(0))
 	params := oftenfun.AssertValue(call.ArgumentList[1:]...)
+	if len(params) == 1 {
+		if _, ok := params[0].([]interface{}); ok {
+			params = params[0].([]interface{})
+		}
+	}
+
 	result, err := p.GetData(strSql, params...)
 	if err != nil {
 		panic(err)
@@ -203,6 +227,11 @@ func (p *DBHelper) jsGetDataT(call otto.FunctionCall) otto.Value {
 	strSql := oftenfun.AssertString(call.Argument(0))
 	templateParam := oftenfun.AssertObject(call.Argument(1))
 	params := oftenfun.AssertValue(call.ArgumentList[2:]...)
+	if len(params) == 1 {
+		if _, ok := params[0].([]interface{}); ok {
+			params = params[0].([]interface{})
+		}
+	}
 	result, err := p.GetDataT(strSql, templateParam, params...)
 	if err != nil {
 		panic(err)
@@ -212,6 +241,11 @@ func (p *DBHelper) jsGetDataT(call otto.FunctionCall) otto.Value {
 func (p *DBHelper) jsQueryOne(call otto.FunctionCall) otto.Value {
 	strSql := oftenfun.AssertString(call.Argument(0))
 	params := oftenfun.AssertValue(call.ArgumentList[1:]...)
+	if len(params) == 1 {
+		if _, ok := params[0].([]interface{}); ok {
+			params = params[0].([]interface{})
+		}
+	}
 	rev, err := p.QueryOne(strSql, params...)
 	if err != nil {
 		panic(err)
@@ -221,6 +255,11 @@ func (p *DBHelper) jsQueryOne(call otto.FunctionCall) otto.Value {
 func (p *DBHelper) jsQStr(call otto.FunctionCall) otto.Value {
 	strSql := oftenfun.AssertString(call.Argument(0))
 	params := oftenfun.AssertValue(call.ArgumentList[1:]...)
+	if len(params) == 1 {
+		if _, ok := params[0].([]interface{}); ok {
+			params = params[0].([]interface{})
+		}
+	}
 	rev, err := p.QueryOne(strSql, params...)
 	if err != nil {
 		panic(err)
@@ -229,21 +268,23 @@ func (p *DBHelper) jsQStr(call otto.FunctionCall) otto.Value {
 }
 func (p *DBHelper) Object() map[string]interface{} {
 	return map[string]interface{}{
-		"GetData":      p.jsGetData,
-		"GetDataT":     p.jsGetDataT,
-		"Table":        p.jsTable,
-		"Exec":         p.jsExec,
-		"ExecT":        p.jsExecT,
-		"GoExecT":      p.jsGoExecT,
-		"QueryOne":     p.jsQueryOne,
-		"QStr":         p.jsQStr,
-		"Open":         p.jsOpen,
-		"Close":        p.jsClose,
-		"Begin":        p.jsBegin,
-		"Commit":       p.jsCommit,
-		"Rollback":     p.jsRollback,
-		"SelectLimit":  p.jsSelectLimit,
-		"SelectLimitT": p.jsSelectLimitT,
+		"BuildSelectLimitSql": p.jsBuildSelectLimitSql,
+		"ConvertSql":          p.jsConvertSql,
+		"GetData":             p.jsGetData,
+		"GetDataT":            p.jsGetDataT,
+		"Table":               p.jsTable,
+		"Exec":                p.jsExec,
+		"ExecT":               p.jsExecT,
+		"GoExecT":             p.jsGoExecT,
+		"QueryOne":            p.jsQueryOne,
+		"QStr":                p.jsQStr,
+		"Open":                p.jsOpen,
+		"Close":               p.jsClose,
+		"Begin":               p.jsBegin,
+		"Commit":              p.jsCommit,
+		"Rollback":            p.jsRollback,
+		"SelectLimit":         p.jsSelectLimit,
+		"SelectLimitT":        p.jsSelectLimitT,
 	}
 }
 

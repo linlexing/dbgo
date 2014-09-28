@@ -97,7 +97,7 @@ func (t *DBTable) jsSave(call otto.FunctionCall) otto.Value {
 }
 func (t *DBTable) jsFillByID(call otto.FunctionCall) otto.Value {
 	var vals []interface{}
-	if call.Argument(0).Class() == "Array" && len(call.ArgumentList) > 1 {
+	if call.Argument(0).Class() == "Array" && len(call.ArgumentList) == 1 {
 		vals = oftenfun.AssertArray(call.Argument(0))
 	} else {
 		vals = oftenfun.AssertValue(call.ArgumentList...)

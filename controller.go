@@ -510,6 +510,14 @@ func (c *ControllerAgent) jsUserName(call otto.FunctionCall) otto.Value {
 	}
 	return oftenfun.JSToValue(call.Otto, c.UserName)
 }
+func (c *ControllerAgent) jsBroadcast(call otto.FunctionCall) otto.Value {
+	mes := SocketMessage{
+		oftenfun.AssertString(call.Argument(0)),
+		oftenfun.AssertString(call.Argument(1)),
+	}
+	SocketHub.broadcast <- mes
+	return otto.UndefinedValue()
+}
 func (c *ControllerAgent) package_UserFile() map[string]interface{} {
 	return map[string]interface{}{
 		"FileExists": func(call otto.FunctionCall) otto.Value {
@@ -565,12 +573,19 @@ func (c *ControllerAgent) package_UserFile() map[string]interface{} {
 	}
 }
 func (c *ControllerAgent) object() map[string]interface{} {
+	var remoteAddr string
+	if c.ws == nil {
+		remoteAddr = c.Request.RemoteAddr
+	} else {
+		remoteAddr = c.ws.conn.ws.RemoteAddr().String()
+	}
 	rev := map[string]interface{}{
 		"ActionName":     c.ActionName,
 		"AuthUrl":        c.jsAuthUrl,
+		"Broadcast":      c.jsBroadcast,
 		"CurrentGrade":   c.CurrentGrade.String(),
 		"ControllerName": c.ControllerName,
-		"ClientAddr":     c.Request.RemoteAddr,
+		"ClientAddr":     remoteAddr,
 		//"ConvertFillValue":  c.jsConvertFillValue,
 		"UrlAuthed":         c.jsUrlAuthed,
 		"GradeCanUse":       c.jsGradeCanUse,

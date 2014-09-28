@@ -278,7 +278,7 @@ func AssertStringArray(v otto.Value) []string {
 			case string:
 				rev[i] = tv
 			default:
-				panic(jsmvcerror.JSNotIsString)
+				panic(fmt.Errorf("value %v(%T) not is string", tv, tv))
 			}
 		}
 		return rev
@@ -321,7 +321,7 @@ func AssertString(v interface{}) string {
 	switch t := v.(type) {
 	case otto.Value:
 		if !t.IsString() {
-			panic(fmt.Errorf("the value %v not is string\n%s", v, string(debug.Stack())))
+			panic(fmt.Errorf("the value %#v not is string\n%s", v, string(debug.Stack())))
 		}
 		nv, err := t.ToString()
 		if err != nil {

@@ -162,12 +162,12 @@
 				</tr>
 			</thead>
 			<tbody >
-				<tr ng-repeat="(itemIndex,item) in data.data" ng-class="{highlight:selected==item}">
+				<tr ng-repeat="(itemIndex,item) in data.data track by getItemPK(item)" ng-class="{highlight:selected==item}" ng-click="selectedRow(item,$event)">
 					<td class="nocolumn" >{{item._No_}}</td>
 					<td align="center">
 						<input type="checkbox"/>
 					</td>
-					<td ng-repeat="column in data.columns" ng-click="selectedRow(item,$event)">
+					<td ng-repeat="column in data.columns" >
 						{{item[column.fieldName]}}
 					</td>
 				</tr>

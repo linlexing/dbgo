@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/gob"
+	"fmt"
 	"github.com/linlexing/dbgo/log"
 	"github.com/linlexing/dbgo/oftenfun"
 	"path/filepath"
@@ -14,14 +15,20 @@ import (
 )
 
 type Iterator struct {
-	dbIterator iterator.Iterator
+	projectName string
+	dbIterator  iterator.Iterator
 }
 
 func (i *Iterator) jsNext(call otto.FunctionCall) otto.Value {
 	return oftenfun.JSToValue(call.Otto, i.dbIterator.Next())
 }
+
+func (i *Iterator) jsRelease(call otto.FunctionCall) otto.Value {
+	i.dbIterator.Release()
+	return otto.UndefinedValue()
+}
 func (i *Iterator) jsKey(call otto.FunctionCall) otto.Value {
-	return oftenfun.JSToValue(call.Otto, string(i.dbIterator.Key()))
+	return oftenfun.JSToValue(call.Otto, string(i.dbIterator.Key())[len(i.projectName)+1:])
 }
 func (i *Iterator) jsValue(call otto.FunctionCall) otto.Value {
 	buf := i.dbIterator.Value()
@@ -34,9 +41,10 @@ func (i *Iterator) jsValue(call otto.FunctionCall) otto.Value {
 }
 func (i *Iterator) Object() map[string]interface{} {
 	return map[string]interface{}{
-		"Next":  i.jsNext,
-		"Key":   i.jsKey,
-		"Value": i.jsValue,
+		"Next":    i.jsNext,
+		"Key":     i.jsKey,
+		"Value":   i.jsValue,
+		"Release": i.jsRelease,
 	}
 }
 
@@ -77,6 +85,9 @@ func (c *AppCacheHub) AppCache(projectName string) *AppCache {
 }
 func (c *AppCache) jsGet(call otto.FunctionCall) otto.Value {
 	buf, err := c.hub.db.Get([]byte(c.projectName+"|"+oftenfun.AssertString(call.Argument(0))), nil)
+	if err == leveldb.ErrNotFound {
+		return otto.NullValue()
+	}
 	if err != nil {
 		panic(err)
 	}
@@ -87,31 +98,77 @@ func (c *AppCache) jsGet(call otto.FunctionCall) otto.Value {
 	}
 	return oftenfun.JSToValue(call.Otto, rev)
 }
+func (c *AppCache) jsHasPrex(call otto.FunctionCall) otto.Value {
+	iter := c.hub.db.NewIterator(util.BytesPrefix([]byte(c.projectName+"|"+oftenfun.AssertString(call.Argument(0)))), nil)
+	defer iter.Release()
+	rev := iter.Next()
+	return oftenfun.JSToValue(call.Otto, rev)
+}
+func (c *AppCache) jsDelete(call otto.FunctionCall) otto.Value {
+	err := c.hub.db.Delete([]byte(c.projectName+"|"+oftenfun.AssertString(call.Argument(0))), nil)
+	if err == nil || err == leveldb.ErrNotFound {
+		return otto.NullValue()
+	} else {
+		panic(err)
+	}
+}
 func (c *AppCache) jsPut(call otto.FunctionCall) otto.Value {
 	key := oftenfun.AssertString(call.Argument(0))
-	value := oftenfun.AssertObject(call.Argument(1))
+	value := oftenfun.AssertValue(call.Argument(1))[0]
+	if err := c.hub.db.Put([]byte(c.projectName+"|"+key), encodeVal(value), nil); err != nil {
+		panic(err)
+	}
+	return call.Argument(1)
+}
+func encodeVal(value interface{}) []byte {
 	buf := bytes.Buffer{}
 	enc := gob.NewEncoder(&buf) // Will write to network.
 	if err := enc.Encode(&value); err != nil {
 		panic(err)
 	}
-	if err := c.hub.db.Put([]byte(c.projectName+"|"+key), buf.Bytes(), nil); err != nil {
+	return buf.Bytes()
+}
+func (c *AppCache) jsBatchWrite(call otto.FunctionCall) otto.Value {
+	arr := oftenfun.AssertArray(call.Argument(0))
+	batch := new(leveldb.Batch)
+	for _, v := range arr {
+		switch tv := v.(type) {
+		case map[string]interface{}:
+			switch tv["opt"].(string) {
+			case "put":
+				batch.Put([]byte(c.projectName+"|"+tv["key"].(string)), encodeVal(tv["value"]))
+			case "delete":
+				batch.Delete([]byte(c.projectName + "|" + tv["key"].(string)))
+			default:
+				panic(fmt.Errorf("invalid opt:%v", tv["opt"]))
+			}
+
+		default:
+			panic(fmt.Errorf("the value %#v(%T) not is object", v))
+		}
+	}
+	if err := c.hub.db.Write(batch, nil); err != nil {
 		panic(err)
 	}
-	return call.Argument(1)
+	return otto.UndefinedValue()
 }
 func (c *AppCache) jsPrexIterator(call otto.FunctionCall) otto.Value {
-	return oftenfun.JSToValue(call.Otto, Iterator{
+	obj := &Iterator{
+		c.projectName,
 		c.hub.db.NewIterator(
 			util.BytesPrefix(
 				[]byte(c.projectName+"|"+oftenfun.AssertString(call.Argument(0)))),
 			nil),
-	})
+	}
+	return oftenfun.JSToValue(call.Otto, obj.Object())
 }
 func (c *AppCache) Object() map[string]interface{} {
 	return map[string]interface{}{
+		"HasPrex":      c.jsHasPrex,
+		"BatchWrite":   c.jsBatchWrite,
 		"Get":          c.jsGet,
 		"Put":          c.jsPut,
+		"Delete":       c.jsDelete,
 		"PrexIterator": c.jsPrexIterator,
 	}
 }
