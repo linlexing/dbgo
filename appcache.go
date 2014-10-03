@@ -104,6 +104,15 @@ func (c *AppCache) jsHasPrex(call otto.FunctionCall) otto.Value {
 	rev := iter.Next()
 	return oftenfun.JSToValue(call.Otto, rev)
 }
+func (c *AppCache) jsCount(call otto.FunctionCall) otto.Value {
+	iter := c.hub.db.NewIterator(util.BytesPrefix([]byte(c.projectName+"|"+oftenfun.AssertString(call.Argument(0)))), nil)
+	defer iter.Release()
+	rev := 0
+	for ok := iter.Next(); ok; ok = iter.Next() {
+		rev++
+	}
+	return oftenfun.JSToValue(call.Otto, rev)
+}
 func (c *AppCache) jsDelete(call otto.FunctionCall) otto.Value {
 	err := c.hub.db.Delete([]byte(c.projectName+"|"+oftenfun.AssertString(call.Argument(0))), nil)
 	if err == nil || err == leveldb.ErrNotFound {
@@ -166,6 +175,7 @@ func (c *AppCache) Object() map[string]interface{} {
 	return map[string]interface{}{
 		"HasPrex":      c.jsHasPrex,
 		"BatchWrite":   c.jsBatchWrite,
+		"Count":        c.jsCount,
 		"Get":          c.jsGet,
 		"Put":          c.jsPut,
 		"Delete":       c.jsDelete,

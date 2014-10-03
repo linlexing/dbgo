@@ -1,6 +1,43 @@
 var spinner;
 var recordLimit = Math.round($(window).height()/40*3);
 
+/**
+ * Find insertion point for a value val, as specified by the comparator
+ * (a function)
+ * @param sortedArr The sorted array
+ * @param val The value for which to find an insertion point (index) in the array
+ * @param comparator The comparator function to compare two values
+ */
+function findInsertionPoint(sortedArr, val, comparator) {
+   var low = 0, high = sortedArr.length;
+   var mid = -1, c = 0;
+   while(low < high)   {
+      mid = parseInt((low + high)/2);
+      c = comparator(sortedArr[mid], val);
+      if(c < 0)   {
+         low = mid + 1;
+      }else if(c > 0) {
+         high = mid;
+      }else {
+         return mid;
+      }
+      //alert("mid=" + mid + ", c=" + c + ", low=" + low + ", high=" + high);
+   }
+   return low;
+}
+function cmpValue(v1,v2){
+	if(typeof v1.getMonth === 'function'){
+		return v1.valueOf()- v2.valueOf();
+	}else{
+		if(v1 == v2){
+			return 0
+		}
+		if(v1 < v2){
+			return -1;
+		}
+		return 1;
+	}
+}
 function showSpin(){
 	var opts = {
 	  lines: 8, // The number of lines to draw
@@ -29,6 +66,55 @@ function hideSpin(){
 }
 window.WebSocket = window.WebSocket || window.MozWebSocket;
 app.controller('mainCtrl', ['$popover','$translate', '$scope','$alert','$http','$timeout',function ($popover,$translate, $scope,$alert,$http,$timeout) {
+	function createWS(){
+	    var websocket ;
+		if (window.WebSocket){
+			websocket = new ReconnectingWebSocket("wss://" + window.location.host +G.rv_watchAction);
+		    websocket.onopen = function(evt){
+  				$scope.$apply(function(){
+					$scope.offline=false;
+				});
+			};
+		    websocket.onclose =  function(evt){
+				$scope.$apply(function(){
+					$scope.offline = true;
+				});
+			};
+			websocket.onerror=function(ev){
+				console.log(ev);
+			};
+		    websocket.onmessage = function(evt){
+				if(evt.data ){
+					var evData = eval("("+evt.data+")");
+					switch(evData.opt){
+						case "insert":
+						case "upinsert":
+							$scope.$apply(function(){
+								$scope.insertRow(evData.data,evData.btnUrl);
+							});
+							break;
+						case "update":
+							$scope.$apply(function(){
+								$scope.deleteRow(evData.originData);
+								$scope.insertRow(evData.data,evData.btnUrl);
+							});
+							break;
+						case "delete":
+						case "updelete":
+							$scope.$apply(function(){
+								$scope.deleteRow(evData.originData);
+							});
+							break;
+						default:
+							throw "opt:"+evData.opt + " invalid";
+					}
+				}else{
+					console.log("websocket onmessage:");
+					console.log(evt);
+				}
+			}
+		}
+	}
 	var fetchOption;
 	$translate("LABEL").then(function(label){
 		document.title=label;
@@ -38,6 +124,53 @@ app.controller('mainCtrl', ['$popover','$translate', '$scope','$alert','$http','
 	$scope.data = {columns:[],data:[],total:-1,finish:false,btnUrl:[]};
 	$scope.selected = null;
 	var recordBtnPop = null;
+	$scope.deleteRow = function(rowData){
+		var pk = $scope.define.pk.split(",");
+		for(var i in $scope.data.data){
+			var equ = true;
+			for(var j in pk){
+				if(cmpValue($scope.data.data[i][pk[j]],rowData[pk[j]])!=0){
+					equ=false;
+					break;
+				}
+			}
+			if(equ){
+				$scope.data.data.splice(i,1);
+				$scope.data.btnUrl.splice(i,1);
+				break;
+			}
+		}
+	}
+	$scope.insertRow = function(rowData,btnUrl){
+		var pk = $scope.define.pk.split(",");
+		var sort = $scope.sort;
+		for(var i in sort){
+			var pkIndex = _.indexOf(pk,sort[i].column);
+			if(pkIndex > -1){
+				pk.splice(pkIndex,1);
+			}
+		}
+		//add pk column if not include
+		for(var i in pk){
+			sort.push({column:pk[i]});
+		}
+		console.log("sort:",sort);
+		var insertIndex = findInsertionPoint($scope.data.data,rowData,function(v1,v2){
+			for(var i in sort){
+				var colName = sort[i].column;
+				var cmp = cmpValue(v1[colName],v2[colName]);
+				if(sort[i].type=="DESC"){
+					cmp = - cmp;
+				}
+				if(cmp != 0){
+					return cmp;
+				}
+			}
+			return 0;
+		});
+		$scope.data.data.splice(insertIndex,0,rowData);
+		$scope.data.btnUrl.splice(insertIndex,0,btnUrl);
+	}
 	$scope.selectedRow = function(row,ev){
 		if($scope.selected == row){
 			recordBtnPop.toggle();
@@ -111,22 +244,8 @@ app.controller('mainCtrl', ['$popover','$translate', '$scope','$alert','$http','
 		}
 		return null;
 	}
-	$scope.onMessage=function(evt){
-		console.log("websocket onmessage:");
-		console.log(evt);
-	}
-    var websocket ;
-	if (window.WebSocket){
-	    websocket = new WebSocket("wss://" + window.location.host +G.rv_watchAction);
-	    websocket.onopen = function(evt){
-			//$scope.refreshData();
-		};
-	    websocket.onclose =  function(evt){
-			console.log("close\n");
-			console.log(evt);
-		};
-	    websocket.onmessage = $scope.onMessage;
-	}
+
+	createWS();
 	$scope.getItemPK=function(item){
 		return _.values(_.pick(item,$scope.define.pk.split(","))).join(",");
 	}
@@ -151,21 +270,15 @@ app.controller('mainCtrl', ['$popover','$translate', '$scope','$alert','$http','
 					}
 					$scope.fetchInfo.time = new Date()-$scope.fetchInfo.startTime;
 					$scope.fetchInfo.count = data.data.length;
-					var No ;
 					if(!lastKey){
 						$scope.data.columns = data.columns;
 						$scope.data.data = [];
 						$scope.data.btnUrl = [];
 						$(window).scrollTop(0);
 					}
-					if($scope.data.data.length ==0){
-						No = 0;
-					}else{
-						No = $scope.data.data[$scope.data.data.length-1]._No_;
-					}
 					//add new record
 					for(var i in data.data){
-						$scope.data.data.push(_.extend(data.data[i],{_No_:++No}));
+						$scope.data.data.push(data.data[i]);
 						$scope.data.btnUrl.push(data.btnUrl[i]);
 					}
 					$scope.data.finish = data.finish;

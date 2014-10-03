@@ -8,6 +8,7 @@ import (
 	"os"
 	"runtime/debug"
 	"strconv"
+	"time"
 )
 
 func SafeToStrings(s []interface{}) []string {
@@ -156,43 +157,70 @@ func Exists(path string) (bool, error) {
 	}
 	return false, err
 }
-func decodeObject(obj map[string]interface{}) map[string]interface{} {
-	for k, v := range obj {
-		switch stv := v.(type) {
-		case otto.Value:
-			obj[k] = decodeValue(stv)
-		case map[string]interface{}:
-			obj[k] = decodeObject(stv)
+func decodeSlice(val otto.Value) []interface{} {
+	if val.Class() != "Array" && val.Class() != "GoArray" {
+		panic(fmt.Errorf("the value %#v not is array", val))
+	}
+
+	obj := val.Object()
+	keys := obj.Keys()
+	rev := make([]interface{}, len(keys))
+	for i, key := range keys {
+		if tmp, err := obj.Get(key); err != nil {
+			panic(err)
+		} else {
+			rev[i] = decodeValue(tmp)
 		}
 	}
-	return obj
+	return rev
+}
+func decodeObject(val otto.Value) map[string]interface{} {
+	if val.Class() != "Object" {
+		panic(fmt.Errorf("the value %s not is object", val.Class()))
+	}
+	obj := val.Object()
+	rev := map[string]interface{}{}
+	for _, k := range obj.Keys() {
+		if tmp, err := obj.Get(k); err != nil {
+			panic(err)
+		} else {
+			rev[k] = decodeValue(tmp)
+		}
+	}
+	return rev
+}
+func decodeTime(v otto.Value) time.Time {
+	t, err := time.Parse(time.RFC1123, v.String())
+	if err != nil {
+		panic(err)
+	}
+	return t
 }
 func decodeValue(v otto.Value) interface{} {
 	if v.IsNull() || v.IsUndefined() {
 		return nil
 	}
-	nv, err := v.Export()
-	if err != nil {
-		panic(err)
-	}
-	switch tv := nv.(type) {
-	case map[string]interface{}:
-		return decodeObject(tv)
+	switch v.Class() {
+	case "Date":
+		return decodeTime(v)
+	case "Array", "GoArray":
+		return decodeSlice(v)
+	case "Object":
+		return decodeObject(v)
 	default:
+		nv, err := v.Export()
+		if err != nil {
+			panic(err)
+		}
 		return nv
 	}
+
 }
 func AssertObject(v otto.Value) map[string]interface{} {
 	if v.IsNull() || v.IsUndefined() {
 		return map[string]interface{}{}
 	}
-	rev := decodeValue(v)
-	switch tv := rev.(type) {
-	case map[string]interface{}:
-		return tv
-	default:
-		panic(fmt.Errorf("the value:%#v not is object", rev))
-	}
+	return decodeObject(v)
 }
 func AssertInteger(v interface{}) int {
 	switch t := v.(type) {
@@ -240,21 +268,7 @@ func AssertArray(v otto.Value) []interface{} {
 	if v.IsNull() || v.IsUndefined() {
 		return nil
 	}
-	nv, err := v.Export()
-
-	if err != nil {
-		panic(err)
-	}
-	if v.Class() != "Array" && v.Class() != "GoArray" {
-		panic(fmt.Errorf("the value %#v not is array", nv))
-	}
-	switch tv := nv.(type) {
-	case []interface{}:
-		return tv
-	default:
-		panic(fmt.Errorf("the value %#v not is array", nv))
-	}
-	return nv.([]interface{})
+	return decodeSlice(v)
 }
 func AssertStringArray(v otto.Value) []string {
 	if v.IsNull() || v.IsUndefined() {
@@ -333,6 +347,51 @@ func AssertString(v interface{}) string {
 	}
 
 }
+func encodeTime(rt *otto.Otto, rv time.Time) otto.Value {
+	tint := rv.Unix()*1000 + int64(rv.Nanosecond())/1000000
+	date1, _ := rt.Object("new Date()")
+	date1.Call("setTime", tint)
+	return date1.Value()
+}
+func encodeObject(rt *otto.Otto, rv map[string]interface{}) otto.Value {
+	rev := map[string]interface{}{}
+	for k, v := range rv {
+		rev[k] = encodeValue(rt, v)
+	}
+	v, err := rt.ToValue(rev)
+	if err != nil {
+		panic(err)
+	}
+	return v
+
+}
+func encodeSlice(rt *otto.Otto, rv []interface{}) otto.Value {
+	rev := make([]otto.Value, len(rv))
+	for i, v := range rv {
+		rev[i] = encodeValue(rt, v)
+	}
+	v, err := rt.ToValue(rev)
+	if err != nil {
+		panic(err)
+	}
+	return v
+}
+func encodeValue(rt *otto.Otto, rv interface{}) otto.Value {
+	switch tv := rv.(type) {
+	case []interface{}:
+		return encodeSlice(rt, tv)
+	case map[string]interface{}:
+		return encodeObject(rt, tv)
+	case time.Time:
+		return encodeTime(rt, tv)
+	default:
+		v, err := rt.ToValue(rv)
+		if err != nil {
+			panic(err)
+		}
+		return v
+	}
+}
 func JSToValue(rt *otto.Otto, rv interface{}) otto.Value {
 	if err, ok := rv.(error); ok {
 		panic(err)
@@ -340,20 +399,13 @@ func JSToValue(rt *otto.Otto, rv interface{}) otto.Value {
 	if rv == nil {
 		return otto.NullValue()
 	}
-	v, err := rt.ToValue(rv)
-	if err != nil {
-		panic(err)
-	}
-	return v
+	return encodeValue(rt, rv)
 }
 func AssertValue(v ...otto.Value) []interface{} {
 	result := make([]interface{}, len(v))
-	for i, v := range v {
-		t, err := v.Export()
-		if err != nil {
-			panic(err)
-		}
-		result[i] = t
+	for i, sv := range v {
+
+		result[i] = decodeValue(sv)
 	}
 	return result
 }

@@ -518,6 +518,11 @@ func (c *ControllerAgent) jsBroadcast(call otto.FunctionCall) otto.Value {
 	SocketHub.broadcast <- mes
 	return otto.UndefinedValue()
 }
+func (c *ControllerAgent) jsChannelExists(call otto.FunctionCall) otto.Value {
+	url := oftenfun.AssertString(call.Argument(0))
+	_, ok := SocketHub.connections[url]
+	return oftenfun.JSToValue(call.Otto, ok)
+}
 func (c *ControllerAgent) package_UserFile() map[string]interface{} {
 	return map[string]interface{}{
 		"FileExists": func(call otto.FunctionCall) otto.Value {
@@ -583,6 +588,7 @@ func (c *ControllerAgent) object() map[string]interface{} {
 		"ActionName":     c.ActionName,
 		"AuthUrl":        c.jsAuthUrl,
 		"Broadcast":      c.jsBroadcast,
+		"ChannelExists":  c.jsChannelExists,
 		"CurrentGrade":   c.CurrentGrade.String(),
 		"ControllerName": c.ControllerName,
 		"ClientAddr":     remoteAddr,

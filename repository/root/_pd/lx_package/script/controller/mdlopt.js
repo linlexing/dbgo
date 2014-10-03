@@ -82,9 +82,6 @@ function Client2DB(c,eleName,mdlname,oldpk,operate,data){
 			switch(operate){
 				case "add":{
 					mainTable.AddRow(data.data[mdlname][0]);
-					if(tab.RowCount()==0){
-						throw fmt.Sprintf("the pk:%#v 's record not found!",oldpk);
-					}
 					break;
 				}
 				case "edit":{
@@ -153,13 +150,14 @@ function onBeforeChange(c,db,optInfo,table,operate,rowAgent){
 	for(var i in sqlIDs){
 		var watch = {
 			sqlID:sqlIDs[i],
-			watchSql:cache.GetWatchSql(c,baseTable,sqlIDs[i])
+			watchSql:cache.GetWatchSql(c,sqlIDs[i])
 		};
 		switch(operate){
 			case "update":
 			case "delete":
-				fmt.Printf("sql is :%s\npk is :%v",watch.watchSql.sql,oldPk.concat(watch.watchSql.params));
 				var oldData = db.GetData(watch.watchSql.sql,oldPk.concat(watch.watchSql.params));
+				//print oldpk
+				console.log("opt:"+operate+",originData:"+oldData.RowCount());
 				if(oldData.RowCount()>0){
 					watch.originData = oldData.Row(0);
 				}
@@ -172,12 +170,18 @@ function sendSqlIDMessage(c,sqlID,message){
 	var rvuuids = cache.GetRvUUID(c,sqlID);
 	_.each(rvuuids,function(val){
 		//由于每个rv均有唯一的url，所以，Broadcast 这里当做send使用
-		c.Broadcast(buildWatchActionUrl(c,val),JSON.stringify(message));
+		c.Broadcast(cache.GetRvWatchUrl(c,val),JSON.stringify(message));
 	});
 
 }
-function buildWatchActionUrl(c,rvuuid){
-	return fmt.Sprintf("/%s/watch/rv/%s",c.Project.Name,rvuuid);
+function buildBtnUrl(c,btnUrls,pkFields,pkValues,table){
+	return _.map(btnUrls,function(val){
+		return c.AuthUrl(url.SetQuery(val,{
+			_pk:_.map(pkFields,function(val,idx){
+				return table.EncodeString(val,pkValues[idx]);
+			})
+		}));
+	});
 }
 function onAfterChange(c,db,optInfo,table,operate,rowAgent){
 	var baseTable = table.TableName;
@@ -206,7 +210,11 @@ function onAfterChange(c,db,optInfo,table,operate,rowAgent){
 		switch(operate){
 			case "insert":
 				if(watch.data){
-					sendSqlIDMessage(c,watch.sqlID,{opt:"insert",data:watch.data});
+					sendSqlIDMessage(c,watch.sqlID,{
+						opt:"insert",
+						data:watch.data,
+						btnUrl:buildBtnUrl(c,watch.watchSql.btnUrl,pkFields,newPk,table)
+					});
 				}
 				break;
 			case "update":
@@ -214,7 +222,12 @@ function onAfterChange(c,db,optInfo,table,operate,rowAgent){
 					if(watch.data){
 						if(!_.isEqual(watch.originData,watch.data)){
 							//记录被修改，但是可见范围没有变化
-							sendSqlIDMessage(c,watch.sqlID,{opt:"update",data:watch.data});
+							sendSqlIDMessage(c,watch.sqlID,{
+								opt:"update",
+								originData:watch.originData,
+								data:watch.data,
+								btnUrl:buildBtnUrl(c,watch.watchSql.btnUrl,pkFields,newPk,table)
+							});
 						}
 					}else{
 						//原来有，现在不可见，作为删除发送
@@ -223,7 +236,11 @@ function onAfterChange(c,db,optInfo,table,operate,rowAgent){
 				}else{
 					if(watch.data){
 						//原来不可见,现在有，作为新增发送
-						sendSqlIDMessage(c,watch.sqlID,{opt:"upinsert",originData:watch.data});
+						sendSqlIDMessage(c,watch.sqlID,{
+							opt:"upinsert",
+							data:watch.data,
+							btnUrl:buildBtnUrl(c,watch.watchSql.btnUrl,pkFields,newPk,table)
+						});
 					}
 				}
 				break;
@@ -268,7 +285,7 @@ function RenderMdlOpt(c,mdlname,operate,fieldsets,pk,args){
 					}
 				}
 			}
-			args.SaveUrl = c.AuthUrl(url.SetQuery("mdlopt/save",{_n:c.GetTag("Element").name,_pk:pk}));
+			args.SaveUrl = c.AuthUrl(url.SetQuery("mdlopt/save",{_n:c.GetTag("Element").name}));
 			break;
 		}
 		case "edit":

@@ -59,6 +59,10 @@ func package_url() map[string]interface{} {
 				switch tv := value.(type) {
 				case string:
 					q.Set(key, tv)
+				case []interface{}:
+					for _, v := range tv {
+						q.Add(key, v.(string))
+					}
 				case []string:
 					for _, v := range tv {
 						q.Add(key, v)

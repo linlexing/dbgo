@@ -69,6 +69,7 @@ func main() {
 	http.Handle("/public/", httpgzip.NewHandler(http.StripPrefix("/public", http.FileServer(http.Dir(filepath.Join(AppPath, "public"))))))
 	http.HandleFunc("/", handle)
 	log.INFO.Printf("the http server listen on %v\nstatic file server on path:%v\n", c.Port, filepath.Join(AppPath, "public"))
-	log.INFO.Fatal(http.ListenAndServeTLS(fmt.Sprintf(":%v", c.Port), "cert.pem", "key.pem", nil))
+	log.INFO.Fatal(http.ListenAndServeTLS(fmt.Sprintf(":%v", c.Port), "cert/mycert1.cer", "cert/mycert1.key", nil))
+	//log.INFO.Fatal(http.ListenAndServe(fmt.Sprintf(":%v", c.Port), nil))
 
 }

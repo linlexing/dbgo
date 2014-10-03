@@ -30,6 +30,8 @@
 <#set .Translate_en "SELECT" "Select"#>
 <#set .Translate_en "NEXT" "Next"#>
 <#set .Translate_en "RECORDBTN_TITLE" "'s process button"#>
+<#set .Translate_en "OfflineTooltip" "the network offline?click to refresh"#>
+
 <#if not .Translate_cn#>
 	<#set . "Translate_cn" mkMap#>
 <#end#>
@@ -54,6 +56,7 @@
 <#set .Translate_cn "SELECT" "选择"#>
 <#set .Translate_cn "NEXT" "下一批"#>
 <#set .Translate_cn "RECORDBTN_TITLE" "的操作"#>
+<#set .Translate_cn "OfflineTooltip" "网络断线，点击尝试重新刷新"#>
 <#append . "OtherJSFiles" (static "recordview/page.js")#>
 
 <#template "pjheader.html" .#>
@@ -82,7 +85,7 @@
 		</button>
 	</h3>
 	<div class="popover-content text-center">
-		<a class="btn btn-default btn-sm" ng-repeat="(btnIndex,oneButton) in btn" ng-href="{{oneButton.url}}" target="_blank" ng-bind-html="oneButton['label_'+$translate.use()]||oneButton.label_en||oneButton.label_cn"></a>
+		<a class="btn btn-default btn-sm" ng-repeat="(btnIndex,oneButton) in btn" ng-click="$hide()" ng-href="{{oneButton.url}}" target="_blank" ng-bind-html="oneButton['label_'+$translate.use()]||oneButton.label_en||oneButton.label_cn"></a>
 	</div>
 </div>
 </script>
@@ -114,10 +117,12 @@
 				<select class="form-control" ng-model="search.opt" ng-options="item|translate for item in searchOpts">
 				</select>
 				<input type="text" class="form-control" placeholder="{{'SEARCH'|translate}}" ng-model="search.value"/>
-				<button type="submit" class="btn btn-default" ng-click="refreshData()" ng-disabled="pending">
+				<button type="submit" class="btn btn-default" ng-click="refreshData()" ng-disabled="pending" ng-show="!offline">
 					<i class="fa fa-search"></i>
 				</button>
-
+				<button type="submit" class="btn btn-default" ng-click="refreshData()" ng-disabled="pending" ng-show="offline" data-container='body' data-animation="am-flip-x" bs-tooltip data-title="{{'OfflineTooltip'|translate}}">
+					<i class="fa fa-exclamation text-danger"></i>
+				</button>
 			</form>
 			<form class="navbar-form navbar-right" role="search">
 				<div class="form-group">
@@ -163,7 +168,7 @@
 			</thead>
 			<tbody >
 				<tr ng-repeat="(itemIndex,item) in data.data track by getItemPK(item)" ng-class="{highlight:selected==item}" ng-click="selectedRow(item,$event)">
-					<td class="nocolumn" >{{item._No_}}</td>
+					<td class="nocolumn" >{{itemIndex+1}}</td>
 					<td align="center">
 						<input type="checkbox"/>
 					</td>

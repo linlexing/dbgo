@@ -40,7 +40,7 @@ exports.show=function(c){
 		db.Close();
 	}
 }
-function getWatchSql(db,dataSrc,templateParam,pkFields,lastKey,columns,sort){
+function getWatchSql(db,btnUrl,baseTable,dataSrc,templateParam,pkFields,lastKey,columns,sort){
 	var where  =[];
 	for(var i in pkFields){
 		where.push(fmt.Sprintf("%s = {{ph}}",pkFields[i]));
@@ -51,6 +51,8 @@ function getWatchSql(db,dataSrc,templateParam,pkFields,lastKey,columns,sort){
 	}
 	var rev =db.BuildSelectLimitSql(dataSrc,pkFields,lastKey,columns,whereStr,sort,1);
 	rev.sql = db.ConvertSql(rev.sql,templateParam);
+	rev.table=baseTable;
+	rev.btnUrl = btnUrl;
 	return rev;
 }
 exports.fetch=function(c){
@@ -76,23 +78,25 @@ exports.fetch=function(c){
 			};
 			var sortStrArray=[];
 			var descSortStrArray=[];
-			if( fetchOption.sort.length>0){
-				for(var i in fetchOption.sort){
-					if(fetchOption.sort[i].type == "DESC"){
-						sortStrArray.push(fetchOption.sort[i].column + " DESC");
-						descSortStrArray.push(fetchOption.sort[i].column);
-					}else{
-						sortStrArray.push(fetchOption.sort[i].column);
-						descSortStrArray.push(fetchOption.sort[i].column + " DESC");
-					}
+			//主键值必须作为排序字段加入，并且是倒序，才可以在生成的sql语句中加入主键值的判断
+			var unusedPk = rvPKFields.concat();
+			for(var i in fetchOption.sort){
+				var pkIndex = _.indexOf(unusedPk,fetchOption.sort[i].column);
+				if(pkIndex >-1){
+					unusedPk.splice(pkIndex,1);
 				}
-			}else{
-				//如果没有排序，则是主键值的倒序
-				for(var i in rvPKFields){
-					descSortStrArray.push(rvPKFields[i] + " DESC");
+				if(fetchOption.sort[i].type == "DESC"){
+					sortStrArray.push(fetchOption.sort[i].column + " DESC");
+					descSortStrArray.push(fetchOption.sort[i].column);
+				}else{
+					sortStrArray.push(fetchOption.sort[i].column);
+					descSortStrArray.push(fetchOption.sort[i].column + " DESC");
 				}
 			}
-
+			//确保主键值加入排序
+			for(var i in unusedPk){
+				descSortStrArray.push(unusedPk[i] + " DESC");
+			}
 			if(rvTabRow.datasrc!= ""){
 				var tab = db.SelectLimitT(
 					rvTabRow.datasrc,
@@ -118,18 +122,21 @@ exports.fetch=function(c){
 					);
 				}
 				rev.btnUrl = [];
+				var btnUrlList = [];
+				for(var i in rvBtn){
+					if(rvBtn[i].bindrecord){
+						btnUrlList.push(url.SetQuery(getElementUrl(db,rvBtn[i].elename),{_ele:rvBtn[i].elename}));
+					}
+				}
 				for(var iRowIndex = 0 ;iRowIndex < tab.RowCount();iRowIndex++){
 					var iCount = 0;
 					var oneUrlArr =[];
-					for(var i in rvBtn){
-						if(rvBtn[i].bindrecord){
-							var btnUrl = null;
-							var eleUrl = getElementUrl(db,rvBtn[i].elename);
-							if(eleUrl){
-								btnUrl = c.AuthUrl(url.SetQuery(eleUrl,{_ele:rvBtn[i].elename,_pk:tab.GetStrings(iRowIndex,rvPKFields)}));
-							}
-							oneUrlArr.push(btnUrl);
+					for(var i in btnUrlList){
+						var btnUrl=null;
+						if(btnUrlList[i]){
+							btnUrl = c.AuthUrl(url.SetQuery(btnUrlList[i],{_pk:tab.GetStrings(iRowIndex,rvPKFields)}));
 						}
+						oneUrlArr.push(btnUrl);
 					}
 					rev.btnUrl.push(oneUrlArr);
 				}
@@ -146,9 +153,11 @@ exports.fetch=function(c){
 							rvPKFields
 						)
 					}
-					var watchSql = getWatchSql(db,rvTabRow.datasrc,templateParam,rvPKFields,endKeyValues,null,descSortStrArray);
-					var sqlID = convert.EncodeBase64(sha256.Sum256(convert.Str2Bytes(watchSql.sql+JSON.stringify(watchSql.params))));
-					cache.Put(c,rvTabRow.basetable,watchSql,fetchOption.uuid);
+					var watchSql = getWatchSql(db,btnUrlList,rvTabRow.basetable,rvTabRow.datasrc,templateParam,rvPKFields,endKeyValues,null,descSortStrArray);
+					//同时将watchSql存入Session中，用于websocket断开后重新连接时再次订阅
+					c.Session.Set("watchSql|"+fetchOption.uuid,watchSql);
+					//写缓存就是订阅
+					cache.Put(c,watchSql,fetchOption.uuid);
 				}
 			}
 		}else{
