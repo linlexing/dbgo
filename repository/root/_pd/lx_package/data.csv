@@ -7,6 +7,8 @@ filename,grade
 /crypto_rand.js,root
 /url.js,root
 /uuid.js,root
+/appcache_coll.js,root
+/oftenfun.js,root
 /intercept/element.js,root
 /intercept/render.js,root
 /controller/login.js,root
@@ -19,7 +21,9 @@ filename,grade
 /controller/rv.js,root
 /controller/mdlopt.js,root
 /controller/watch.js,root
-/controller/watch/cache.js,root
+/controller/watch/watchhub.js,root
 /model/user.js,root
 /model/dept.js,root
 /model/option.js,root
+/model/lx_rv.js,root
+/model/lx_rvterm.js,root

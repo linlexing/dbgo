@@ -10,6 +10,15 @@ app.controller('frmModelDataCtrl', ['$scope','$translate','$http','$alert',funct
 	$scope.MainRowIsUnchanged = function(){
 		return angular.equals($scope.MainRow ,$scope.OriginData[G.mdlOption.mdlname][0]);
 	}
+	$scope.getColumn=function(colName){
+		for(var i in $scope.MainDefine.columns){
+			var col = $scope.MainDefine.columns[i];
+			if(col.Name == colName){
+				return col;
+			}
+		}
+		throw "can't find column:"+colName;
+	}
 	$scope.getColumnLabel=function(colName){
 		for(var i in $scope.MainDefine.columns){
 			var col = $scope.MainDefine.columns[i];
@@ -24,6 +33,12 @@ app.controller('frmModelDataCtrl', ['$scope','$translate','$http','$alert',funct
 			}
 		}
 		return "";
+	}
+	$scope.getRequired=function(colName){
+		return _.contains($scope.MainDefine.pk,colName);
+	}
+	$scope.getReadonly=function(colName){
+		return Option.operate=='delete' || Option.operate=='browse'||$scope.getColumn(colName).Perm=='readonly';
 	}
 	$scope.save = function(){
 		$scope.mdlData = {
@@ -53,3 +68,37 @@ app.controller('frmModelDataCtrl', ['$scope','$translate','$http','$alert',funct
 		}
 	});
 }]);
+
+app.directive("lxField", ["$compile","$translate",function ($compile,$translate) {
+	return {
+	    restrict: "E",
+		scope:{
+			fieldName:"=",
+		},
+		replace:true,
+		template:[
+			"<div class='form-group' ng-show=\"define.Perm!='hidden'\">",
+				"<label class='col-sm-2 control-label'>{{fieldLabel()}}:</label>",
+				"<div class='col-sm-10'>",
+					"<input type='text' class='form-control' ng-required='required' ng-model=\"record[fieldName]\" ng-readonly='readonly' ></input>",
+				"</div>",
+			"</div>"].join(""),
+		link:function(scope,element,attris){
+			scope.define = scope.$parent.getColumn(scope.fieldName);
+			scope.required = scope.$parent.getRequired(scope.fieldName);
+			scope.readonly = scope.$parent.getReadonly(scope.fieldName);
+			scope.fieldLabel = function(){
+				if(!scope.define.Desc || !scope.define.Desc.Label){
+					return scope.define.Name;
+				}
+				if( scope.define.Desc.Label[$translate.use()]){
+					return scope.define.Desc.Label[$translate.use()];
+				}
+				return scope.define.Desc.Label.en||scope.define.Desc.Label.cn;
+			}
+			scope.record = scope.$parent.MainRow;
+		}
+	};
+}]);
+
+

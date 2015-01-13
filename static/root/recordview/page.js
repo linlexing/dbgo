@@ -271,6 +271,7 @@ app.controller('mainCtrl', ['$popover','$translate', '$scope','$alert','$http','
 					$scope.fetchInfo.time = new Date()-$scope.fetchInfo.startTime;
 					$scope.fetchInfo.count = data.data.length;
 					if(!lastKey){
+						console.log(data);
 						$scope.data.columns = data.columns;
 						$scope.data.data = [];
 						$scope.data.btnUrl = [];

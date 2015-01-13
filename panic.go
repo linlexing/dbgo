@@ -35,6 +35,6 @@ func PanicFilter(c *ControllerAgent, fc []Filter) {
 // This function handles a panic in an action invocation.
 // It cleans up the stack trace, logs it, and displays an error page.
 func handleInvocationPanic(c *ControllerAgent, err interface{}) {
-	log.TRACE.Printf("panic err:%s\n", err)
+	log.TRACE.Printf("panic err:%s\n%s", err, string(debug.Stack()))
 	c.Result = c.RenderError(NewError(debug.Stack(), err))
 }

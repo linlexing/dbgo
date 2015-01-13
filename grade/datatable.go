@@ -124,6 +124,7 @@ func (d *DataTable) Object() map[string]interface{} {
 		"AddColumn":     d.jsAddColumn,
 		"AddRow":        d.jsAddRow,
 		"AddValues":     d.jsAddValues,
+		"Clear":         d.jsClear,
 		"ColumnIndex":   d.jsColumnIndex,
 		"ColumnNames":   d.jsColumnNames,
 		"Columns":       d.jsColumns,
@@ -156,6 +157,10 @@ func (d *DataTable) Object() map[string]interface{} {
 }
 func (d *DataTable) jsAcceptChange(call otto.FunctionCall) otto.Value {
 	d.AcceptChange()
+	return otto.UndefinedValue()
+}
+func (d *DataTable) jsClear(call otto.FunctionCall) otto.Value {
+	d.Clear()
 	return otto.UndefinedValue()
 }
 func (d *DataTable) jsAsCsv(call otto.FunctionCall) otto.Value {

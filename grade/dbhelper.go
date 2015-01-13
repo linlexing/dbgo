@@ -15,6 +15,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"runtime/debug"
 	"strings"
 	"time"
 )
@@ -266,6 +267,26 @@ func (p *DBHelper) jsQStr(call otto.FunctionCall) otto.Value {
 	}
 	return oftenfun.JSToValue(call.Otto, oftenfun.SafeToString(rev))
 }
+func (p *DBHelper) jsQColumnsT(call otto.FunctionCall) otto.Value {
+	strSql := oftenfun.AssertString(call.Argument(0))
+	templateParam := oftenfun.AssertObject(call.Argument(1))
+	params := oftenfun.AssertValue(call.ArgumentList[2:]...)
+	if len(params) == 1 {
+		if _, ok := params[0].([]interface{}); ok {
+			params = params[0].([]interface{})
+		}
+	}
+	rows, err := p.QueryT(strSql, templateParam, params...)
+	if err != nil {
+		panic(err)
+	}
+	defer rows.Close()
+	cols, err := rows.Columns()
+	if err != nil {
+		panic(err)
+	}
+	return oftenfun.JSToValue(call.Otto, cols)
+}
 func (p *DBHelper) Object() map[string]interface{} {
 	return map[string]interface{}{
 		"BuildSelectLimitSql": p.jsBuildSelectLimitSql,
@@ -278,6 +299,7 @@ func (p *DBHelper) Object() map[string]interface{} {
 		"GoExecT":             p.jsGoExecT,
 		"QueryOne":            p.jsQueryOne,
 		"QStr":                p.jsQStr,
+		"QColumnsT":           p.jsQColumnsT,
 		"Open":                p.jsOpen,
 		"Close":               p.jsClose,
 		"Begin":               p.jsBegin,
@@ -289,6 +311,13 @@ func (p *DBHelper) Object() map[string]interface{} {
 }
 
 func (ahelp *DBHelper) Import(pathName string) error {
+	defer func() {
+		if rec := recover(); rec != nil {
+			fmt.Printf("panic error:%s\n", rec)
+			debug.PrintStack()
+			panic(rec)
+		}
+	}()
 	configFileName := filepath.Join(pathName, "config.json")
 	defineFileName := filepath.Join(pathName, "define.json")
 	dataCsvFileName := filepath.Join(pathName, "data.csv")
@@ -466,7 +495,7 @@ func importFromCsv(pathName string, rCSV *csv.Reader, table *DBTable, config *du
 					return err
 				}
 				if tv == nil {
-					addValues[icolIndex] = tv
+					addValues[icolIndex] = nil //不能使用tv，因为其是[]byte类型的nil
 
 				} else {
 					switch table.Columns[icolIndex].DataType {

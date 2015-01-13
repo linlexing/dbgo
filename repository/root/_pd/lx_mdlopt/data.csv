@@ -3,3 +3,8 @@ role_edit,root,lx_role,edit
 role_delete,root,lx_role,delete
 role_add,root,lx_role,add
 role_browse,root,lx_role,browse
+rvterm_add_public,root,lx_rvterm,add
+rvterm_add_private,root,lx_rvterm,add
+rvterm_edit,root,lx_rvterm,edit
+rvterm_delete,root,lx_rvterm,delete
+rvterm_browse,root,lx_rvterm,browse

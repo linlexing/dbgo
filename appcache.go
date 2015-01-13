@@ -121,7 +121,7 @@ func (c *AppCache) jsDelete(call otto.FunctionCall) otto.Value {
 		panic(err)
 	}
 }
-func (c *AppCache) jsPut(call otto.FunctionCall) otto.Value {
+func (c *AppCache) jsSet(call otto.FunctionCall) otto.Value {
 	key := oftenfun.AssertString(call.Argument(0))
 	value := oftenfun.AssertValue(call.Argument(1))[0]
 	if err := c.hub.db.Put([]byte(c.projectName+"|"+key), encodeVal(value), nil); err != nil {
@@ -144,7 +144,7 @@ func (c *AppCache) jsBatchWrite(call otto.FunctionCall) otto.Value {
 		switch tv := v.(type) {
 		case map[string]interface{}:
 			switch tv["opt"].(string) {
-			case "put":
+			case "set":
 				batch.Put([]byte(c.projectName+"|"+tv["key"].(string)), encodeVal(tv["value"]))
 			case "delete":
 				batch.Delete([]byte(c.projectName + "|" + tv["key"].(string)))
@@ -177,7 +177,7 @@ func (c *AppCache) Object() map[string]interface{} {
 		"BatchWrite":   c.jsBatchWrite,
 		"Count":        c.jsCount,
 		"Get":          c.jsGet,
-		"Put":          c.jsPut,
+		"Set":          c.jsSet,
 		"Delete":       c.jsDelete,
 		"PrexIterator": c.jsPrexIterator,
 	}

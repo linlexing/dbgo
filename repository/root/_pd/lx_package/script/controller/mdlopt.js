@@ -1,6 +1,16 @@
 var fmt = require("/fmt.js");
 var url = require("/url.js");
-var cache = require("watch/cache.js");
+var watchhub = require("watch/watchhub.js");
+function fireEvent(c,mdlname,evName,evData){
+	var mdlJS = safeRequire("/model/" + mdlname + ".js");
+	if(mdlJS&&mdlJS[evName]){
+		mdlJS[evName](c,evData);
+		return evData;
+	}else{
+		return false;
+	}
+
+}
 function getTableDefine(tab){
 	rev = {};
 	rev.columns = [];
@@ -13,11 +23,9 @@ function getTableDefine(tab){
 }
 //从数据库取出客户端所需的数据和结构
 function DB2Client(c,mdlname,operate,pk){
-	var mdlJS = safeRequire("/model/" + mdlname + ".js");
 	var rev={};
-	if(mdlJS&&mdlJS.onDB2Client){
-		var ev = {modelName:mdlname,operate:operate,pk:pk,data:{}};
-		mdlJS.onDB2Client(ev);
+	var ev = {modelName:mdlname,operate:operate,pk:pk,data:{}};
+	if(fireEvent(c,mdlname,"onDB2Client",ev)){
 		rev = ev.data;
 	}else{
 		var tab= c.DBModel(mdlname)[0];
@@ -52,7 +60,6 @@ function DB2Client(c,mdlname,operate,pk){
 }
 //将客户端数据保存到数据库中
 function Client2DB(c,eleName,mdlname,oldpk,operate,data){
-	var mdlJS = safeRequire("/model/" + mdlname + ".js");
 	var dataSet ;
 	var db;
 	var mainTable;
@@ -68,9 +75,8 @@ function Client2DB(c,eleName,mdlname,oldpk,operate,data){
 		Time:new Date()
 	};
 	try{
-		if(mdlJS&&mdlJS.onClient2DB){
-			var ev = {modelName:mdlname,oldpk:oldpk,operate:operate,data:data,dataSet:null};
-			mdlJS.onClient2DB(ev);
+		var ev = {modelName:mdlname,oldpk:oldpk,operate:operate,data:data,dataSet:null};
+		if(fireEvent(c,mdlname,"onClient2DB",ev)){
 			dataSet = ev.dataSet;
 			mainTable = dataSet[0];
 			db = mainTable.DBHelper();
@@ -135,7 +141,7 @@ function Client2DB(c,eleName,mdlname,oldpk,operate,data){
 }
 function onBeforeChange(c,db,optInfo,table,operate,rowAgent){
 	var baseTable = table.TableName;
-	var sqlIDs = cache.GetTableSql(c,baseTable);
+	var sqlIDs = watchhub.GetTable(c,baseTable);
 	var pkFields = table.PK();
 	rowAgent.watch = [];
 	var oldPk=[];
@@ -150,7 +156,7 @@ function onBeforeChange(c,db,optInfo,table,operate,rowAgent){
 	for(var i in sqlIDs){
 		var watch = {
 			sqlID:sqlIDs[i],
-			watchSql:cache.GetWatchSql(c,sqlIDs[i])
+			watchSql:watchhub.GetWatch(c,sqlIDs[i])
 		};
 		switch(operate){
 			case "update":
@@ -166,11 +172,14 @@ function onBeforeChange(c,db,optInfo,table,operate,rowAgent){
 		rowAgent.watch.push(watch);
 	}
 }
+function GetWSUrl(c,wsID){
+	return fmt.Sprintf("/%s/watch/rv/%s",c.Project.Name,wsID);
+}
 function sendSqlIDMessage(c,sqlID,message){
-	var rvuuids = cache.GetRvUUID(c,sqlID);
+	var rvuuids = watchhub.GetWSID(c,sqlID);
 	_.each(rvuuids,function(val){
 		//由于每个rv均有唯一的url，所以，Broadcast 这里当做send使用
-		c.Broadcast(cache.GetRvWatchUrl(c,val),JSON.stringify(message));
+		c.Broadcast(GetWSUrl(c,val),JSON.stringify(message));
 	});
 
 }
@@ -252,14 +261,36 @@ function onAfterChange(c,db,optInfo,table,operate,rowAgent){
 		}
 	}
 }
-function convertFillValue(c,dataType,fillValue){
+function convertFillValue(c,mdlname,colName,dataType,fillValue){
 	if(fillValue===undefined){
 		return undefined;
 	}
 	if(fillValue){
-		return eval("("+fillValue+")");
+		try{
+			return eval("("+fillValue+")");
+		}catch(exception){
+			throw fmt.Sprintf("convert model [%s] column [%s] fill value:[%s] error\n%s",mdlname,colName,fillValue,exception);
+			//如果出错，则作为字符串返回
+			//return fillValue;
+		}
 	}else{
 		return null;
+	}
+}
+function fillDefault(c,mdlname,fieldsets,columns,mainRow){
+	//fill fieldsets
+	for(var fieldName in fieldsets){
+		for(var colIndex in columns){
+			var column = columns[colIndex];
+			if( column.Name == fieldName){
+				column.Perm = fieldsets[fieldName].perm;
+				var v = convertFillValue(c,mdlname,column.Name,column.DataType,fieldsets[fieldName].fill);
+				if(v !== undefined){
+					mainRow[column.Name]= v;
+				}
+				break;
+			}
+		}
 	}
 }
 function RenderMdlOpt(c,mdlname,operate,fieldsets,pk,args){
@@ -272,19 +303,7 @@ function RenderMdlOpt(c,mdlname,operate,fieldsets,pk,args){
 			if(args.model[mdlname].data.length==0){
 				throw fmt.Sprintf("the model %q default new record not found,the pk is :%v",mdlname,pk);
 			}
-			//fill fieldsets
-			for(var fieldName in fieldsets){
-				for(var colIndex in args.model[mdlname].define.columns){
-					if( args.model[mdlname].define.columns[colIndex].Name == fieldName){
-						args.model[mdlname].define.columns[colIndex].Perm = fieldsets[fieldName].perm;
-						var v = convertFillValue(c,args.model[mdlname].define.columns[colIndex].DataType,fieldsets[fieldName].fill);
-						if(v !== undefined){
-							args.model[mdlname].data[0][args.model[mdlname].define.columns[colIndex].Name]= v;
-						}
-						break;
-					}
-				}
-			}
+			fillDefault(c,mdlname,fieldsets,args.model[mdlname].define.columns,args.model[mdlname].data[0]);
 			args.SaveUrl = c.AuthUrl(url.SetQuery("mdlopt/save",{_n:c.GetTag("Element").name}));
 			break;
 		}
@@ -299,15 +318,7 @@ function RenderMdlOpt(c,mdlname,operate,fieldsets,pk,args){
 				throw fmt.Sprintf("not found model %q record,the pk is :%v",mdlname,pk);
 			}
 			//fill fieldsets
-			for(var fieldName in fieldsets){
-				for(var colIndex in args.model[mdlname].define.columns){
-					if( args.model[mdlname].define.columns[colIndex].Name == fieldName){
-						args.model[mdlname].define.columns[colIndex].Perm = fieldsets[fieldName].perm;
-						args.model[mdlname].define.columns[colIndex].Fill =convertFillValue(c,fieldsets[fieldName].fill);
-						break;
-					}
-				}
-			}
+			fillDefault(c,mdlname,fieldsets,args.model[mdlname].define.columns,args.model[mdlname].data[0]);
 			args.SaveUrl = c.AuthUrl(url.SetQuery("mdlopt/save",{_n:c.GetTag("Element").name,_pk:pk}));
 			break;
 		}
@@ -315,6 +326,7 @@ function RenderMdlOpt(c,mdlname,operate,fieldsets,pk,args){
 			throw fmt.Sprintf("the operate %q invalid!",operate);
 		}
 	}
+	fireEvent(c,mdlname,"onRender",args);
 	var tName = "model/" + mdlname+".html";
 	if(c.TemplateExists(tName)){
 		c.RenderTemplate(tName,args);
@@ -328,14 +340,38 @@ exports.show=function(c){
 	var mdlopt = c.DBModel("lx_mdlopt")[0];
 	var db = mdlopt.DBHelper();
 	var pk = c.QueryValues()._pk;
+	var _add = c.QueryValues()._add;
+	var addition={}
+	var Element = c.GetTag("Element");
+	if(_add && _add.length>0){
+		addition = c.Session.Get(_add[0]);
+	}
 	db.Open();
 	try{
-		mdlopt.FillByID(c.GetTag("Element").name);
+		mdlopt.FillByID(Element.name);
 		if(mdlopt.RowCount() != 1){
 			c.RenderError(fmt.Sprintf("the model operate:%q not found!",c.GetTag("Element").name));
 		}else{
 			var row = mdlopt.Row(0);
-			RenderMdlOpt(c,row.mdlname,row.operate,row.fieldsets?eval("("+row.fieldsets+")"):{},pk);
+			var fieldsets = {};
+			if(row.fieldsets){
+				try{
+					fieldsets = eval("("+row.fieldsets+")");
+				}catch(exception){
+					throw fmt.Sprintf("element [%s] fieldsets %s decode error\n%s",Element.name,row.fieldsets,exception);
+				}
+			}
+
+			if(addition.fill){
+				_.each(addition.fill,function(value,key){
+					//如果没有自动填充的值，则从附加参数中取
+					if(!fieldsets[key] || !fieldsets[key].fill){
+						fieldsets[key]=fieldsets[key]||{};
+						fieldsets[key].fill = value;
+					}
+				});
+			}
+			RenderMdlOpt(c,row.mdlname,row.operate,fieldsets,pk);
 		}
 	}finally{
 		db.Close();
@@ -361,6 +397,8 @@ exports.save=function(c){
 			case "edit":
 			case "delete":{
 				Client2DB(c,eleName,row.mdlname,pk,row.operate,c.JsonBody);
+				//触发onSave事件
+				fireEvent(c,row.mdlname,"onSave",{pk:pk,eleName:eleName,operate:row.operate,mdlname:row.mdlname});
 				break;
 			}
 			default:{

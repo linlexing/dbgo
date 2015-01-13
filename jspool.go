@@ -67,6 +67,8 @@ func package_url() map[string]interface{} {
 					for _, v := range tv {
 						q.Add(key, v)
 					}
+				case nil:
+
 				default:
 					panic(fmt.Errorf("the value %#v not is string or []string", value))
 				}

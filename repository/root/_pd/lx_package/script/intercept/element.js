@@ -40,6 +40,8 @@ exports.Intercept = function(c,filter){
 			Element.category_en_clear = Element.category_en_clear||Element.category_cn_clear;
 			Element.category_cn_clear = Element.category_cn_clear||Element.category_en_clear;
 			c.SetTag("Element",Element);
+		}else{
+			throw fmt.Sprintf("the element %s not exists!",ele);
 		}
 	}
 	if(!c.HasResult() && filter.length>0){

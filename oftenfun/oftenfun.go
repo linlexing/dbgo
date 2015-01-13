@@ -334,6 +334,9 @@ func AssertByteArray(value otto.Value) []byte {
 func AssertString(v interface{}) string {
 	switch t := v.(type) {
 	case otto.Value:
+		if t.IsNull() || t.IsUndefined() {
+			return ""
+		}
 		if !t.IsString() {
 			panic(fmt.Errorf("the value %#v not is string\n%s", v, string(debug.Stack())))
 		}

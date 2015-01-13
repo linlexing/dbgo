@@ -8,10 +8,10 @@
 <#set .G "userName" (.c.Session.Get "user.name")#>
 
 <#if not .PackCSSDest#>
-	<#set . "PackCSSDest" "/public/css/pjheader_pack.css"#>
+	<#set . "PackCSSDest" "/public/pjheader_pack.css"#>
 <#end#>
 <#if not .PackJSDest#>
-	<#set . "PackJSDest" "/public/js/pjheader_pack.js"#>
+	<#set . "PackJSDest" "/public/pjheader_pack.js"#>
 <#end#>
 <#if not .Translate_en#>
 	<#set . "Translate_en" mkMap#>
@@ -24,7 +24,9 @@
 <#set .Translate_en "CLOSE" "Close"#>
 <#set .Translate_en "ELEMENT_CATEGORY" .c.Tag.Element.category_en_clear#>
 <#set .Translate_en "ELEMENT_LABEL" .c.Tag.Element.label_en_clear#>
-<#set .Translate_en "Title" .c.Tag.Element.label_en_clear#>
+<#if not .Translate_en.Title#>
+	<#set .Translate_en "Title" .c.Tag.Element.label_en_clear#>
+<#end#>
 <#set .Translate_en "LOGOUT" "Logout"#>
 
 <#if not .Translate_cn#>
@@ -37,13 +39,15 @@
 <#set .Translate_cn "CLOSE" "关闭"#>
 <#set .Translate_cn "ELEMENT_CATEGORY" .c.Tag.Element.category_cn_clear#>
 <#set .Translate_cn "ELEMENT_LABEL" .c.Tag.Element.label_cn_clear#>
-<#set .Translate_cn "Title" .c.Tag.Element.label_cn_clear#>
+<#if not .Translate_cn.Title#>
+	<#set .Translate_cn "Title" .c.Tag.Element.label_cn_clear#>
+<#end#>
 <#set .Translate_cn "LOGOUT" "重新登录"#>
 
-<#append . "OtherPackPublicJS" "public/js/abn_tree_directive.js"#>
+<#append . "OtherPackPublicJS" "/public/angular-bootstrap-nav-tree/dist/abn_tree_directive.js"#>
 <#append . "OtherPackStaticJS" (static "pjheader/page.js")#>
 
-<#append . "OtherPackPublicCSS" "/public/css/abn_tree.css"#>
+<#append . "OtherPackPublicCSS" "/public/angular-bootstrap-nav-tree/dist/abn_tree.css"#>
 <#append . "OtherPackStaticCSS" (static "pjheader/page.css")#>
 
 <#append . "OtherJSFiles" (userFile "sys/curele.js")#>

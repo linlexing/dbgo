@@ -1,0 +1,31 @@
+[
+	{
+		"orderno":"001",
+		"elename":"rvterm_add_public",
+		"label_en":"<i class='fa fa-plus'></i> Add",
+		"label_cn":"<i class='fa fa-plus'></i> 新增",
+		"bindrecord":false
+	},
+	{
+		"orderno":"002",
+		"elename":"rvterm_edit",
+		"label_en":"<i class='fa fa-edit'></i> edit template",
+		"label_cn":"<i class='fa fa-edit'></i> 修改",
+		"bindrecord":true
+	},
+	{
+		"orderno":"003",
+		"elename":"rvterm_browse",
+		"label_en":"<i class='fa fa-bars'></i> browse template",
+		"label_cn":"<i class='fa fa-bars'></i> 查看",
+		"bindrecord":true
+	},
+	{
+		"orderno":"004",
+		"elename":"rvterm_delete",
+		"label_en":"<i class='fa fa-minus-circle'></i> delete template",
+		"label_cn":"<i class='fa fa-minus-circle'></i> 删除",
+		"bindrecord":true
+	}
+]
+

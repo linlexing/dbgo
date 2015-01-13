@@ -38,6 +38,9 @@ func NewSessionManager(dbpath string, timeout int) *SessionManager {
 func (s *SessionManager) Close() error {
 	return s.db.Close()
 }
+func (s *SessionManager) Delete(pname, sid, key string) error {
+	return s.db.Delete([]byte(pname+sid+key), nil)
+}
 func (s *SessionManager) Put(pname, sid, key string, value interface{}) error {
 	buf := bytes.Buffer{}
 	enc := gob.NewEncoder(&buf) // Will write to network.
@@ -156,6 +159,9 @@ func (s *Session) Set(key string, value interface{}) (err error) {
 func (s *Session) Get(key string) interface{} {
 	return SDB.Get(s.ProjectName, s.SessionID, key)
 }
+func (s *Session) Delete(key string) error {
+	return SDB.Delete(s.ProjectName, s.SessionID, key)
+}
 func (s *Session) All() (map[string]string, error) {
 	return SDB.All()
 }
@@ -164,6 +170,9 @@ func (s *Session) Abandon() error {
 }
 func (s *Session) jsGet(call otto.FunctionCall) otto.Value {
 	return oftenfun.JSToValue(call.Otto, s.Get(call.Argument(0).String()))
+}
+func (s *Session) jsDelete(call otto.FunctionCall) otto.Value {
+	return oftenfun.JSToValue(call.Otto, s.Delete(call.Argument(0).String()))
 }
 func (s *Session) jsSet(call otto.FunctionCall) otto.Value {
 	key := oftenfun.AssertString(call.Argument(0))
@@ -177,6 +186,7 @@ func (s *Session) Object() map[string]interface{} {
 	return map[string]interface{}{
 		"Set":     s.jsSet,
 		"Get":     s.jsGet,
+		"Delete":  s.jsDelete,
 		"Abandon": s.jsAbandon,
 	}
 }

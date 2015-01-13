@@ -1,0 +1,131 @@
+{
+	"TableName": "lx_rvterm",
+	"PK": [
+		"elename",
+		"access",
+		"name"
+	],
+	"Desc": {
+		"Grade": "root"
+	},
+	"Columns": [
+		{
+			"Name": "elename",
+			"DataType": "string",
+			"MaxSize": 255,
+			"NotNull": true,
+			"Desc": {
+				"Grade":"root",
+				"Label":{
+					"en":"Element Name",
+					"cn":"元素名称"
+				}
+			}
+		},
+		{
+			"Name": "access",
+			"DataType": "string",
+			"MaxSize": 7,
+			"NotNull": true,
+			"Desc": {
+				"Grade":"root",
+				"Label":{
+					"en":"Access",
+					"cn":"可访问性"
+				}
+			}
+		},
+		{
+			"Name": "name",
+			"DataType": "string",
+			"MaxSize": 255,
+			"NotNull": true,
+			"Desc": {
+				"Grade":"root",
+				"Label":{
+					"en":"Name",
+					"cn":"名称"
+				}
+			}
+		},
+		{
+			"Name": "grade",
+			"DataType": "string",
+			"MaxSize": 255,
+			"NotNull": true,
+			"Desc": {
+				"Grade":"root",
+				"Label":{
+					"en":"Grade",
+					"cn":"级别"
+				}
+			}
+		},
+		{
+			"Name": "username",
+			"DataType": "string",
+			"MaxSize": 64,
+			"NotNull": false,
+			"Desc": {
+				"Grade":"root",
+				"Label":{
+					"en":"User Name",
+					"cn":"用户名称"
+				}
+			}
+		},
+		{
+			"Name": "col",
+			"DataType": "string",
+			"MaxSize": 0,
+			"NotNull": false,
+			"Desc": {
+				"Grade":"root",
+				"Label":{
+					"en":"Columns",
+					"cn":"显示的列"
+				}
+			}
+		},
+		{
+			"Name": "term",
+			"DataType": "string",
+			"MaxSize": 0,
+			"NotNull": false,
+			"Desc": {
+				"Grade":"root",
+				"Label":{
+					"en":"Term",
+					"cn":"条件"
+				}
+			}
+		},
+		{
+			"Name": "advanced",
+			"DataType": "string",
+			"MaxSize": 0,
+			"NotNull": false,
+			"Desc": {
+				"Grade":"root",
+				"Label":{
+					"en":"Advanced Term",
+					"cn":"高级条件"
+				}
+			}
+		},
+		{
+			"Name": "expression",
+			"DataType": "string",
+			"MaxSize": 0,
+			"NotNull": false,
+			"Desc": {
+				"Grade":"root",
+				"Label":{
+					"en":"Expression Column",
+					"cn":"计算列"
+				}
+			}
+		}
+	],
+	"Indexes": {}
+}

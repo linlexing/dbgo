@@ -5,18 +5,17 @@
 <#set .G "translate_cn" .Translate_cn#>
 <#set .G "projectName" .c.Project.Name#>
 <#if not .PackCSSDest#>
-	<#set . "PackCSSDest" "/public/css/ngheader_pack.css"#>
+	<#set . "PackCSSDest" "/public/ngheader_pack.css"#>
 <#end#>
 <#if not .PackJSDest#>
-	<#set . "PackJSDest" "/public/js/ngheader_pack.js"#>
+	<#set . "PackJSDest" "/public/ngheader_pack.js"#>
 <#end#>
 
 <#$Pack := mkMap#>
-<#append $Pack "Css" "/public/css/bootstrap.min.css"#>
-<#append $Pack "Css" "/public/css/bootstrap-theme.min.css"#>
-<#append $Pack "Css" "/public/css/font-awesome.min.css"#>
-<#append $Pack "Css" "/public/css/angular-motion.min.css"#>
-<#append $Pack "Css" "/public/css/bootstrap-additions.min.css"#>
+<#append $Pack "Css" "/public/bootstrap/dist/css/bootstrap.min.css"#>
+<#append $Pack "Css" "/public/bootstrap/dist/css/bootstrap-theme.min.css"#>
+<#append $Pack "Css" "/public/angular-motion/dist/angular-motion.min.css"#>
+<#append $Pack "Css" "/public/bootstrap-additions/dist/bootstrap-additions.min.css"#>
 <#range $index,$value:=.OtherPackPublicCSS#>
 	<#append $Pack "Css" $value#>
 <#end#>
@@ -25,18 +24,21 @@
 	<#append $Pack "Css" $value#>
 <#end#>
 
-<#append $Pack "Js" "/public/js/jquery-1.11.1.js"#>
-<#append $Pack "Js" "/public/js/underscore-min.js"#>
-<#append $Pack "Js" "/public/js/reconnecting-websocket.js"#>
-<#append $Pack "Js" "/public/js/underscore.string.min.js"#>
-<#append $Pack "Js" "/public/js/spin.min.js"#>
-<#append $Pack "Js" "/public/js/angular.min.js"#>
-<#append $Pack "Js" "/public/js/angular-sanitize.min.js"#>
-<#append $Pack "Js" "/public/js/angular-cookies.min.js"#>
-<#append $Pack "Js" "/public/js/angular-animate.min.js"#>
-<#append $Pack "Js" "/public/js/angular-translate.min.js"#>
-<#append $Pack "Js" "/public/js/angular-strap.min.js"#>
-<#append $Pack "Js" "/public/js/angular-strap.tpl.min.js"#>
+<#append $Pack "Js" "/public/jquery/dist/jquery.min.js"#>
+<#append $Pack "Js" "/public/spin.js/spin.js"#>
+
+<#append $Pack "Js" "/public/underscore/underscore-min.js"#>
+<#append . "OtherJSFiles" "/public/reconnecting-websocket/reconnecting-websocket.js"#>
+<#append . "OtherJSFiles" "/public/underscore.string/dist/underscore.string.min.js"#>
+<#append $Pack "Js" "/public/angularjs/angular.min.js"#>
+<#append . "OtherJSFiles" "/public/angular-sanitize/angular-sanitize.min.js"#>
+<#append . "OtherJSFiles" "/public/angular-cookies/angular-cookies.min.js"#>
+<#append . "OtherJSFiles" "/public/angular-animate/angular-animate.min.js"#>
+<#append . "OtherJSFiles" "/public/angular-translate/angular-translate.min.js"#>
+<#append . "OtherJSFiles" "/public/angular-translate-storage-local/angular-translate-storage-local.min.js"#>
+<#append . "OtherJSFiles" "/public/angular-translate-storage-cookie/angular-translate-storage-cookie.min.js"#>
+<#append . "OtherJSFiles" "/public/angular-strap/dist/angular-strap.min.js"#>
+<#append . "OtherJSFiles" "/public/angular-strap/dist/angular-strap.tpl.min.js"#>
 
 <#range $index,$value:=.OtherPackPublicJS#>
 	<#append $Pack "Js" $value#>
@@ -53,6 +55,7 @@
 	<meta name="viewport" content="width=device-width, height=device-height, initial-scale=1.0">
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
 	<!-- Bootstrap -->
+    <link rel="stylesheet" type="text/css" href="/public/font-awesome/css/font-awesome.min.css">
     <link rel="stylesheet" type="text/css" href="<#packFiles .PackCSSDest $Pack.Css#>">
 	<#range $index,$value:=.OtherCSSFiles#>
 		<link rel="stylesheet" type="text/css" href="<#$value#>"/>
@@ -60,8 +63,8 @@
 	<!-- HTML5 Shim and Respond.js IE8 support of HTML5 elements and media queries -->
     <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
     <!--[if lt IE 9]>
-        <script src="/public/html5shiv.min.js"></script>
-        <script src="/public/respond.min.js"></script>
+        <script src="/public/html5shiv/dist/html5shiv.min.js"></script>
+        <script src="/public/respond/dest/respond.min.js"></script>
     <![endif]-->
 
   </head>

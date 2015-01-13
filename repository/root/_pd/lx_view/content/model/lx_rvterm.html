@@ -1,0 +1,148 @@
+<#if not .Translate_en#>
+	<#set . "Translate_en" mkMap#>
+<#end#>
+<#set .Translate_en "OPT_PREX" "Prefix"#>
+<#set .Translate_en "OPT_EQ" "Equal"#>
+<#set .Translate_en "OPT_LIKE" "Like"#>
+<#set .Translate_en "OPT_NE" "NotEqual"#>
+<#set .Translate_en "OPT_LT" "LessThan"#>
+<#set .Translate_en "OPT_LE" "LTE"#>
+<#set .Translate_en "OPT_GT" "GreaterThan"#>
+<#set .Translate_en "OPT_GE" "GTE"#>
+<#set .Translate_en "OPT_IN" "In"#>
+<#set .Translate_en "OPT_NIN" "NotIn"#>
+<#set .Translate_en "OPT_REGEXP" "RegExp"#>
+<#set .Translate_en "OPT_SUFX" "Suffix"#>
+<#set .Translate_en "FIELD" "Field"#>
+<#set .Translate_en "OPT" "Operate"#>
+<#set .Translate_en "VALUE" "Value"#>
+<#set .Translate_en "LOGIC" "Logic"#>
+
+<#set .Translate_en "SELECT" "Select"#>
+<#set .Translate_en "ISPK" "IsPk"#>
+<#set .Translate_en "HIDDEN" "Hidden"#>
+<#set .Translate_en "NAME" "Name"#>
+<#set .Translate_en "LABEL" "Label"#>
+
+<#set .Translate_en "AND" "And"#>
+<#set .Translate_en "OR" "Or"#>
+<#if not .Translate_cn#>
+	<#set . "Translate_cn" mkMap#>
+<#end#>
+<#set .Translate_cn "OPT_PREX" "前缀"#>
+<#set .Translate_cn "OPT_EQ" "等于"#>
+<#set .Translate_cn "OPT_LIKE" "包含"#>
+<#set .Translate_cn "OPT_NE" "不等于"#>
+<#set .Translate_cn "OPT_LT" "小于"#>
+<#set .Translate_cn "OPT_LE" "小于等于"#>
+<#set .Translate_cn "OPT_GT" "大于"#>
+<#set .Translate_cn "OPT_GE" "大于等于"#>
+<#set .Translate_cn "OPT_IN" "在列表"#>
+<#set .Translate_cn "OPT_NIN" "不在列表"#>
+<#set .Translate_cn "OPT_REGEXP" "正则"#>
+<#set .Translate_cn "OPT_SUFX" "后缀"#>
+<#set .Translate_cn "FIELD" "字段"#>
+<#set .Translate_cn "OPT" "运算符"#>
+<#set .Translate_cn "VALUE" "值"#>
+<#set .Translate_cn "LOGIC" "逻辑"#>
+
+<#set .Translate_cn "SELECT" "选择"#>
+<#set .Translate_cn "ISPK" "主键"#>
+<#set .Translate_cn "HIDDEN" "隐藏"#>
+<#set .Translate_cn "NAME" "名称"#>
+<#set .Translate_cn "LABEL" "标签"#>
+
+<#set .Translate_cn "AND" "并且"#>
+<#set .Translate_cn "OR" "或者"#>
+
+<#if not .G#>
+	<#set . "G" mkMap#>
+<#end#>
+<#set .G "rv_info" .rv_info#>
+<#append . "OtherJSFiles" (static "lx_rvterm/page.js")#>
+<#append . "OtherCSSFiles" (static "lx_rvterm/page.css")#>
+
+<#template "mdlheader.html" .#>
+
+<lx-field field-name="'elename'"></lx-field>
+<lx-field field-name="'access'"></lx-field>
+<lx-field field-name="'username'"></lx-field>
+<lx-field field-name="'name'"></lx-field>
+<div ng-controller="termController" class="term">
+	<div class="row">
+		<span class="col-sm-1"></span>
+		<span class="col-sm-1"></span>
+		<span class="col-sm-2 text-center" translate>FIELD</span>
+		<span class="col-sm-2 text-center" translate>OPT</span>
+		<span class="col-sm-4 text-center" translate>VALUE</span>
+		<span class="col-sm-1 text-center" translate></span>
+		<span class="col-sm-1 text-center" translate>LOGIC</span>
+	</div>
+	<div class="row" ng-repeat="term in terms">
+		<span class="col-sm-1 btn-group">
+			<button type="button" class="btn btn-primary term-btn" ng-click="termAdd($index)"><i class="fa fa-plus"></i></button>
+			<button type="button" class="btn btn-danger term-btn" ng-click="termDelete($index)"><i class="fa fa-minus"></i></button>
+		</span>
+		<span class="col-sm-1">
+			<select class="form-control" ng-model="term.left">
+			  <option></option>
+			  <option>(</option>
+			  <option>((</option>
+			  <option>(((</option>
+			  <option>((((</option>
+			  <option>(((((</option>
+			  <option>((((((</option>
+			</select>
+
+		</span>
+		<span class="col-sm-2">
+			<select class="form-control" ng-model="term.column" ng-options="column.name as getColumnLabel(column) for column in termColumns">
+			</select>
+		</span>
+		<span class="col-sm-2">
+			<select class="form-control" ng-model="term.operate" ng-options="item|translate for item in searchOpts">
+			</select>
+		</span>
+		<span class="col-sm-4">
+			<input type="text" class="form-control" ng-model="term.value"></input>
+		</span>
+		<span class="col-sm-1">
+			<select class="form-control" ng-model="term.right">
+			  <option></option>
+			  <option>)</option>
+			  <option>))</option>
+			  <option>)))</option>
+			  <option>))))</option>
+			  <option>)))))</option>
+			  <option>))))))</option>
+			</select>
+		</span>
+		<span class="col-sm-1">
+			<select class="form-control" ng-model="term.logic">
+				<option value="And" translate>AND</option>
+				<option value="Or" translate>OR</option>
+			</select>
+		</span>
+	</div>
+	<div class="row">
+		<span class="col-sm-1"></span>
+		<span class="col-sm-1 text-center" translate>SELECT</span>
+		<span class="col-sm-1 text-center" translate>ISPK</span>
+		<span class="col-sm-1 text-center" translate>HIDDEN</span>
+		<span class="col-sm-3 text-center" translate>NAME</span>
+		<span class="col-sm-5 text-center" translate>LABEL</span>
+	</div>
+	<div ng-class="{'text-primary':col.ispk,'row':true}" ng-repeat="col in selectColumns">
+		<span class="col-sm-1 btn-group">
+			<button type="button" class="btn btn-default column-btn" ng-click="columnUp($index)"><i class="fa fa-arrow-up"></i></button>
+			<button type="button" class="btn btn-default column-btn" ng-click="columnDown($index)"><i class="fa fa-arrow-down"></i></button>
+		</span>
+
+		<span class="col-sm-1"><toggle-switch ng-model="col.selected" knob-label="选择" on-lable="是" off-lable="否"><toggle-switch></span>
+		<span class="col-sm-1"><input type="checkbox" ng-model="col.pk"></input></span>
+		<span class="col-sm-1"><input type="checkbox" ng-model="col.hidden"></input></span>
+		<span class="col-sm-3"><p class="form-control-static">{{col.name}}</p></span>
+		<span class="col-sm-5"><p class="form-control-static">{{getColumnLabel(col)}}</p></span>
+	</div>
+</div>
+<#template "mdlfooter.html" .#>

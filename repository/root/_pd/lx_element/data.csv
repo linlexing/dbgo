@@ -2,9 +2,16 @@ name,grade,label_en,label_cn,category_en,category_cn,url
 home_default,root,welcome,欢迎,10.Home/10.Welcome,10.首页/10.欢迎,home/default
 changepwd,root,01.Change Password,01.修改密码,90.System/10.Rights,90.系统管理/10.权限管理,changepwd/show
 rolemanager,root,01.Role Manager,01.角色管理,80.Define/10.Core,80.系统定制/10.核心模块,rv/show
+rvterm_public,root,rvterm_public,公用模板定义,90.System/20.Setting,90.系统管理/20.设置,rv/show
+rvterm_private,root,rvterm_private,私有模板定义,90.System/20.Setting,90.系统管理/20.设置,rv/show
 role_edit,root,edit role,修改角色,(Program Use)/Role,(程序使用)/角色,mdlopt/show
 role_delete,root,delete role,删除角色,(Program Use)/Role,(程序使用)/角色,mdlopt/show
 role_add,root,add role,新增角色,(Program Use)/Role,(程序使用)/角色,mdlopt/show
+rvterm_add_public,root,add public template,新增公用模板,(Program Use)/rvterm,(程序使用)/模板,mdlopt/show
+rvterm_add_private,root,add private template,新增私有模板,(Program Use)/rvterm,(程序使用)/模板,mdlopt/show
+rvterm_edit,root,edit template,修改模板,(Program Use)/rvterm,(程序使用)/模板,mdlopt/show
+rvterm_delete,root,delete template,删除模板,(Program Use)/rvterm,(程序使用)/模板,mdlopt/show
+rvterm_browse,root,browse template,查看模板,(Program Use)/rvterm,(程序使用)/模板,mdlopt/show
 test1,root,11.11Role Manager,11.11角色管理,80.Define/10.Core,80.系统定制/10.核心模块,
 test2,root,05.05Role Manager,01.05角色管理,80.Define/10.Core,80.系统定制/10.核心模块,
 test3,root,03.03Role Manager,,,80.系统定制/10.核心模块,

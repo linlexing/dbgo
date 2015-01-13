@@ -1,0 +1,6 @@
+{
+	"elename":{"perm":"readonly"},
+	"access":{"fill":"'private'","perm":"readonly"},
+	"username":{"fill":"c.UserName()","perm":"readonly"},
+	"grade":{"fill":"c.CurrentGrade","perm":"readonly"}
+}

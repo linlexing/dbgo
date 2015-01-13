@@ -1,0 +1,22 @@
+.term{
+	padding:15px;
+}
+.term span {
+	padding:2px;
+}
+.term span select{
+	padding-left:1px;
+	padding-right:1px;
+}
+.term-btn{
+	padding-top:6px;
+	padding-bottom:6px;
+	padding-left:7px;
+	padding-right:7px;
+}
+.column-btn{
+	padding-top:6px;
+	padding-bottom:6px;
+	padding-left:6px;
+	padding-right:6px;
+}

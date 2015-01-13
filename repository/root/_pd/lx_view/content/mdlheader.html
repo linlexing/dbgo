@@ -24,14 +24,15 @@
 
 
 <#if not .PackCSSDest#>
-	<#set . "PackCSSDest" "/public/css/mdlheader_pack.css"#>
+	<#set . "PackCSSDest" "/public/mdlheader_pack.css"#>
 <#end#>
 <#if not .PackJSDest#>
-	<#set . "PackJSDest" "/public/js/mdlheader_pack.js"#>
+	<#set . "PackJSDest" "/public/mdlheader_pack.js"#>
 <#end#>
 <#append . "OtherPackStaticJS" (static "mdlheader/page.js")#>
 <#append . "OtherPackStaticCSS" (static "mdlheader/page.css")#>
 
 <#template "pjheader.html" .#>
-<div class="container">
-	<form id="frmModelData" name="frmModelData" role="form" novalidate ng-controller="frmModelDataCtrl" class="form-horizontal">
+<div class="container" >
+	<form id='frmModelData' name='frmModelData' role='form' novalidate class='form-horizontal' ng-controller="frmModelDataCtrl">
+

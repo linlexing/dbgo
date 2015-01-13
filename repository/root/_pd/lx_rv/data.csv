@@ -1,2 +1,4 @@
 name,grade,basetable,pk,canexport,canimport,canreplace,canclear,replacecol
 rolemanager,root,lx_role,name,true,false,true,true,
+rvterm_public,root,lx_rvterm,"elename,access,name",true,true,true,true,
+rvterm_private,root,lx_rvterm,"elename,access,name",true,true,true,true,
