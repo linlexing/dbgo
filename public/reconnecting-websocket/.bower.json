@@ -20,11 +20,11 @@
     "test",
     "tests"
   ],
-  "_release": "592c441b27",
+  "_release": "089a584c82",
   "_resolution": {
     "type": "branch",
     "branch": "master",
-    "commit": "592c441b27224600836ddb2975482665be5c0060"
+    "commit": "089a584c82f835e4436bc803d6d1f5d55444908b"
   },
   "_source": "git://github.com/joewalnes/reconnecting-websocket.git",
   "_target": "*",

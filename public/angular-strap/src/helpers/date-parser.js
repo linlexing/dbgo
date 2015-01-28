@@ -4,7 +4,7 @@ angular.module('mgcrea.ngStrap.helpers.dateParser', [])
 
 .provider('$dateParser', function($localeProvider) {
 
-  // define a custom ParseDate object to use instead of native Date 
+  // define a custom ParseDate object to use instead of native Date
   // to avoid date values wrapping when setting date component values
   function ParseDate() {
     this.year = 1970;
@@ -53,7 +53,7 @@ angular.module('mgcrea.ngStrap.helpers.dateParser', [])
     for (var i=0; i<len; i++) {
       if (array[i].toLowerCase() === str) { return i; }
     }
-    return -1; // Return -1 per the "Array.indexOf()" method.    
+    return -1; // Return -1 per the "Array.indexOf()" method.
   }
 
   var defaults = this.defaults = {
@@ -131,6 +131,8 @@ angular.module('mgcrea.ngStrap.helpers.dateParser', [])
       };
 
       $dateParser.parse = function(value, baseDate, format) {
+        // check for date format special names
+        if(format) format = $locale.DATETIME_FORMATS[format] || format;
         if(angular.isDate(value)) value = dateFilter(value, format || $dateParser.$format);
         var formatRegex = format ? regExpForFormat(format) : regex;
         var formatSetMap = format ? setMapForFormat(format) : setMap;
@@ -142,7 +144,14 @@ angular.module('mgcrea.ngStrap.helpers.dateParser', [])
           formatSetMap[i] && formatSetMap[i].call(date, matches[i+1]);
         }
         // convert back to native Date object
-        return date.toDate();
+        var newDate = date.toDate();
+
+        // check new native Date object for day values overflow
+        if (parseInt(date.day, 10) !== newDate.getDate()) {
+          return false;
+        }
+
+        return newDate;
       };
 
       $dateParser.getDateForAttribute = function(key, value) {
@@ -175,11 +184,28 @@ angular.module('mgcrea.ngStrap.helpers.dateParser', [])
           time = new Date(parseInt(value, 10)).setFullYear(1970, 0, 1);
         } else if (angular.isString(value) && 0 === value.length) { // Reset time
           time = key === 'minTime' ? -Infinity : +Infinity;
-        } else { 
+        } else {
           time = $dateParser.parse(value, new Date(1970, 0, 1, 0));
         }
 
         return time;
+      };
+
+      /* Handle switch to/from daylight saving.
+      * Hours may be non-zero on daylight saving cut-over:
+      * > 12 when midnight changeover, but then cannot generate
+      * midnight datetime, so jump to 1AM, otherwise reset.
+      * @param  date  (Date) the date to check
+      * @return  (Date) the corrected date
+      *
+      * __ copied from jquery ui datepicker __
+      */
+      $dateParser.daylightSavingAdjust = function(date) {
+        if (!date) {
+          return null;
+        }
+        date.setHours(date.getHours() > 12 ? date.getHours() + 2 : 0);
+        return date;
       };
 
       // Private functions
